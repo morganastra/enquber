@@ -12,7 +12,7 @@ To build you need a functional qt6 development environment and `libqrencode`
 
 On archlinux-like systems, that would be the following packages:
 
-    base-devel cmake ninja qt6-base libqrencode 
+    base-devel cmake ninja qt6-base qrencode 
 
 To run the smoke tests you also need
 
