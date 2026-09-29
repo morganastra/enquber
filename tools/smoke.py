@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import math
 import os
+import signal
 import tempfile
 import shutil
 import subprocess
@@ -36,6 +37,41 @@ FOREIGN_URL = "https://example.com/from-another-process"
 
 class Failure(Exception):
     pass
+
+
+def die_with_parent() -> None:
+    """Asks the kernel to terminate this process when its parent goes away.
+
+    Runs between fork() and exec() in the child. Covered by PR_SET_PDEATHSIG,
+    so even `kill -9` on the test script cannot leave application windows on
+    the desktop.
+    """
+    import ctypes
+    try:
+        # CDLL(None) is the running process, which has libc's symbols; that
+        # works for any libc, unlike hard coding libc.so.6.
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.prctl(1, signal.SIGTERM, 0, 0, 0)  # PR_SET_PDEATHSIG
+    except Exception:
+        pass  # best effort: the signal handlers are the main path
+
+
+def install_signal_handlers() -> None:
+    """Turns termination signals into an exception.
+
+    Python runs no `finally` for a signal, so without this a `timeout`, a
+    supervisor or a plain `kill` of this script leaves the application and its
+    helpers running with their windows on screen. Handling SIGINT also matters
+    for a subtler reason: a shell that starts this script in the background
+    gives it SIGINT ignored, and children inherit that, leaving them immune to
+    Ctrl-C. A handler is reset to the default across exec, so installing one
+    here makes the windows killable again.
+    """
+    def interrupt(signum, _frame):
+        raise KeyboardInterrupt(f"signal {signum}")
+
+    for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(number, interrupt)
 
 
 @dataclass
@@ -76,7 +112,7 @@ class Smoke:
     def launch(self, command: list[str], title: str) -> App:
         environment = dict(os.environ, DISPLAY=self.display)
         environment.pop("QT_QPA_PLATFORM", None)
-        process = subprocess.Popen(command, env=environment,
+        process = subprocess.Popen(command, env=environment, preexec_fn=die_with_parent,
                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         self.processes.append(process)
         window = self.x.wait_for(pattern=title, pid=process.pid, timeout=15, title_only=True)
@@ -89,6 +125,34 @@ class Smoke:
         self.x.move_resize(window_id, x, y, width, height)
         time.sleep(0.4)
         return self.x.window(window_id)
+
+    def shut_down(self) -> list[str]:
+        """Stops everything this run started.
+
+        Returns the ones that would not go, so the caller can say so instead of
+        leaving the user to wonder why a window is still there.
+        """
+        # A second Ctrl-C must not abort the clean up.
+        for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            signal.signal(number, signal.SIG_IGN)
+        for process in self.processes:
+            if process.poll() is None:
+                process.terminate()
+        deadline = time.monotonic() + 1.5
+        while time.monotonic() < deadline:
+            if all(process.poll() is not None for process in self.processes):
+                break
+            time.sleep(0.1)
+        for process in self.processes:
+            if process.poll() is None:
+                process.kill()
+        stubborn = []
+        for process in self.processes:
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                stubborn.append(f"{' '.join(process.args)} (pid {process.pid})")
+        return stubborn
 
     def output_so_far(self, process: subprocess.Popen, timeout: float = 2.0, until=None) -> str:
         """Reads what a still running helper has printed.
@@ -217,6 +281,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"missing required tool: {tool}", file=sys.stderr)
             return 2
 
+    install_signal_handlers()
     smoke = Smoke(Path(args.app).resolve(), Path(args.dragsource).resolve(),
                   args.display, Path(args.shots), args.skip_foreign_drag)
     try:
@@ -225,19 +290,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nFAILED: {failure}", file=sys.stderr)
         print(f"screenshots in {smoke.shots}", file=sys.stderr)
         return 1
+    except KeyboardInterrupt:
+        print("\ninterrupted", file=sys.stderr)
+        return 130
     except Exception as error:  # noqa: BLE001 - a stack trace is more useful here
         import traceback
         traceback.print_exc()
         print(f"\nERROR: {type(error).__name__}: {error}", file=sys.stderr)
         return 1
     finally:
-        for process in smoke.processes:
-            if process.poll() is None:
-                process.terminate()
-        time.sleep(0.3)
-        for process in smoke.processes:
-            if process.poll() is None:
-                process.kill()
+        for stubborn in smoke.shut_down():
+            print(f"warning: could not stop {stubborn}", file=sys.stderr)
     print(f"\nall {smoke.steps} steps passed; screenshots in {smoke.shots}")
     return 0
 
