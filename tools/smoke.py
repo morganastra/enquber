@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End to end smoke test for qrgen.
+"""End to end smoke test for enquber.
 
 Runs the real application on a display and drives it with real X input: a drag
 and drop, a paste from the clipboard, the buttons, the save dialog. Every QR
@@ -265,11 +265,11 @@ def drag_with_mouse(smoke: Smoke, source: Window, target: tuple[int, int], relea
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--display", default=os.environ.get("DISPLAY", ":0"))
-    parser.add_argument("--app", default="build/qrgen",
-                        help="the application binary (default: build/qrgen)")
+    parser.add_argument("--app", default="build/enquber",
+                        help="the application binary (default: build/enquber)")
     parser.add_argument("--dragsource", default="build/tools/dragsource",
-                        help="the drag helper, built with -DQRGEN_BUILD_TEST_TOOLS=ON")
-    parser.add_argument("--shots", default=str(Path(tempfile.gettempdir()) / "qrgen-smoke"),
+                        help="the drag helper, built with -DENQUBER_BUILD_TEST_TOOLS=ON")
+    parser.add_argument("--shots", default=str(Path(tempfile.gettempdir()) / "enquber-smoke"),
                         help="where screenshots and the saved PNG go")
     parser.add_argument("--skip-foreign-drag", action="store_true",
                         help="leave out the drag from another process; a bare Xvfb "
@@ -309,7 +309,7 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     x = smoke.x
 
     smoke.step("the application takes a link on the command line")
-    command_line = smoke.launch([str(smoke.app), PASTED_URL], "QR Code")
+    command_line = smoke.launch([str(smoke.app), PASTED_URL], "Enquber")
     command_line.window = smoke.place(command_line.window.id, 40, 40, 560, 700)
     on_start = smoke.decode(command_line.window, "command-line")
     smoke.check(on_start == PASTED_URL, f"the link from the command line is on screen ({on_start!r})")
@@ -323,7 +323,7 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     # and drop delivery path with real input.
     app = smoke.launch([str(smoke.dragsource), "--text", DROPPED_URL, "--with-app"], "dragsource")
     time.sleep(1.0)
-    hosted = x.find("QR Code", pid=app.process.pid, title_only=True)
+    hosted = x.find("Enquber", pid=app.process.pid, title_only=True)
     smoke.check(hosted is not None, "the drag helper hosts an application window")
     window = smoke.place(hosted.id, 40, 40, 560, 700)
     smoke.check(window.width > 300 and window.height > 300,
@@ -443,7 +443,7 @@ def foreign_drag(smoke: Smoke) -> None:
     x = smoke.x
 
     # A fresh instance, so that the foreign drag finds an empty window.
-    target = smoke.launch([str(smoke.app)], "QR Code")
+    target = smoke.launch([str(smoke.app)], "Enquber")
     target.window = smoke.place(target.window.id, 40, 40, 560, 700)
     x.focus(target.window.id)
     smoke.screenshot(target.window, "empty")

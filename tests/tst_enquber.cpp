@@ -70,7 +70,7 @@ QPushButton *buttonContaining(QWidget *window, const QString &needle)
 
 } // namespace
 
-class TestQrGen : public QObject
+class TestEnquber : public QObject
 {
     Q_OBJECT
 
@@ -108,7 +108,7 @@ private slots:
     void windowAcceptsDrops();
 };
 
-void TestQrGen::encodesText_data()
+void TestEnquber::encodesText_data()
 {
     QTest::addColumn<QString>("text");
     QTest::newRow("url") << QStringLiteral("https://example.com/some/path?a=1&b=2");
@@ -117,7 +117,7 @@ void TestQrGen::encodesText_data()
     QTest::newRow("multiline") << QStringLiteral("first line\nsecond line");
 }
 
-void TestQrGen::encodesText()
+void TestEnquber::encodesText()
 {
     QFETCH(QString, text);
 
@@ -129,7 +129,7 @@ void TestQrGen::encodesText()
     QVERIFY(code.modules() >= 21);
 }
 
-void TestQrGen::rejectsEmptyText()
+void TestEnquber::rejectsEmptyText()
 {
     const qr::Code code = qr::Code::encode(QString());
 
@@ -138,7 +138,7 @@ void TestQrGen::rejectsEmptyText()
     QVERIFY(code.toImage(4).isNull());
 }
 
-void TestQrGen::rejectsOversizedText()
+void TestEnquber::rejectsOversizedText()
 {
     const qr::Code code = qr::Code::encode(QString(5000, QLatin1Char('a')));
 
@@ -146,7 +146,7 @@ void TestQrGen::rejectsOversizedText()
     QVERIFY(!code.error().isEmpty());
 }
 
-void TestQrGen::rendersQuietZoneAndModules()
+void TestEnquber::rendersQuietZoneAndModules()
 {
     const qr::Code code = qr::Code::encode(QStringLiteral("https://example.com"));
     QVERIFY(code.isValid());
@@ -178,7 +178,7 @@ void TestQrGen::rendersQuietZoneAndModules()
     }
 }
 
-void TestQrGen::picksSmallestVersion()
+void TestEnquber::picksSmallestVersion()
 {
     const qr::Code small = qr::Code::encode(QStringLiteral("hi"));
     const qr::Code large = qr::Code::encode(QString(1000, QLatin1Char('a')));
@@ -188,7 +188,7 @@ void TestQrGen::picksSmallestVersion()
     QVERIFY(small.modules() < large.modules());
 }
 
-void TestQrGen::dropOnWindowShowsCode()
+void TestEnquber::dropOnWindowShowsCode()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -202,7 +202,7 @@ void TestQrGen::dropOnWindowShowsCode()
     QVERIFY(window.findChild<QrView *>()->hasCode());
 }
 
-void TestQrGen::dropOnDropZoneShowsCode()
+void TestEnquber::dropOnDropZoneShowsCode()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -219,7 +219,7 @@ void TestQrGen::dropOnDropZoneShowsCode()
     QCOMPARE(window.encodedText(), QStringLiteral("https://zone.example"));
 }
 
-void TestQrGen::droppingUrlsPrefersTheUrl()
+void TestEnquber::droppingUrlsPrefersTheUrl()
 {
     auto *mime = new QMimeData;
     mime->setUrls({QUrl(QStringLiteral("https://url.example/x"))});
@@ -229,7 +229,7 @@ void TestQrGen::droppingUrlsPrefersTheUrl()
     delete mime;
 }
 
-void TestQrGen::payloadSurvivesASourceThatStopsAnswering()
+void TestEnquber::payloadSurvivesASourceThatStopsAnswering()
 {
     // On X11 the payload is fetched from the drag source when the target asks
     // for it, and a source may refuse once the button is released. What was
@@ -253,7 +253,7 @@ void TestQrGen::payloadSurvivesASourceThatStopsAnswering()
     delete mute;
 }
 
-void TestQrGen::dropWithoutTextIsIgnored()
+void TestEnquber::dropWithoutTextIsIgnored()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -267,7 +267,7 @@ void TestQrGen::dropWithoutTextIsIgnored()
     QCOMPARE(window.findChild<QStackedWidget *>()->currentIndex(), 0);
 }
 
-void TestQrGen::pasteEncodesClipboardText()
+void TestEnquber::pasteEncodesClipboardText()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -280,7 +280,7 @@ void TestQrGen::pasteEncodesClipboardText()
     QCOMPARE(window.encodedText(), QStringLiteral("https://paste.example"));
 }
 
-void TestQrGen::pasteWithoutTextIsIgnored()
+void TestEnquber::pasteWithoutTextIsIgnored()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -291,7 +291,7 @@ void TestQrGen::pasteWithoutTextIsIgnored()
     QVERIFY(!window.hasCode());
 }
 
-void TestQrGen::copyPutsImageOnClipboard()
+void TestEnquber::copyPutsImageOnClipboard()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -311,7 +311,7 @@ void TestQrGen::copyPutsImageOnClipboard()
     QVERIFY(image.pixelColor(0, 0) == QColor(Qt::white));
 }
 
-void TestQrGen::longTextIsShapedForTheLabel()
+void TestEnquber::longTextIsShapedForTheLabel()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -338,7 +338,7 @@ void TestQrGen::longTextIsShapedForTheLabel()
     QVERIFY(label->toolTip().contains(QStringLiteral("xxxx")));
 }
 
-void TestQrGen::repeatingAStatusMessageRestartsItsTimeout()
+void TestEnquber::repeatingAStatusMessageRestartsItsTimeout()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -364,7 +364,7 @@ void TestQrGen::repeatingAStatusMessageRestartsItsTimeout()
                             .arg(before).arg(after)));
 }
 
-void TestQrGen::clearingReturnsToTheDropTarget()
+void TestEnquber::clearingReturnsToTheDropTarget()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -384,7 +384,7 @@ void TestQrGen::clearingReturnsToTheDropTarget()
     QVERIFY(!window.saveTo(QDir::tempPath() + QStringLiteral("/should-not-exist.png")));
 }
 
-void TestQrGen::clearingWithTheButtonWorks()
+void TestEnquber::clearingWithTheButtonWorks()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -399,7 +399,7 @@ void TestQrGen::clearingWithTheButtonWorks()
     QCOMPARE(window.findChild<QStackedWidget *>()->currentIndex(), 0);
 }
 
-void TestQrGen::droppingStillWorksAfterClearing()
+void TestEnquber::droppingStillWorksAfterClearing()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -415,7 +415,7 @@ void TestQrGen::droppingStillWorksAfterClearing()
     QCOMPARE(window.encodedText(), QStringLiteral("https://second.example"));
 }
 
-void TestQrGen::clickingCopyButtonCopiesImage()
+void TestEnquber::clickingCopyButtonCopiesImage()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -432,7 +432,7 @@ void TestQrGen::clickingCopyButtonCopiesImage()
     QCOMPARE(image.width(), image.height());
 }
 
-void TestQrGen::keyboardReachesTheButtons()
+void TestEnquber::keyboardReachesTheButtons()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -458,7 +458,7 @@ void TestQrGen::keyboardReachesTheButtons()
     QCOMPARE(QApplication::focusWidget(), save);
 }
 
-void TestQrGen::clickingSaveButtonWritesFile()
+void TestEnquber::clickingSaveButtonWritesFile()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -484,7 +484,7 @@ void TestQrGen::clickingSaveButtonWritesFile()
     QVERIFY(!QImage(path).isNull());
 }
 
-void TestQrGen::saveWritesPngFile()
+void TestEnquber::saveWritesPngFile()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -503,7 +503,7 @@ void TestQrGen::saveWritesPngFile()
     QVERIFY(image.width() > 500);
 }
 
-void TestQrGen::saveAppendsPngSuffix()
+void TestEnquber::saveAppendsPngSuffix()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -518,7 +518,7 @@ void TestQrGen::saveAppendsPngSuffix()
     QVERIFY(QFileInfo::exists(path + QStringLiteral(".png")));
 }
 
-void TestQrGen::windowAcceptsDrops()
+void TestEnquber::windowAcceptsDrops()
 {
     MainWindow window;
     QVERIFY(window.acceptDrops());
@@ -526,5 +526,5 @@ void TestQrGen::windowAcceptsDrops()
     QVERIFY(window.minimumSizeHint().isValid());
 }
 
-QTEST_MAIN(TestQrGen)
-#include "tst_qrgen.moc"
+QTEST_MAIN(TestEnquber)
+#include "tst_enquber.moc"

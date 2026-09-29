@@ -34,16 +34,16 @@ void preferDesktopStyle()
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    QApplication::setApplicationName(QStringLiteral("qrgen"));
+    QApplication::setApplicationName(QStringLiteral("enquber"));
     QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
-    QApplication::setOrganizationName(QStringLiteral("qrgen"));
-    QApplication::setDesktopFileName(QStringLiteral("qrgen"));
+    QApplication::setOrganizationName(QStringLiteral("enquber"));
+    QApplication::setDesktopFileName(QStringLiteral("enquber"));
     QApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral("view-barcode-qr")));
     preferDesktopStyle();
 
     MainWindow window;
 
-    // `qrgen https://example.com` shows the code right away; anything that was
+    // `enquber https://example.com` shows the code right away; anything that was
     // not meant for Qt itself counts as the text to encode.
     const QStringList arguments = QApplication::arguments().mid(1);
     QStringList text;

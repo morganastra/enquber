@@ -28,9 +28,9 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
-/// Set QT_LOGGING_RULES="qrgen.dnd.debug=true" to watch what the window is
+/// Set QT_LOGGING_RULES="enquber.dnd.debug=true" to watch what the window is
 /// offered while something is dragged onto it.
-Q_LOGGING_CATEGORY(lcDnd, "qrgen.dnd")
+Q_LOGGING_CATEGORY(lcDnd, "enquber.dnd")
 
 namespace {
 
@@ -125,7 +125,7 @@ ShapedText shapeForLabel(const QString &text, const QFont &font, const QFontMetr
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(tr("QR Code"));
+    setWindowTitle(tr("Enquber"));
     setWindowIcon(theme::icon({"view-barcode-qr", "view-barcode"}));
     setAcceptDrops(true);
     resize(560, 700);

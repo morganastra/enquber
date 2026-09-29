@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(qrgen
+project(enquber
     VERSION 0.1.0
     DESCRIPTION "A minimal Qt 6 front end for libqrencode"
     LANGUAGES CXX)
@@ -16,7 +16,7 @@ qt_standard_project_setup()
 
 # Everything except main() lives in a static library so that the test suite can
 # link against exactly the same code the application runs.
-add_library(qrgen_core STATIC
+add_library(enquber_core STATIC
     src/dropzone.cpp
     src/dropzone.h
     src/mainwindow.cpp
@@ -30,23 +30,23 @@ add_library(qrgen_core STATIC
     src/theme.cpp
     src/theme.h
 )
-target_include_directories(qrgen_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(qrgen_core PUBLIC Qt6::Widgets PkgConfig::QRENCODE)
-target_compile_options(qrgen_core PRIVATE -Wall -Wextra)
+target_include_directories(enquber_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(enquber_core PUBLIC Qt6::Widgets PkgConfig::QRENCODE)
+target_compile_options(enquber_core PRIVATE -Wall -Wextra)
 
-qt_add_executable(qrgen src/main.cpp)
-target_link_libraries(qrgen PRIVATE qrgen_core)
+qt_add_executable(enquber src/main.cpp)
+target_link_libraries(enquber PRIVATE enquber_core)
 
 include(GNUInstallDirs)
-install(TARGETS qrgen RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS enquber RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-option(QRGEN_BUILD_TESTS "Build the unit tests" ON)
-if(QRGEN_BUILD_TESTS)
+option(ENQUBER_BUILD_TESTS "Build the unit tests" ON)
+if(ENQUBER_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
-option(QRGEN_BUILD_TEST_TOOLS "Build the helpers used by the GUI smoke test" OFF)
-if(QRGEN_BUILD_TEST_TOOLS)
+option(ENQUBER_BUILD_TEST_TOOLS "Build the helpers used by the GUI smoke test" OFF)
+if(ENQUBER_BUILD_TEST_TOOLS)
     add_subdirectory(tools)
 endif()
