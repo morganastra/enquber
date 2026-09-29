@@ -4,7 +4,7 @@ Enquber is a simple QR code maker application with a nice UX and near-instant st
 
 Drop or paste text into the window to generate a QR code; then save or copy the resulting PNG
 
-INSERT UI IMAGES HERE
+![Enquber UI: the drop target and QR code view](doc/image/enquber-ui.png)
 
 ## Building
 
