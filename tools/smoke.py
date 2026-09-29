@@ -446,7 +446,7 @@ def foreign_drag(smoke: Smoke) -> None:
     target = smoke.launch([str(smoke.app)], "QR Code")
     target.window = smoke.place(target.window.id, 40, 40, 560, 700)
     x.focus(target.window.id)
-    target_empty = smoke.screenshot(target.window, "empty")
+    smoke.screenshot(target.window, "empty")
     smoke.log(f"empty window at {target.window}")
 
     # One source window, dragged from repeatedly. Opening a window per attempt
@@ -467,9 +467,10 @@ def foreign_drag(smoke: Smoke) -> None:
     x.release(1)
     time.sleep(0.8)
     dropped_in = smoke.decode(target.window, "dropped-in-1")
-
-    dropped_in = drag_until_dropped(smoke, source, target.window, FOREIGN_URL,
-                                    label="foreign drag", attempts=5)
+    if dropped_in != FOREIGN_URL:
+        # Qt swallows the odd drop, so try again before believing it.
+        dropped_in = drag_until_dropped(smoke, source, target.window, FOREIGN_URL,
+                                        label="foreign drag", attempts=5)
     smoke.check(dropped_in == FOREIGN_URL,
                 f"the link dragged in from another process is on screen ({dropped_in!r})")
     smoke.screenshot(target.window, "dropped-in")
