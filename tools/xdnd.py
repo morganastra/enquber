@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""An XDND drag source written straight against the protocol.
+
+Qt's own drag source reports success while the receiving Qt application never
+sees the drop, so this sends the client messages by hand and waits for the
+answers. That makes the exchange observable (and controllable), and it is what a
+browser, GTK or Qt does when a link is dragged:
+
+    XdndEnter    -> types on offer
+    <- XdndStatus  whether the target accepts, and with which action
+    XdndPosition -> where the pointer is
+    XdndDrop     -> button released, target may take the data
+    <- XdndFinished
+
+The data itself travels over the XdndSelection, which this process owns; the
+target converts it when it wants it, and the requests and replies are logged.
+
+    tools/xdnd.py --target <window id> --text https://example.com --x 300 --y 200
+
+Exit status is 0 when the target accepted the drop and finished it.
+"""
+
+from __future__ import annotations
+
+import argparse
+import select
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from Xlib import X, Xatom, display  # noqa: E402
+from Xlib.protocol import request  # noqa: E402
+
+XDND_VERSION = 5
+XDND_ACTION_COPY = 1
+
+
+class XdndSource:
+    def __init__(self, display_name: str, payload: str):
+        self.d = display.Display(display_name)
+        self.root = self.d.screen().root
+        self.payload = payload
+        self.log: list[str] = []
+        self.accepted_action = 0
+        self.finished = False
+        self.requests = 0
+        self.window = self.root.create_window(
+            0, 0, 120, 60, 0, self.d.screen().root_depth,
+            X.InputOutput, X.CopyFromParent,
+            override_redirect=1,
+            # SelectionRequest and ClientMessage events are delivered to the
+            # selection owner and to the addressed window without a mask.
+            event_mask=X.PropertyChangeMask | X.StructureNotifyMask,
+        )
+        self.window.set_wm_name("xdnd-source")
+        self.window.set_wm_class("xdnd-source", "XdndSource")
+        self.atom_aware = self.d.intern_atom("XdndAware")
+        self.atom_selection = self.d.intern_atom("XdndSelection")
+        self.atom_typelist = self.d.intern_atom("XdndTypeList")
+        self.atom_enter = self.d.intern_atom("XdndEnter")
+        self.atom_position = self.d.intern_atom("XdndPosition")
+        self.atom_drop = self.d.intern_atom("XdndDrop")
+        self.atom_status = self.d.intern_atom("XdndStatus")
+        self.atom_finished = self.d.intern_atom("XdndFinished")
+        self.atom_action_copy = self.d.intern_atom("XdndActionCopy")
+        self.window.change_property(self.atom_aware, Xatom.ATOM, 32, [XDND_VERSION])
+        self.window.map()
+        self.d.sync()
+
+    # -- helpers ---------------------------------------------------------
+
+    def note(self, message: str):
+        self.log.append(message)
+        print(f"  {message}", flush=True)
+
+    def _send(self, target: int, kind: int, data: list[int]):
+        event = display.event.ClientMessage(
+            window=target, client_type=kind, data=(32, (data + [0] * 5)[:5]))
+        target_window = self.d.create_resource_object("window", target)
+        target_window.send_event(event, event_mask=0)
+        self.d.flush()
+
+    def _types(self) -> tuple[list[str], list[int]]:
+        names = ["text/uri-list", "text/plain;charset=utf-8", "text/plain", "UTF8_STRING", "STRING"]
+        atoms = [self.d.intern_atom(name) for name in names]
+        return names, atoms
+
+    def _serve(self, request):
+        """Answers a SelectionRequest with the payload."""
+        self.requests += 1
+        target_atom = request.target
+        name = self.d.get_atom_name(target_atom)
+        reply_property = request.property if request.property != X.NONE else target_atom
+        if name == "TARGETS":
+            _, atoms = self._types()
+            data = atoms + [self.d.intern_atom("TARGETS")]
+            kind = Xatom.ATOM
+        elif name == "text/uri-list":
+            data = (self.payload + "\r\n").encode()
+            kind = target_atom
+        else:
+            data = self.payload.encode()
+            kind = target_atom
+        self.note(f"selection request for {name!r} -> {len(data)} bytes")
+        self.d.create_resource_object("window", request.requestor).change_property(
+            reply_property, kind, 8, data)
+        self.d.sync()
+        notify = display.event.SelectionNotify(
+            time=request.time, requestor=request.requestor, selection=request.selection,
+            target=target_atom, property=reply_property)
+        self.d.create_resource_object("window", request.requestor).send_event(notify, event_mask=0)
+        self.d.flush()
+
+    def _pump(self, seconds: float):
+        """Reads X events for a while, answering selection requests."""
+        deadline = time.monotonic() + seconds
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            ready, _, _ = select.select([self.d.fileno()], [], [], remaining)
+            if not ready:
+                return
+            while self.d.pending_events():
+                event = self.d.next_event()
+                if event.type == X.SelectionRequest:
+                    self._serve(event)
+                elif event.type == X.ClientMessage:
+                    if event.client_type == self.atom_status:
+                        data = event.data[1] if isinstance(event.data, tuple) else event.data
+                        flags = data[0]
+                        action = data[4]
+                        accept = bool(flags & 1)
+                        self.note(f"target status: accept={accept} action={action}")
+                        if accept:
+                            self.accepted_action = action
+                    elif event.client_type == self.atom_finished:
+                        data = event.data[1] if isinstance(event.data, tuple) else event.data
+                        self.note(f"target finished: flags={data[0]} action={data[1]}")
+                        self.finished = bool(data[0] & 1)
+                        return
+
+    def drop_on(self, target: int, x: int, y: int, action: int = XDND_ACTION_COPY) -> bool:
+        _, atoms = self._types()
+        self.window.change_property(self.atom_typelist, Xatom.ATOM, 32, atoms)
+        request.SetSelectionOwner(display=self.d, window=self.window,
+                                  selection=self.atom_selection, time=X.CurrentTime)
+        self.d.sync()
+        owner = self.d.get_selection_owner(self.atom_selection)
+        if owner.id != self.window.id:
+            raise RuntimeError("could not take the XdndSelection")
+        self.d.sync()
+
+        self.note(f"enter on 0x{target:x}")
+        self._send(target, self.atom_enter, [self.window.id, XDND_VERSION << 24 | 1])
+        self._pump(0.3)
+
+        self.note(f"position ({x}, {y})")
+        self._send(target, self.atom_position,
+                   [self.window.id, 0, (x << 16) + y, X.CurrentTime, self.atom_action_copy])
+        self._pump(0.6)
+        if not self.accepted_action:
+            self.note("the target did not accept the position")
+            # Keep going anyway: some targets answer late.
+
+        self.note("drop")
+        self._send(target, self.atom_drop, [self.window.id, 0, X.CurrentTime])
+        self._pump(1.5)
+        return self.finished
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--display", default=None)
+    parser.add_argument("--target", type=lambda v: int(v, 0), required=True,
+                        help="window id of the drop target")
+    parser.add_argument("--text", required=True, help="the payload to drag")
+    parser.add_argument("--x", type=int, default=None, help="screen x of the drop")
+    parser.add_argument("--y", type=int, default=None, help="screen y of the drop")
+    args = parser.parse_args(argv)
+
+    source = XdndSource(args.display, args.text)
+    if args.x is None or args.y is None:
+        geometry = source.d.create_resource_object("window", args.target).get_geometry()
+        coords = source.root.translate_coords(
+            source.d.create_resource_object("window", args.target), 0, 0)
+        x = coords.x + geometry.width // 2
+        y = coords.y + geometry.height // 2
+    else:
+        x, y = args.x, args.y
+
+    print(f"dropping {args.text!r} on 0x{args.target:x} at ({x}, {y})")
+    accepted = source.drop_on(args.target, x, y)
+    print(f"accepted={accepted} action={source.accepted_action} requests={source.requests}")
+    return 0 if accepted else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
