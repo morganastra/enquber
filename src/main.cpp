@@ -7,10 +7,7 @@
 
 namespace {
 
-/// KDE ships the Breeze widget style, but without its platform theme Qt would
-/// fall back to Fusion, and the application would look foreign on the desktop
-/// it was started from. Prefer Breeze there, unless the user asked for a
-/// specific style or the platform theme already chose one.
+/// Use Breeze theme even when not on KDE
 void preferDesktopStyle()
 {
     if (qEnvironmentVariableIsSet("QT_STYLE_OVERRIDE")) {
@@ -43,8 +40,7 @@ int main(int argc, char *argv[])
 
     MainWindow window;
 
-    // `enquber https://example.com` shows the code right away; anything that was
-    // not meant for Qt itself counts as the text to encode.
+    // Interpret command line arguments as text to encode (and create QR code directly)
     const QStringList arguments = QApplication::arguments().mid(1);
     QStringList text;
     for (const QString &argument : arguments) {

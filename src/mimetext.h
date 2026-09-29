@@ -6,7 +6,7 @@ class QMimeData;
 
 namespace mime {
 
-/// Extracts the text worth encoding from a drop or a clipboard payload.
+/// Extracts the text to encode from a drop or a clipboard payload.
 ///
 /// URLs win over plain text because that is what browsers and file managers
 /// put on the drag; the text is trimmed so that a copied line never carries

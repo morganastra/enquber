@@ -16,8 +16,6 @@ class QDragEnterEvent;
 class QDragLeaveEvent;
 class QDropEvent;
 
-/// The application window: an empty drop target until something is pasted or
-/// dropped, then the resulting QR code with its text and the export buttons.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -83,6 +81,5 @@ private:
 
     qr::Code m_code;
 
-    /// What the drag currently hovering over the window is offering.
     mime::Payload m_payload;
 };

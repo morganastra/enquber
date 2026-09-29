@@ -174,7 +174,7 @@ void MainWindow::buildUi()
     m_clearButton = new QPushButton(codePage);
     buttons->addWidget(m_copyButton);
     buttons->addWidget(m_saveButton);
-    // Clearing is not an export, so it stands apart from the two actions.
+
     buttons->addSpacing(24);
     buttons->addWidget(m_clearButton);
     buttons->addStretch(1);
@@ -207,8 +207,6 @@ void MainWindow::buildUi()
 
 void MainWindow::buildActions()
 {
-    // The actions own the text, icons and shortcuts; the buttons on the code
-    // page only mirror them.
     m_pasteAction = new QAction(tr("&Paste link"), this);
     m_pasteAction->setShortcut(QKeySequence::Paste);
     m_pasteAction->setShortcutContext(Qt::WindowShortcut);
@@ -286,8 +284,7 @@ void MainWindow::showCode(const qr::Code &code)
     m_copyAction->setEnabled(true);
     m_saveAction->setEnabled(true);
     m_clearAction->setEnabled(true);
-    // The code is the new subject of the window, so put the keyboard on the
-    // action most people want next.
+
     m_copyButton->setFocus(Qt::OtherFocusReason);
     clearStatus();
 }
@@ -411,8 +408,7 @@ void MainWindow::showStatus(const QString &message)
 {
     m_statusLabel->setText(message);
     m_statusLabel->setVisible(!message.isEmpty());
-    // Restarting the timer is what makes a repeated message last its full time
-    // instead of being cut short by the timeout of the previous one.
+
     if (message.isEmpty()) {
         m_statusTimer->stop();
     } else {
