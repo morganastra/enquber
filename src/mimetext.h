@@ -14,9 +14,6 @@ namespace mime {
 /// holds nothing that can be encoded.
 QString textForQr(const QMimeData *data);
 
-/// True when textForQr() would return something non-empty.
-bool canEncode(const QMimeData *data);
-
 /// Remembers what a drag offered while it was still hovering.
 ///
 /// On X11 the payload is fetched from the drag source on demand, and a source

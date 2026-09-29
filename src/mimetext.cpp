@@ -26,11 +26,6 @@ QString textForQr(const QMimeData *data)
     return {};
 }
 
-bool canEncode(const QMimeData *data)
-{
-    return !textForQr(data).isEmpty();
-}
-
 QString Payload::observe(const QMimeData *data)
 {
     // Fetched once per drag: every fetch is a round trip to the drag source,
