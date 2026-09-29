@@ -11,6 +11,7 @@ class QAction;
 class QLabel;
 class QPushButton;
 class QStackedWidget;
+class QTimer;
 class QDragEnterEvent;
 class QDragLeaveEvent;
 class QDropEvent;
@@ -71,6 +72,7 @@ private:
     QrView *m_qrView = nullptr;
     QLabel *m_textLabel = nullptr;
     QLabel *m_statusLabel = nullptr;
+    QTimer *m_statusTimer = nullptr;
     QPushButton *m_copyButton = nullptr;
     QPushButton *m_saveButton = nullptr;
     QPushButton *m_clearButton = nullptr;

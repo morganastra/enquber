@@ -188,6 +188,11 @@ void MainWindow::buildUi()
     centralLayout->setSpacing(10);
     centralLayout->addWidget(m_stack, 1);
 
+    m_statusTimer = new QTimer(this);
+    m_statusTimer->setObjectName(QStringLiteral("statusTimeout"));
+    m_statusTimer->setSingleShot(true);
+    connect(m_statusTimer, &QTimer::timeout, this, &MainWindow::clearStatus);
+
     m_statusLabel = new QLabel(central);
     m_statusLabel->setAlignment(Qt::AlignCenter);
     m_statusLabel->setTextFormat(Qt::PlainText);
@@ -406,12 +411,12 @@ void MainWindow::showStatus(const QString &message)
 {
     m_statusLabel->setText(message);
     m_statusLabel->setVisible(!message.isEmpty());
-    if (!message.isEmpty()) {
-        QTimer::singleShot(kStatusTimeoutMs, this, [this, message] {
-            if (m_statusLabel->text() == message) {
-                clearStatus();
-            }
-        });
+    // Restarting the timer is what makes a repeated message last its full time
+    // instead of being cut short by the timeout of the previous one.
+    if (message.isEmpty()) {
+        m_statusTimer->stop();
+    } else {
+        m_statusTimer->start(kStatusTimeoutMs);
     }
 }
 

@@ -95,6 +95,7 @@ private slots:
 
     void copyPutsImageOnClipboard();
     void longTextIsShapedForTheLabel();
+    void repeatingAStatusMessageRestartsItsTimeout();
     void clearingReturnsToTheDropTarget();
     void clearingWithTheButtonWorks();
     void droppingStillWorksAfterClearing();
@@ -335,6 +336,32 @@ void TestQrGen::longTextIsShapedForTheLabel()
     QVERIFY2(label->text().count(QLatin1Char('\n')) <= 2, qPrintable(label->text()));
     QVERIFY(label->text().endsWith(QChar(0x2026)));
     QVERIFY(label->toolTip().contains(QStringLiteral("xxxx")));
+}
+
+void TestQrGen::repeatingAStatusMessageRestartsItsTimeout()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://status.example"));
+
+    auto *timer = window.findChild<QTimer *>(QStringLiteral("statusTimeout"));
+    QVERIFY(timer);
+    QVERIFY(timer->isSingleShot());
+
+    window.copyToClipboard();
+    QVERIFY(timer->isActive());
+    QTest::qWait(800);
+
+    // The timeout of the first message must not cut the second one short: the
+    // second has to start the clock again, which shows up as the remaining
+    // time jumping back up. Comparing two readings instead of absolute values
+    // keeps this independent of how busy the machine is.
+    const int before = timer->remainingTime();
+    window.copyToClipboard();
+    const int after = timer->remainingTime();
+    QVERIFY2(after > before + 300,
+             qPrintable(QStringLiteral("remaining %1 ms before, %2 ms after the second message")
+                            .arg(before).arg(after)));
 }
 
 void TestQrGen::clearingReturnsToTheDropTarget()
