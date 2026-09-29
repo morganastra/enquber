@@ -71,6 +71,14 @@ class XdndSource:
 
     # -- helpers ---------------------------------------------------------
 
+    def _atom_name(self, atom: int) -> str:
+        if not atom:
+            return "none"
+        try:
+            return self.d.get_atom_name(atom)
+        except Exception:
+            return str(atom)
+
     def note(self, message: str):
         self.log.append(message)
         print(f"  {message}", flush=True)
@@ -97,15 +105,18 @@ class XdndSource:
             _, atoms = self._types()
             data = atoms + [self.d.intern_atom("TARGETS")]
             kind = Xatom.ATOM
+            data_format = 32  # a list of atoms, not bytes
         elif name == "text/uri-list":
             data = (self.payload + "\r\n").encode()
             kind = target_atom
+            data_format = 8
         else:
             data = self.payload.encode()
             kind = target_atom
-        self.note(f"selection request for {name!r} -> {len(data)} bytes")
+            data_format = 8
+        self.note(f"selection request for {name!r} -> {len(data)} items, format {data_format}")
         self.d.create_resource_object("window", request.requestor).change_property(
-            reply_property, kind, 8, data)
+            reply_property, kind, data_format, data)
         self.d.sync()
         notify = display.event.SelectionNotify(
             time=request.time, requestor=request.requestor, selection=request.selection,
@@ -128,24 +139,29 @@ class XdndSource:
                 if event.type == X.SelectionRequest:
                     self._serve(event)
                 elif event.type == X.ClientMessage:
+                    # Both messages carry the sender's window in l[0], the flags
+                    # in l[1] (bit 0: accepted) and the action later on.
                     if event.client_type == self.atom_status:
                         data = event.data[1] if isinstance(event.data, tuple) else event.data
-                        flags = data[0]
-                        action = data[4]
-                        accept = bool(flags & 1)
+                        accept = bool(data[1] & 1)
+                        action = self._atom_name(data[4])
                         self.note(f"target status: accept={accept} action={action}")
                         if accept:
-                            self.accepted_action = action
+                            self.accepted_action = data[4]
                     elif event.client_type == self.atom_finished:
                         data = event.data[1] if isinstance(event.data, tuple) else event.data
-                        self.note(f"target finished: flags={data[0]} action={data[1]}")
-                        self.finished = bool(data[0] & 1)
+                        self.finished = bool(data[1] & 1)
+                        self.accepted_action = data[2]
+                        self.note(f"target finished: accept={self.finished} "
+                                  f"action={self._atom_name(data[2])}")
                         return
 
     def drop_on(self, target: int, x: int, y: int, action: int = XDND_ACTION_COPY) -> bool:
         _, atoms = self._types()
         self.window.change_property(self.atom_typelist, Xatom.ATOM, 32, atoms)
-        request.SetSelectionOwner(display=self.d, window=self.window,
+        # Not self.d: Xlib.display.Display is a wrapper around the real display,
+        # and a hand built request has to be sent through that one.
+        request.SetSelectionOwner(display=self.d.display, window=self.window,
                                   selection=self.atom_selection, time=X.CurrentTime)
         self.d.sync()
         owner = self.d.get_selection_owner(self.atom_selection)
@@ -162,7 +178,7 @@ class XdndSource:
                    [self.window.id, 0, (x << 16) + y, X.CurrentTime, self.atom_action_copy])
         self._pump(0.6)
         if not self.accepted_action:
-            self.note("the target did not accept the position")
+            self.note("the target did not accept the position yet")
             # Keep going anyway: some targets answer late.
 
         self.note("drop")
