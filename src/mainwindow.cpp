@@ -47,40 +47,77 @@ constexpr int kMaxTextLines = 3;
 
 constexpr int kWindowMargin = 24;
 
-/// Word wraps @p text into at most @p maxLines lines of @p width pixels,
-/// eliding the last one. Returns the text unchanged when it needs fewer lines.
-QString elideToLines(const QString &text, const QFontMetrics &metrics, int width, int maxLines)
+/// The text as the label should show it, and whether anything had to be left
+/// out (in which case the whole text belongs in the tooltip).
+struct ShapedText
 {
-    if (width <= 0) {
-        return text;
-    }
-    QTextLayout layout(text);
-    layout.beginLayout();
+    QString text;
+    bool truncated = false;
+};
 
-    QString result;
-    int line = 0;
-    while (line < maxLines) {
-        QTextLine textLine = layout.createLine();
-        if (!textLine.isValid()) {
-            layout.endLayout();
-            return text; // Everything fits.
-        }
-        textLine.setLineWidth(width);
-        if (line > 0) {
-            result += QLatin1Char('\n');
-        }
-        if (line == maxLines - 1) {
-            const QString remainder = text.mid(textLine.textStart());
-            const QString firstRemainderLine = remainder.section(QLatin1Char('\n'), 0, 0);
-            result += metrics.elidedText(firstRemainderLine, Qt::ElideRight, width);
-        } else {
-            result += text.mid(textLine.textStart(), textLine.textLength());
-        }
-        ++line;
+/// Word wraps @p text into at most @p maxLines lines of @p width pixels.
+///
+/// Newlines are honoured explicitly: a QLabel breaks on them, QTextLayout does
+/// not, so laying the whole string out would count a paragraph of six lines as
+/// one and hand it back untouched. Wrapping inside long unbreakable tokens is
+/// allowed for the same reason, otherwise a link without spaces comes back as a
+/// single line far wider than the label. When the last line is cut, an ellipsis
+/// is added to it.
+ShapedText shapeForLabel(const QString &text, const QFont &font, const QFontMetrics &metrics,
+                         int width, int maxLines)
+{
+    ShapedText shaped;
+    if (width <= 0 || maxLines < 1) {
+        shaped.text = text;
+        return shaped;
     }
 
-    layout.endLayout();
-    return result;
+    QStringList lines;
+    bool truncated = false;
+
+    const QStringList paragraphs = text.split(QLatin1Char('\n'));
+    for (const QString &candidate : paragraphs) {
+        if (lines.size() >= maxLines) {
+            truncated = true; // another paragraph that will not be shown
+            break;
+        }
+        QString paragraph = candidate;
+        if (paragraph.endsWith(QLatin1Char('\r'))) {
+            paragraph.chop(1);
+        }
+
+        QTextLayout layout(paragraph, font);
+        QTextOption option;
+        option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        layout.setTextOption(option);
+        layout.beginLayout();
+
+        int consumed = 0;
+        while (lines.size() < maxLines) {
+            QTextLine line = layout.createLine();
+            if (!line.isValid()) {
+                break;
+            }
+            line.setLineWidth(width);
+            consumed = line.textStart() + line.textLength();
+            lines.append(paragraph.mid(line.textStart(), line.textLength()));
+        }
+        layout.endLayout();
+
+        if (!paragraph.mid(consumed).trimmed().isEmpty()) {
+            truncated = true; // the rest of this paragraph will not be shown
+            break;
+        }
+    }
+
+    if (truncated && !lines.isEmpty() && !lines.last().endsWith(QChar(0x2026))) {
+        // Make the cut visible even when the last line happens to be short.
+        lines.last() = metrics.elidedText(lines.last() + QChar(0x2026), Qt::ElideRight, width);
+    }
+
+    shaped.text = lines.join(QLatin1Char('\n'));
+    shaped.truncated = truncated;
+    return shaped;
 }
 
 } // namespace
@@ -121,6 +158,7 @@ void MainWindow::buildUi()
     codeLayout->addWidget(m_qrView, 1);
 
     m_textLabel = new QLabel(codePage);
+    m_textLabel->setObjectName(QStringLiteral("encodedText"));
     m_textLabel->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
     m_textLabel->setWordWrap(true);
     m_textLabel->setTextFormat(Qt::PlainText);
@@ -270,10 +308,10 @@ void MainWindow::updateTextLabel()
     }
     const QString text = m_code.text();
     const QFontMetrics metrics(m_textLabel->fontMetrics());
-    const int width = m_textLabel->width();
-    const QString elided = elideToLines(text, metrics, width, kMaxTextLines);
-    m_textLabel->setText(elided);
-    m_textLabel->setToolTip(elided == text ? QString() : Qt::convertFromPlainText(text));
+    const ShapedText shaped = shapeForLabel(text, m_textLabel->font(), metrics,
+                                            m_textLabel->width(), kMaxTextLines);
+    m_textLabel->setText(shaped.text);
+    m_textLabel->setToolTip(shaped.truncated ? Qt::convertFromPlainText(text) : QString());
 }
 
 void MainWindow::copyToClipboard()

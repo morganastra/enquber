@@ -10,6 +10,7 @@
 #include <QStackedWidget>
 #include <QDir>
 #include <QFileDialog>
+#include <QLabel>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -93,6 +94,7 @@ private slots:
     void pasteWithoutTextIsIgnored();
 
     void copyPutsImageOnClipboard();
+    void longTextIsShapedForTheLabel();
     void clearingReturnsToTheDropTarget();
     void clearingWithTheButtonWorks();
     void droppingStillWorksAfterClearing();
@@ -306,6 +308,33 @@ void TestQrGen::copyPutsImageOnClipboard()
     QVERIFY(image.width() > 500);
     QCOMPARE(image.width(), image.height());
     QVERIFY(image.pixelColor(0, 0) == QColor(Qt::white));
+}
+
+void TestQrGen::longTextIsShapedForTheLabel()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *label = window.findChild<QLabel *>(QStringLiteral("encodedText"));
+    QVERIFY(label);
+
+    // A short link is shown as it is, with nothing to reveal.
+    window.setText(QStringLiteral("https://example.com/short"));
+    QCOMPARE(label->text(), QStringLiteral("https://example.com/short"));
+    QVERIFY(label->toolTip().isEmpty());
+
+    // Six short lines must not be handed to the label as six lines: the label
+    // promises at most three, with the whole text behind a tooltip.
+    window.setText(QStringLiteral("one\ntwo\nthree\nfour\nfive\nsix"));
+    QCOMPARE(label->text().count(QLatin1Char('\n')), 2);
+    QVERIFY2(label->text().endsWith(QChar(0x2026)), qPrintable(label->text()));
+    QVERIFY(label->toolTip().contains(QStringLiteral("six")));
+
+    // Nor may a link with no break opportunity become one enormous line.
+    const QString unbreakable = QStringLiteral("https://example.com/") + QString(400, QLatin1Char('x'));
+    window.setText(unbreakable);
+    QVERIFY2(label->text().count(QLatin1Char('\n')) <= 2, qPrintable(label->text()));
+    QVERIFY(label->text().endsWith(QChar(0x2026)));
+    QVERIFY(label->toolTip().contains(QStringLiteral("xxxx")));
 }
 
 void TestQrGen::clearingReturnsToTheDropTarget()
