@@ -96,6 +96,7 @@ private slots:
     void copyPutsImageOnClipboard();
     void longTextIsShapedForTheLabel();
     void repeatingAStatusMessageRestartsItsTimeout();
+    void clearingReturnsToTheDropTarget_data();
     void clearingReturnsToTheDropTarget();
     void clearingWithTheButtonWorks();
     void droppingStillWorksAfterClearing();
@@ -364,14 +365,24 @@ void TestEnquber::repeatingAStatusMessageRestartsItsTimeout()
                             .arg(before).arg(after)));
 }
 
+void TestEnquber::clearingReturnsToTheDropTarget_data()
+{
+    QTest::addColumn<int>("key");
+    QTest::newRow("escape") << int(Qt::Key_Escape);
+    QTest::newRow("backspace") << int(Qt::Key_Backspace);
+    QTest::newRow("delete") << int(Qt::Key_Delete);
+}
+
 void TestEnquber::clearingReturnsToTheDropTarget()
 {
+    QFETCH(int, key);
+
     MainWindow window;
     showAndActivate(&window);
     window.setText(QStringLiteral("https://clear.example"));
     QVERIFY(window.hasCode());
 
-    QTest::keyClick(&window, Qt::Key_Escape);
+    QTest::keyClick(&window, Qt::Key(key));
 
     QVERIFY(!window.hasCode());
     QVERIFY(window.encodedText().isEmpty());

@@ -237,8 +237,9 @@ void MainWindow::buildActions()
 
     m_clearAction = new QAction(theme::icon({"edit-clear", "edit-clear-all", "window-close"}),
                                 tr("C&lear"), this);
-    m_clearAction->setShortcut(QKeySequence(Qt::Key_Escape));
-    m_clearAction->setToolTip(tr("Go back to the drop target (Esc)"));
+    m_clearAction->setShortcuts({QKeySequence(Qt::Key_Escape), QKeySequence(Qt::Key_Backspace),
+                                 QKeySequence(Qt::Key_Delete)});
+    m_clearAction->setToolTip(tr("Go back to the drop target (Esc, Backspace or Delete)"));
     connect(m_clearAction, &QAction::triggered, this, &MainWindow::showPlaceholder);
     addAction(m_clearAction);
 
