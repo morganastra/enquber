@@ -1,19 +1,33 @@
 # Maintainer: Morgan Astra
-pkgname=enquber
-pkgver=0.1.0
+pkgname=enquber-git
+pkgver=0.1.0.r20.g085fe66
 pkgrel=1
 pkgdesc="Simple QR code maker with a nice UX and near-instant startup"
 arch=('x86_64')
 url="https://github.com/morganastra/enquber"
 license=('GPL-3.0-or-later')
 depends=('glibc' 'gcc-libs' 'qt6-base' 'qrencode' 'hicolor-icon-theme')
-makedepends=('cmake' 'ninja')
+makedepends=('cmake' 'ninja' 'git')
 optdepends=('breeze-icons: window and menu icon')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
-sha256sums=('992a8d0d79fbd1fd2286cf346eb17641f791e7bb9ab73f25b367b7e371d2a553')
+provides=('enquber')
+conflicts=('enquber')
+source=("enquber::git+https://github.com/morganastra/enquber.git#branch=main")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "$srcdir/enquber"
+    # Once tags exist: v1.2.3-4-gdeadbeef -> 1.2.3.r4.gdeadbeef
+    # Until then: 0.1.0.r<commit count>.g<short sha>
+    local _ver
+    if _ver=$(git describe --long --tags 2>/dev/null); then
+        sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' <<< "$_ver"
+    else
+        printf "0.1.0.r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+    fi
+}
 
 build() {
-    cmake -S "$pkgname-$pkgver" -B build -G Ninja \
+    cmake -S enquber -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr
     cmake --build build

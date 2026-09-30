@@ -6,6 +6,7 @@ compile_commands.json
 # makepkg artifacts
 packaging/*/src/
 packaging/*/pkg/
+packaging/*/enquber/
 packaging/*/*.tar.gz
 packaging/*/*.tar.zst
 packaging/*/*.log
