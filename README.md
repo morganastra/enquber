@@ -64,6 +64,12 @@ Build with `ENQUBER_BUILD_TEST_TOOLS` turned on and run the smoke test script:
 
 Smoke test screenshots are written to `$TMPDIR/enquber-smoke` 
 
+## Acknowledgements
+
+This would not be possible without Kentaro Fukuchi's wonderful [libqrencode](https://github.com/fukuchi/libqrencode)
+
+Thanks to @loferris and Khalid for testing
+
 ## License
 
 Copyright 2026 Morgan Astra
