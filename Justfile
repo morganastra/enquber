@@ -25,7 +25,6 @@ test: build
 # Any extra arguments are passed straight to tools/smoke.py, for example:
 #
 #     just smoke-test --display :9
-#     just smoke-test --skip-foreign-drag
 smoke-test *args:
     cmake --preset smoke
     cmake --build --preset smoke

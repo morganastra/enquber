@@ -11,9 +11,9 @@
 /// With --with-app the real application window is shown in the same process and
 /// the drop lands on it; the drag then goes through the whole QDrag, platform
 /// and widget stack (target detection via XdndAware, drag moves, drop delivery)
-/// and the tool reports what the application ended up encoding. That is the
-/// variant the smoke test drives with synthetic mouse input when a cross
-/// process drop cannot be arranged.
+/// and the tool reports what the application ended up encoding. Because source
+/// and target share a process, the smoke test can assert on that report (the
+/// drop action and the encoded text) as well as on the window.
 ///
 /// Exit status is 0 when the drop was accepted with the copy action.
 
