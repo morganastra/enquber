@@ -81,11 +81,9 @@ class App:
 
 
 class Smoke:
-    def __init__(self, app: Path, dragsource: Path, display: str, shots: Path,
-                 skip_foreign_drag: bool = False):
+    def __init__(self, app: Path, dragsource: Path, display: str, shots: Path):
         self.app = app
         self.dragsource = dragsource
-        self.skip_foreign_drag = skip_foreign_drag
         self.x = X11(display)
         self.display = display
         self.shots = shots
@@ -284,9 +282,6 @@ def main(argv: list[str] | None = None) -> int:
                         help="the drag helper, built with -DENQUBER_BUILD_TEST_TOOLS=ON")
     parser.add_argument("--shots", default=str(Path(tempfile.gettempdir()) / "enquber-smoke"),
                         help="where screenshots and the saved PNG go")
-    parser.add_argument("--skip-foreign-drag", action="store_true",
-                        help="leave out the drag from another process; a bare Xvfb "
-                             "cannot deliver drags to widgets (see the README)")
     args = parser.parse_args(argv)
 
     for tool in ("import", "xclip", "zbarimg", "identify"):
@@ -296,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
 
     install_signal_handlers()
     smoke = Smoke(Path(args.app).resolve(), Path(args.dragsource).resolve(),
-                  args.display, Path(args.shots), args.skip_foreign_drag)
+                  args.display, Path(args.shots))
     try:
         run(smoke)
     except Failure as failure:
@@ -368,11 +363,7 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     smoke.check(f"app text: {DROPPED_URL}" in output, "the application encoded the dropped link")
 
     smoke.step("drag a link in from another process")
-    if smoke.skip_foreign_drag:
-        smoke.log("skipped: this display cannot deliver drags to widgets, so the drop "
-                  "never reaches the window (see 'Notes on dragging')")
-    else:
-        foreign_drag(smoke)
+    foreign_drag(smoke)
 
     smoke.step("paste a link over the dropped one")
     x.focus(window.id)
