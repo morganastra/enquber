@@ -6,6 +6,7 @@
 #include "theme.h"
 
 #include <QApplication>
+#include <QAbstractButton>
 #include <QAction>
 #include <QClipboard>
 #include <QColor>
@@ -140,6 +141,13 @@ private slots:
     void fallbackIconsFollowThePalette();
     void bundledFallbacksCoverNavigationAndHelp();
     void buttonIconsFollowRuntimePaletteChanges();
+
+    void helpOpensWithTheKeyboardAndReturns();
+    void questionMarkOpensAndClosesHelp();
+    void helpReturnsToTheDropTarget();
+    void helpButtonMorphsAndToggles();
+    void aboutPageShowsLicenceAndLinks();
+    void aboutTextSurvivesAShortWindow();
 
 private:
     QString m_savedThemeName;
@@ -737,6 +745,123 @@ void TestEnquber::buttonIconsFollowRuntimePaletteChanges()
     QVERIFY(onLight.isValid());
     QVERIFY2(onDark.lightness() > 200, qPrintable(onDark.name()));
     QVERIFY2(onLight.lightness() < 80, qPrintable(onLight.name()));
+}
+
+void TestEnquber::helpOpensWithTheKeyboardAndReturns()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://help.example"));
+
+    auto *stack = window.findChild<QStackedWidget *>();
+    QCOMPARE(stack->currentIndex(), 1);
+
+    QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
+    QCOMPARE(stack->currentIndex(), 2);
+    // The code stays put; Escape must leave the page, not clear the code.
+    QVERIFY(window.hasCode());
+
+    QTest::keyClick(&window, Qt::Key_Escape);
+    QCOMPARE(stack->currentIndex(), 1);
+    QCOMPARE(window.encodedText(), QStringLiteral("https://help.example"));
+}
+
+void TestEnquber::questionMarkOpensAndClosesHelp()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *stack = window.findChild<QStackedWidget *>();
+    QCOMPARE(stack->currentIndex(), 0);
+
+    QTest::keyClick(&window, Qt::Key_Question);
+    QCOMPARE(stack->currentIndex(), 2);
+
+    // The shortcut toggles, so the same key takes you back.
+    QTest::keyClick(&window, Qt::Key_Question);
+    QCOMPARE(stack->currentIndex(), 0);
+}
+
+void TestEnquber::helpReturnsToTheDropTarget()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *stack = window.findChild<QStackedWidget *>();
+    QVERIFY(!window.hasCode());
+
+    QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
+    QCOMPARE(stack->currentIndex(), 2);
+
+    QTest::keyClick(&window, Qt::Key_Escape);
+    QCOMPARE(stack->currentIndex(), 0);
+    QVERIFY(window.findChild<DropZone *>()->isVisible());
+}
+
+void TestEnquber::helpButtonMorphsAndToggles()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    auto *stack = window.findChild<QStackedWidget *>();
+    auto *button = window.findChild<QAbstractButton *>(QStringLiteral("helpButton"));
+    QVERIFY(button);
+    QVERIFY(button->isVisible());
+    QCOMPARE(button->accessibleName(), QStringLiteral("Help and info"));
+
+    QTest::mouseClick(button, Qt::LeftButton);
+    QCOMPARE(stack->currentIndex(), 2);
+    // On the info page the button stops asking and points back.
+    QCOMPARE(button->accessibleName(), QStringLiteral("Back to Enquber"));
+
+    QTest::mouseClick(button, Qt::LeftButton);
+    QCOMPARE(stack->currentIndex(), 0);
+    QCOMPARE(button->accessibleName(), QStringLiteral("Help and info"));
+}
+
+void TestEnquber::aboutPageShowsLicenceAndLinks()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    auto *copyright = window.findChild<QLabel *>(QStringLiteral("aboutCopyright"));
+    QVERIFY(copyright);
+    QVERIFY(copyright->text().contains(QStringLiteral("Morgan Astra")));
+
+    auto *licence = window.findChild<QLabel *>(QStringLiteral("aboutLicence"));
+    QVERIFY(licence);
+    QVERIFY(licence->text().contains(QStringLiteral("GNU General Public License")));
+
+    auto *links = window.findChild<QLabel *>(QStringLiteral("aboutLinks"));
+    QVERIFY(links);
+    QVERIFY(links->openExternalLinks());
+    QVERIFY(links->text().contains(QStringLiteral("github.com/morganastra/enquber")));
+    QVERIFY(links->text().contains(QStringLiteral("qt.io")));
+    QVERIFY(links->text().contains(QStringLiteral("libqrencode")));
+    // No KDE libraries are used, so KDE is deliberately not credited.
+    QVERIFY(!links->text().contains(QStringLiteral("kde.org"), Qt::CaseInsensitive));
+    // The bundled fallback glyphs are Feather Icons, credited under MIT.
+    QVERIFY(links->text().contains(QStringLiteral("Feather Icons")));
+    QVERIFY(links->text().contains(QStringLiteral("Cole Bemis")));
+    QVERIFY(links->text().contains(QStringLiteral("MIT")));
+}
+
+void TestEnquber::aboutTextSurvivesAShortWindow()
+{
+    MainWindow window;
+    window.resize(640, 420);
+    showAndActivate(&window);
+    QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
+
+    auto *licence = window.findChild<QLabel *>(QStringLiteral("aboutLicence"));
+    QVERIFY(licence);
+    QVERIFY(licence->isVisible());
+
+    // A short window used to squash the wrapped licence to a single clipped
+    // line; it now keeps the height its text needs at its fixed width.
+    const int needed = licence->heightForWidth(licence->width());
+    QVERIFY(needed > 0);
+    QVERIFY2(licence->height() >= needed,
+             qPrintable(QStringLiteral("licence is %1 px, needs %2")
+                            .arg(licence->height()).arg(needed)));
 }
 
 QTEST_MAIN(TestEnquber)

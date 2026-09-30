@@ -24,6 +24,4 @@ Misc UX
 
 	Only show one error banner at a time; auto-dismiss if another action happens successfully
 
-	Support more keyboard shortcuts - ctrl+h or ? to show help and info
-
 

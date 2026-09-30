@@ -1,10 +1,12 @@
 #include "mainwindow.h"
 
+#include "aboutpage.h"
 #include "dropzone.h"
 #include "mimetext.h"
 #include "qrview.h"
 #include "theme.h"
 
+#include <QAbstractButton>
 #include <QAction>
 #include <QBuffer>
 #include <QClipboard>
@@ -12,6 +14,7 @@
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
+#include <QEnterEvent>
 #include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -22,6 +25,7 @@
 #include <QLabel>
 #include <QLoggingCategory>
 #include <QMimeData>
+#include <QPainter>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QStackedWidget>
@@ -48,6 +52,91 @@ constexpr int kStatusTimeoutMs = 4000;
 constexpr int kMaxTextLines = 3;
 
 constexpr int kWindowMargin = 24;
+
+/// Distance of the help button from the top-right corner of the window.
+constexpr int kHelpButtonMargin = 10;
+
+/// A small, deliberately quiet circular "?" that opens the help / about page.
+/// It is painted rather than styled so it follows the palette (and stays round
+/// under every platform style).
+class HelpButton : public QAbstractButton
+{
+public:
+    explicit HelpButton(QWidget *parent = nullptr)
+        : QAbstractButton(parent)
+    {
+        setFixedSize(28, 28);
+        setCursor(Qt::PointingHandCursor);
+        setFocusPolicy(Qt::StrongFocus);
+    }
+
+    /// While the help page is up the button stops asking a question and points
+    /// back to where the user came from.
+    void setBack(bool back)
+    {
+        if (m_back == back) {
+            return;
+        }
+        m_back = back;
+        update();
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+
+        const QRectF circle = QRectF(rect()).adjusted(1.0, 1.0, -1.0, -1.0);
+        const bool lit = underMouse() || hasFocus();
+
+        const QColor highlight = palette().color(QPalette::Highlight);
+        const QColor border = lit ? highlight : palette().color(QPalette::Mid);
+        QColor glyph = lit ? highlight : palette().color(QPalette::WindowText);
+        if (!lit) {
+            glyph.setAlphaF(0.55);
+        }
+        QColor fill = palette().color(QPalette::Base);
+        fill.setAlphaF(underMouse() ? 0.85 : 0.5);
+
+        painter.setPen(QPen(border, 1.0));
+        painter.setBrush(fill);
+        painter.drawEllipse(circle);
+
+        if (m_back) {
+            const QPointF centre = circle.center();
+            const qreal half = 4.5;
+            painter.setPen(QPen(glyph, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+            painter.setBrush(Qt::NoBrush);
+            painter.drawLine(QPointF(centre.x() + half, centre.y()), QPointF(centre.x() - half, centre.y()));
+            painter.drawLine(QPointF(centre.x() - half, centre.y()),
+                             QPointF(centre.x() - half + 4.0, centre.y() - 4.0));
+            painter.drawLine(QPointF(centre.x() - half, centre.y()),
+                             QPointF(centre.x() - half + 4.0, centre.y() + 4.0));
+        } else {
+            QFont question = font();
+            question.setBold(true);
+            painter.setFont(question);
+            painter.setPen(glyph);
+            painter.drawText(rect(), Qt::AlignCenter, QStringLiteral("?"));
+        }
+    }
+
+    void enterEvent(QEnterEvent *event) override
+    {
+        QAbstractButton::enterEvent(event);
+        update();
+    }
+
+    void leaveEvent(QEvent *event) override
+    {
+        QAbstractButton::leaveEvent(event);
+        update();
+    }
+
+private:
+    bool m_back = false;
+};
 
 /// The text as the label should show it, and whether anything had to be left
 /// out (in which case the whole text belongs in the tooltip).
@@ -166,6 +255,7 @@ void MainWindow::buildUi()
     m_textLabel->setTextFormat(Qt::PlainText);
     m_textLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     m_textLabel->setFocusPolicy(Qt::ClickFocus);
+    m_textLabel->installEventFilter(this);
     codeLayout->addWidget(m_textLabel);
 
     auto *buttons = new QHBoxLayout;
@@ -184,7 +274,11 @@ void MainWindow::buildUi()
 
     m_stack->addWidget(codePage);
 
-    auto *central = new QWidget(this);
+    m_aboutPage = new AboutPage(m_stack);
+    m_stack->addWidget(m_aboutPage);
+
+    m_central = new QWidget(this);
+    auto *central = m_central;
     auto *centralLayout = new QVBoxLayout(central);
     centralLayout->setContentsMargins(kWindowMargin, kWindowMargin, kWindowMargin, 12);
     centralLayout->setSpacing(10);
@@ -203,6 +297,17 @@ void MainWindow::buildUi()
     statusPalette.setColor(QPalette::WindowText, statusPalette.color(QPalette::PlaceholderText));
     m_statusLabel->setPalette(statusPalette);
     centralLayout->addWidget(m_statusLabel);
+
+    // The help button floats over the stack in the window's upper-right corner
+    // instead of taking a slot in the layout, so it does not shift the content
+    // the mock-ups were drawn against.
+    m_helpButton = new HelpButton(central);
+    m_helpButton->setObjectName(QStringLiteral("helpButton"));
+    m_helpButton->setToolTip(tr("Show help and info (Ctrl+H or ?)"));
+    m_helpButton->setAccessibleName(tr("Help and info"));
+    connect(m_helpButton, &QAbstractButton::clicked, this, &MainWindow::toggleAbout);
+    central->installEventFilter(this);
+    positionHelpButton();
 
     setCentralWidget(central);
 }
@@ -246,6 +351,21 @@ void MainWindow::buildActions()
     m_clearButton->setToolTip(m_clearAction->toolTip());
     connect(m_clearButton, &QPushButton::clicked, m_clearAction, &QAction::trigger);
 
+    m_helpAction = new QAction(tr("&Help and info"), this);
+    m_helpAction->setShortcuts({QKeySequence(Qt::CTRL | Qt::Key_H), QKeySequence(Qt::Key_Question)});
+    m_helpAction->setToolTip(tr("Show help and info (Ctrl+H or ?)"));
+    connect(m_helpAction, &QAction::triggered, this, &MainWindow::toggleAbout);
+    addAction(m_helpAction);
+
+    // Escape leaves the help page when it is up. It is enabled only then, so it
+    // never competes with the clear action's own Escape shortcut.
+    m_closeAboutAction = new QAction(this);
+    m_closeAboutAction->setShortcut(QKeySequence(Qt::Key_Escape));
+    m_closeAboutAction->setShortcutContext(Qt::WindowShortcut);
+    m_closeAboutAction->setEnabled(false);
+    connect(m_closeAboutAction, &QAction::triggered, this, &MainWindow::closeAbout);
+    addAction(m_closeAboutAction);
+
     m_quitAction = new QAction(tr("&Quit"), this);
     // The platform's standard quit gesture (Ctrl+Q on Linux and Windows, Cmd+Q
     // on macOS) plus Ctrl+Q itself, so the shortcut also works where the theme
@@ -282,6 +402,7 @@ void MainWindow::refreshActionIcons()
     m_saveAction->setIcon(theme::icon({"document-save", "document-save-as"}));
     m_clearAction->setIcon(theme::icon({"edit-clear", "edit-clear-all", "window-close"}));
     m_quitAction->setIcon(theme::icon({"application-exit", "window-close"}));
+    m_helpAction->setIcon(theme::icon({"help-contents", "help-about"}));
 
     m_copyButton->setIcon(m_copyAction->icon());
     m_saveButton->setIcon(m_saveAction->icon());
@@ -326,6 +447,9 @@ void MainWindow::pasteFromClipboard()
 
 void MainWindow::showCode(const qr::Code &code)
 {
+    if (m_aboutOpen) {
+        closeAbout();
+    }
     m_qrView->setCode(code);
     m_stack->setCurrentIndex(CodePage);
     updateTextLabel();
@@ -339,6 +463,9 @@ void MainWindow::showCode(const qr::Code &code)
 
 void MainWindow::showPlaceholder()
 {
+    if (m_aboutOpen) {
+        closeAbout();
+    }
     m_code = qr::Code();
     m_payload.forget();
     m_qrView->clear();
@@ -350,8 +477,94 @@ void MainWindow::showPlaceholder()
     clearStatus();
 }
 
+void MainWindow::toggleAbout()
+{
+    if (m_aboutOpen) {
+        closeAbout();
+    } else {
+        showAbout();
+    }
+}
+
+void MainWindow::showAbout()
+{
+    if (m_aboutOpen) {
+        return;
+    }
+    m_aboutOpen = true;
+    m_pageBeforeAbout = static_cast<Page>(m_stack->currentIndex());
+
+    m_stack->setCurrentIndex(HelpPage);
+
+    // Leaving is the corner button's job while the page is up.
+    static_cast<HelpButton *>(m_helpButton)->setBack(true);
+    m_helpButton->setToolTip(tr("Back to Enquber (Esc or Ctrl+H)"));
+    m_helpButton->setAccessibleName(tr("Back to Enquber"));
+
+    // The page is read-only, so nothing below it should act on the code.
+    m_pasteAction->setEnabled(false);
+    m_copyAction->setEnabled(false);
+    m_saveAction->setEnabled(false);
+    m_clearAction->setEnabled(false);
+    m_closeAboutAction->setEnabled(true);
+
+    clearStatus();
+    m_helpButton->setFocus(Qt::OtherFocusReason);
+}
+
+void MainWindow::closeAbout()
+{
+    if (!m_aboutOpen) {
+        return;
+    }
+    m_aboutOpen = false;
+
+    static_cast<HelpButton *>(m_helpButton)->setBack(false);
+    m_helpButton->setToolTip(tr("Show help and info (Ctrl+H or ?)"));
+    m_helpButton->setAccessibleName(tr("Help and info"));
+
+    m_closeAboutAction->setEnabled(false);
+    m_pasteAction->setEnabled(true);
+
+    m_stack->setCurrentIndex(m_pageBeforeAbout);
+
+    const bool hasCode = m_code.isValid();
+    m_copyAction->setEnabled(hasCode);
+    m_saveAction->setEnabled(hasCode);
+    m_clearAction->setEnabled(hasCode);
+
+    if (m_pageBeforeAbout == CodePage && hasCode) {
+        m_copyButton->setFocus(Qt::OtherFocusReason);
+    }
+}
+
+void MainWindow::positionHelpButton()
+{
+    if (!m_helpButton || !m_central) {
+        return;
+    }
+    m_helpButton->move(m_central->width() - m_helpButton->width() - kHelpButtonMargin,
+                       kHelpButtonMargin);
+    m_helpButton->raise();
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event->type() == QEvent::Resize) {
+        if (watched == m_central) {
+            positionHelpButton();
+        } else if (watched == m_textLabel && m_textLabel->width() != m_shapedWidth) {
+            // The first shape happens before the layout has settled, so the
+            // label can still be narrow; re-shape it once it has its real width.
+            updateTextLabel();
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
+}
+
 void MainWindow::updateTextLabel()
 {
+    m_shapedWidth = m_textLabel->width();
     if (!m_code.isValid()) {
         m_textLabel->clear();
         return;
