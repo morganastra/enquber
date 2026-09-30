@@ -17,6 +17,8 @@ qt_standard_project_setup()
 # Everything except main() lives in a static library so that the test suite can
 # link against exactly the same code the application runs.
 add_library(enquber_core STATIC
+    src/aboutpage.cpp
+    src/aboutpage.h
     src/dropzone.cpp
     src/dropzone.h
     src/mainwindow.cpp
