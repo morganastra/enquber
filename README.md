@@ -28,7 +28,7 @@ To build:
     cmake --build build
     ./build/enquber
 
-On macos, you need to set `-DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
+On macos, you need to set `-DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"`
 
 ## Development
 
@@ -68,7 +68,7 @@ Smoke test screenshots are written to `$TMPDIR/enquber-smoke`
 
 This would not be possible without Kentaro Fukuchi's wonderful [libqrencode](https://github.com/fukuchi/libqrencode)
 
-Thanks to @loferris and Khalid for testing
+Thanks to loferris and Khalid for multiplatform testing!
 
 ## License
 

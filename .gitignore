@@ -10,3 +10,4 @@ packaging/*/enquber/
 packaging/*/*.tar.gz
 packaging/*/*.tar.zst
 packaging/*/*.log
+*/__pycache__

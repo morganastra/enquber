@@ -1,0 +1,32 @@
+Features
+	Support drag and drop of a generated QR code (e.g. drag the QR code onto the desktop to save it as a file there, drag it into a document to insert it, etc)
+
+	If the QR code encodes a URL, make it clickable
+
+	Support reading QR codes - dragging or pasting an image into the window attempts to read a QR code from the image
+
+	Advanced options - Themable colors, set error correction level, logo embed?
+
+Platforms
+	Support wayland - the app works, but smoke tests don't really
+
+	Support macos - it builds and sorta works!
+	Probably needs some work to use platform-native keyboard shortcuts
+
+	Support windows
+
+Theming
+	Follow system UI theme including dark mode
+	Use system theme icons for the buttons
+	Show proper icons outside of KDE context
+	Use proper icon in titlebar
+
+Misc UX
+	Draw an error banner across the top of the window if there are real errors 
+	(failure to encode a QR code, failure to decode one, etc). 
+
+	Only show one error banner at a time; auto-dismiss if another action happens successfully
+
+	Support more keyboard shortcuts - ctrl+q or q to quit, ctrl+h or ? to show help and info
+
+
