@@ -110,8 +110,16 @@ class Smoke:
     # -- driving the application -----------------------------------------
 
     def launch(self, command: list[str], title: str) -> App:
+        """Starts a process on the test's display and waits for its window.
+
+        The platform plugin is pinned to xcb, because only the xcb plugin
+        reads DISPLAY. With QT_QPA_PLATFORM unset, Qt loads the wayland
+        plugin whenever WAYLAND_DISPLAY is set or XDG_SESSION_TYPE is
+        wayland. It loads xcb only if neither is set, or if the wayland
+        plugin cannot open a compositor socket.
+        """
         environment = dict(os.environ, DISPLAY=self.display)
-        environment.pop("QT_QPA_PLATFORM", None)
+        environment["QT_QPA_PLATFORM"] = "xcb"
         process = subprocess.Popen(command, env=environment, preexec_fn=die_with_parent,
                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         self.processes.append(process)
@@ -264,7 +272,11 @@ def drag_with_mouse(smoke: Smoke, source: Window, target: tuple[int, int], relea
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--display", default=os.environ.get("DISPLAY", ":0"))
+    parser.add_argument("--display", default=os.environ.get("DISPLAY"),
+                        help="the X display to drive (default: $DISPLAY). On a "
+                             "Wayland session this is your Xwayland display or a "
+                             "throwaway Xvfb - not :0, which is normally the "
+                             "display manager's own server")
     parser.add_argument("--app", default="build/enquber",
                         help="the application binary (default: build/enquber)")
     parser.add_argument("--dragsource", default="build/tools/dragsource",
@@ -275,6 +287,13 @@ def main(argv: list[str] | None = None) -> int:
                         help="leave out the drag from another process; a bare Xvfb "
                              "cannot deliver drags to widgets (see the README)")
     args = parser.parse_args(argv)
+
+    if not args.display:
+        print("no display to drive: DISPLAY is unset and --display was not given.\n"
+              "Start a throwaway one and point at it, e.g.\n"
+              "    Xvfb :9 -screen 0 1920x1080x24 &\n"
+              "    tools/smoke.py --display :9", file=sys.stderr)
+        return 2
 
     for tool in ("import", "xclip", "zbarimg", "identify"):
         if not shutil.which(tool):
@@ -409,8 +428,9 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
 
     x.focus(dialog.id)
     time.sleep(0.3)
-    # The Qt file dialog focuses its file name field; an absolute path plus
-    # return saves right there.
+    # The Qt file dialog pre-fills a suggested name with only the stem
+    # selected, so take the whole field or the suggested ".png" survives.
+    x.shortcut("ctrl+a")
     x.type_text(str(target_png))
     time.sleep(0.4)
     x.key("Return")

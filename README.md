@@ -8,7 +8,7 @@ Drop or paste text into the window to generate a QR code; then save or copy the 
 
 ## Building
 
-To build you need a functional qt6 development environment and `libqrencode`
+To build you need a functional qt6 development environment and `qrencode`
 
 On archlinux-like systems, that would be the following packages:
 
@@ -20,7 +20,7 @@ On macos, use brew:
 
 To run the smoke tests you also need
 
-    zbar imagemagick xclip python-xlib
+    zbar imagemagick xclip python-xlib xorg-server-xvfb
 
 To build:
 
@@ -60,7 +60,8 @@ Build with `ENQUBER_BUILD_TEST_TOOLS` turned on and run the smoke test script:
 
     cmake -S . -B build -G Ninja -DENQUBER_BUILD_TEST_TOOLS=ON
     cmake --build build
-    tools/smoke.py --display :0
+    Xvfb :9 -screen 0 1920x1080x24 &
+    tools/smoke.py --display :9
 
 Smoke test screenshots are written to `$TMPDIR/enquber-smoke` 
 
