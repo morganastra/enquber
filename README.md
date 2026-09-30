@@ -69,9 +69,12 @@ This would not be possible without Kentaro Fukuchi's wonderful [libqrencode](htt
 
 Thanks to loferris and Khalid for multiplatform testing!
 
+Fallback icons are from [Feather Icons](https://feathericons.com) 
+Copyright (c) 2013-2023 Cole Bemis and used under the [MIT license](data/icon/actions/LICENSE)
+
 ## License
 
-Copyright 2026 Morgan Astra
+Copyright (c) 2026 Morgan Astra
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 

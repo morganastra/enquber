@@ -1,5 +1,6 @@
 <!--
-  enquber fallback icon: copy the QR code to the clipboard.
+  enquber fallback icon: copy the QR code to the clipboard (from Feather Icons,
+  see the README).
 
   The SVG is the source of :/enquber/icons/actions/edit-copy.png. It is a
   single black stroke on a transparent background; the application tints it

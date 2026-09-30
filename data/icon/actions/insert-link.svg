@@ -1,5 +1,6 @@
 <!--
-  enquber fallback icon: the link drop target (a chain link).
+  enquber fallback icon: the link drop target (a chain link, from Feather
+  Icons; see the README).
 
   The SVG is the source of :/enquber/icons/actions/insert-link.png. It is a
   single black stroke on a transparent background; the application tints it

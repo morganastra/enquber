@@ -135,6 +135,7 @@ private slots:
     void dropZoneCarriesAnIcon();
     void windowUsesTheBundledAppIcon();
     void fallbackIconsFollowThePalette();
+    void bundledFallbacksCoverNavigationAndHelp();
 };
 
 void TestEnquber::encodesText_data()
@@ -663,6 +664,20 @@ void TestEnquber::fallbackIconsFollowThePalette()
     QVERIFY(onLight.isValid());
     QVERIFY2(onDark.lightness() > 200, qPrintable(onDark.name()));
     QVERIFY2(onLight.lightness() < 80, qPrintable(onLight.name()));
+}
+
+void TestEnquber::bundledFallbacksCoverNavigationAndHelp()
+{
+    // The offscreen platform never answers from the icon theme, so a non-null
+    // icon here can only be a bundled glyph. Both the freedesktop names a
+    // toolbar would use and the Feather names themselves have to resolve.
+    for (const char *name : {"go-previous", "help-contents", "help-about", "dialog-information",
+                             "arrow-left", "help-circle", "info"}) {
+        QVERIFY2(!theme::icon({name}).isNull(), name);
+    }
+
+    // A name with no bundled glyph stays null instead of guessing.
+    QVERIFY(theme::icon({"this-icon-does-not-exist"}).isNull());
 }
 
 QTEST_MAIN(TestEnquber)

@@ -17,9 +17,6 @@ Platforms
 
 Theming
 	Follow system UI theme including dark mode
-	Use system theme icons for the buttons
-	Show proper icons outside of KDE context
-	Use proper icon in titlebar
 
 Misc UX
 	Draw an error banner across the top of the window if there are real errors 
@@ -27,6 +24,6 @@ Misc UX
 
 	Only show one error banner at a time; auto-dismiss if another action happens successfully
 
-	Support more keyboard shortcuts - ctrl+q or q to quit, ctrl+h or ? to show help and info
+	Support more keyboard shortcuts - ctrl+h or ? to show help and info
 
 
