@@ -112,8 +112,21 @@ class Smoke:
     def launch(self, command: list[str], title: str) -> App:
         environment = dict(os.environ, DISPLAY=self.display)
         environment.pop("QT_QPA_PLATFORM", None)
-        process = subprocess.Popen(command, env=environment, preexec_fn=die_with_parent,
-                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        try:
+            process = subprocess.Popen(command, env=environment, preexec_fn=die_with_parent,
+                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        except FileNotFoundError as error:
+            binary = Path(command[0])
+            if binary == self.app:
+                hint = ("build it first:\n"
+                        "    just build")
+            else:
+                hint = ("it is a test helper, so re-run cmake with the test tools turned on:\n"
+                        "    cmake -S . -B build -G Ninja -DENQUBER_BUILD_TEST_TOOLS=ON\n"
+                        "    cmake --build build\n"
+                        "or use just:\n"
+                        "    just smoke-test")
+            raise Failure(f"{binary} does not exist; {hint}") from error
         self.processes.append(process)
         window = self.x.wait_for(pattern=title, pid=process.pid, timeout=15, title_only=True)
         self.check(window is not None, f"{Path(command[0]).name} opened a window titled {title!r}")
