@@ -41,9 +41,12 @@ qt_add_resources(enquber_core "enquber_icons"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/data/icon"
     FILES
         data/icon/enquber.png
+        data/icon/actions/arrow-left.png
         data/icon/actions/document-save.png
         data/icon/actions/edit-clear.png
         data/icon/actions/edit-copy.png
+        data/icon/actions/help-circle.png
+        data/icon/actions/info.png
         data/icon/actions/insert-link.png
 )
 

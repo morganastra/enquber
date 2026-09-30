@@ -1,5 +1,6 @@
 <!--
-  enquber fallback icon: save the QR code to a file (a floppy disk).
+  enquber fallback icon: save the QR code to a file (a floppy disk, from
+  Feather Icons; see the README).
 
   The SVG is the source of :/enquber/icons/actions/document-save.png. It is a
   single black stroke on a transparent background; the application tints it
