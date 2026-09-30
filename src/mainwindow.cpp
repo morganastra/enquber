@@ -12,6 +12,7 @@
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
+#include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFontMetrics>
@@ -214,30 +215,27 @@ void MainWindow::buildActions()
     connect(m_pasteAction, &QAction::triggered, this, &MainWindow::pasteFromClipboard);
     addAction(m_pasteAction);
 
-    m_copyAction = new QAction(theme::icon({"edit-copy"}), tr("&Copy image"), this);
+    m_copyAction = new QAction(tr("&Copy image"), this);
     m_copyAction->setShortcut(QKeySequence::Copy);
     m_copyAction->setToolTip(tr("Copy the QR code to the clipboard as a PNG image (Ctrl+C)"));
     connect(m_copyAction, &QAction::triggered, this, &MainWindow::copyToClipboard);
     addAction(m_copyAction);
 
-    m_saveAction = new QAction(theme::icon({"document-save", "document-save-as"}), tr("&Save…"), this);
+    m_saveAction = new QAction(tr("&Save…"), this);
     m_saveAction->setShortcut(QKeySequence::Save);
     m_saveAction->setToolTip(tr("Save the QR code as a PNG file (Ctrl+S)"));
     connect(m_saveAction, &QAction::triggered, this, &MainWindow::askWhereToSave);
     addAction(m_saveAction);
 
     m_copyButton->setText(m_copyAction->text());
-    m_copyButton->setIcon(m_copyAction->icon());
     m_copyButton->setToolTip(m_copyAction->toolTip());
     connect(m_copyButton, &QPushButton::clicked, m_copyAction, &QAction::trigger);
 
     m_saveButton->setText(m_saveAction->text());
-    m_saveButton->setIcon(m_saveAction->icon());
     m_saveButton->setToolTip(m_saveAction->toolTip());
     connect(m_saveButton, &QPushButton::clicked, m_saveAction, &QAction::trigger);
 
-    m_clearAction = new QAction(theme::icon({"edit-clear", "edit-clear-all", "window-close"}),
-                                tr("C&lear"), this);
+    m_clearAction = new QAction(tr("C&lear"), this);
     m_clearAction->setShortcuts({QKeySequence(Qt::Key_Escape), QKeySequence(Qt::Key_Backspace),
                                  QKeySequence(Qt::Key_Delete)});
     m_clearAction->setToolTip(tr("Go back to the drop target (Esc, Backspace or Delete)"));
@@ -245,11 +243,10 @@ void MainWindow::buildActions()
     addAction(m_clearAction);
 
     m_clearButton->setText(m_clearAction->text());
-    m_clearButton->setIcon(m_clearAction->icon());
     m_clearButton->setToolTip(m_clearAction->toolTip());
     connect(m_clearButton, &QPushButton::clicked, m_clearAction, &QAction::trigger);
 
-    m_quitAction = new QAction(theme::icon({"application-exit", "window-close"}), tr("&Quit"), this);
+    m_quitAction = new QAction(tr("&Quit"), this);
     // The platform's standard quit gesture (Ctrl+Q on Linux and Windows, Cmd+Q
     // on macOS) plus Ctrl+Q itself, so the shortcut also works where the theme
     // leaves the standard key unbound. Identical sequences are added once: two
@@ -269,6 +266,34 @@ void MainWindow::buildActions()
     m_quitAction->setToolTip(tr("Quit enquber (Ctrl+Q)"));
     connect(m_quitAction, &QAction::triggered, this, &QWidget::close);
     addAction(m_quitAction);
+
+    refreshActionIcons();
+}
+
+void MainWindow::refreshActionIcons()
+{
+    if (!m_copyAction) {
+        return; // a palette change before buildActions() finished
+    }
+    // theme::icon() tints a bundled fallback with the current palette when it
+    // builds it, so a palette change means the glyphs have to be built again.
+    // System theme icons are drawn by the theme and simply ignore this.
+    m_copyAction->setIcon(theme::icon({"edit-copy"}));
+    m_saveAction->setIcon(theme::icon({"document-save", "document-save-as"}));
+    m_clearAction->setIcon(theme::icon({"edit-clear", "edit-clear-all", "window-close"}));
+    m_quitAction->setIcon(theme::icon({"application-exit", "window-close"}));
+
+    m_copyButton->setIcon(m_copyAction->icon());
+    m_saveButton->setIcon(m_saveAction->icon());
+    m_clearButton->setIcon(m_clearAction->icon());
+}
+
+void MainWindow::changeEvent(QEvent *event)
+{
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::PaletteChange || event->type() == QEvent::ApplicationPaletteChange) {
+        refreshActionIcons();
+    }
 }
 
 void MainWindow::setText(const QString &text)
