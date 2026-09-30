@@ -8,27 +8,28 @@ Drop or paste text into the window to generate a QR code; then save or copy the 
 
 ## Building
 
-To build you need a functional qt6 development environment and `libqrencode`
+To build you need a functional qt6 development environment and `libqrencode`.
+
+The `just` job runner is also highly recommended.
 
 On archlinux-like systems, that would be the following packages:
 
-    base-devel cmake ninja qt6-base qrencode 
+    base-devel cmake ninja qt6-base qrencode just
 
 On macos, use brew:
 
-    brew install cmake ninja qtbase qrencode pkgconf
+    brew install cmake ninja qtbase qrencode pkgconf just
 
 To run the smoke tests you also need
 
-    zbar imagemagick xclip python-xlib
+    zbar imagemagick xclip python-xlib xorg-server-xvfb
 
-To build:
+To build/run:
 
-    cmake -S . -B build -G Ninja
-    cmake --build build
-    ./build/enquber
+    just build
+    just run
 
-On macos, you need to set `-DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"`
+On macos, you need to set in your env `CMAKE_PREFIX_PATH="$(brew --prefix qtbase)"`
 
 ## Development
 
@@ -52,15 +53,13 @@ to see Qt's xdnd messages directly.
 
 To run unit tests:
 
-    ctest --test-dir build --output-on-failure
+    just test
 
 We also have a very luxurious smoke test setup which drives automated UI interactions against the real app.
 
-Build with `ENQUBER_BUILD_TEST_TOOLS` turned on and run the smoke test script:
+    just smoke-test
 
-    cmake -S . -B build -G Ninja -DENQUBER_BUILD_TEST_TOOLS=ON
-    cmake --build build
-    tools/smoke.py --display :0
+Extra arguments are passed through to the smoke test driver; see `just smoke-test --help` for details
 
 Smoke test screenshots are written to `$TMPDIR/enquber-smoke` 
 
