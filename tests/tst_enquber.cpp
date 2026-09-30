@@ -6,8 +6,10 @@
 #include "theme.h"
 
 #include <QApplication>
+#include <QAction>
 #include <QClipboard>
 #include <QColor>
+#include <QKeySequence>
 #include <QMimeData>
 #include <QPalette>
 #include <QStackedWidget>
@@ -125,6 +127,7 @@ private slots:
     void clickingSaveButtonWritesFile();
     void saveWritesPngFile();
     void saveAppendsPngSuffix();
+    void quitShortcutClosesWindow();
 
     void windowAcceptsDrops();
 
@@ -552,6 +555,33 @@ void TestEnquber::saveAppendsPngSuffix()
     QVERIFY(window.saveTo(path));
 
     QVERIFY(QFileInfo::exists(path + QStringLiteral(".png")));
+}
+
+void TestEnquber::quitShortcutClosesWindow()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    QVERIFY(window.isVisible());
+
+    // The quit action has to carry the platform's standard quit gesture and,
+    // so that Ctrl+Q works where the theme leaves that key unbound, Ctrl+Q
+    // itself. Finding it by text keeps the test off the action's name.
+    QAction *quit = nullptr;
+    const QList<QAction *> actions = window.findChildren<QAction *>();
+    for (QAction *action : actions) {
+        if (action->text().contains(QStringLiteral("quit"), Qt::CaseInsensitive)) {
+            quit = action;
+            break;
+        }
+    }
+    QVERIFY(quit);
+    const QList<QKeySequence> shortcuts = quit->shortcuts();
+    QVERIFY(shortcuts.contains(QKeySequence(QStringLiteral("Ctrl+Q")))
+            || shortcuts.contains(QKeySequence(QKeySequence::Quit)));
+
+    QTest::keyClick(&window, Qt::Key_Q, Qt::ControlModifier);
+
+    QVERIFY(!window.isVisible());
 }
 
 void TestEnquber::windowAcceptsDrops()

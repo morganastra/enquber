@@ -445,6 +445,21 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     again = drag_until_dropped(smoke, source, window, DROPPED_URL, label="after clearing")
     smoke.check(again == DROPPED_URL, f"the drop target works again ({again!r})")
 
+    smoke.step("quit with Ctrl+Q")
+    quitting = smoke.launch([str(smoke.app)], "Enquber")
+    quitting.window = smoke.place(quitting.window.id, 40, 40, 560, 700)
+    x.focus(quitting.window.id)
+    time.sleep(0.3)
+    x.shortcut("ctrl+q")
+    deadline = time.monotonic() + 10
+    while quitting.process.poll() is None and time.monotonic() < deadline:
+        time.sleep(0.1)
+    code = quitting.process.poll()
+    smoke.check(code is not None, "Ctrl+Q closed the application")
+    smoke.log(f"the application exited with code {code}")
+    smoke.check(code == 0, f"the application exited cleanly (code {code})")
+    smoke.check(x.find("Enquber", pid=quitting.process.pid) is None,
+                "the window is gone once the process has exited")
 
 
 def foreign_drag(smoke: Smoke) -> None:

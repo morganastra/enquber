@@ -78,6 +78,7 @@ private:
     QAction *m_copyAction = nullptr;
     QAction *m_saveAction = nullptr;
     QAction *m_clearAction = nullptr;
+    QAction *m_quitAction = nullptr;
 
     qr::Code m_code;
 
