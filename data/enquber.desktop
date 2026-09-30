@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Enquber
+GenericName=QR Code Generator
+Comment=Create QR codes from text
+Exec=enquber
+Icon=enquber
+Terminal=false
+Categories=Utility;
+Keywords=qr;qrcode;barcode;generator;
