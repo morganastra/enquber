@@ -17,6 +17,7 @@
 #include <QFontMetrics>
 #include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QKeySequence>
 #include <QLabel>
 #include <QLoggingCategory>
 #include <QMimeData>
@@ -247,6 +248,27 @@ void MainWindow::buildActions()
     m_clearButton->setIcon(m_clearAction->icon());
     m_clearButton->setToolTip(m_clearAction->toolTip());
     connect(m_clearButton, &QPushButton::clicked, m_clearAction, &QAction::trigger);
+
+    m_quitAction = new QAction(theme::icon({"application-exit", "window-close"}), tr("&Quit"), this);
+    // The platform's standard quit gesture (Ctrl+Q on Linux and Windows, Cmd+Q
+    // on macOS) plus Ctrl+Q itself, so the shortcut also works where the theme
+    // leaves the standard key unbound. Identical sequences are added once: two
+    // copies of the same key would make the shortcut ambiguous and it would
+    // never fire.
+    QList<QKeySequence> quitShortcuts;
+    const QKeySequence standardQuit(QKeySequence::Quit);
+    if (!standardQuit.isEmpty()) {
+        quitShortcuts.append(standardQuit);
+    }
+    const QKeySequence controlQ(QStringLiteral("Ctrl+Q"));
+    if (!quitShortcuts.contains(controlQ)) {
+        quitShortcuts.append(controlQ);
+    }
+    m_quitAction->setShortcuts(quitShortcuts);
+    m_quitAction->setShortcutContext(Qt::WindowShortcut);
+    m_quitAction->setToolTip(tr("Quit enquber (Ctrl+Q)"));
+    connect(m_quitAction, &QAction::triggered, this, &QWidget::close);
+    addAction(m_quitAction);
 }
 
 void MainWindow::setText(const QString &text)
