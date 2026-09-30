@@ -126,7 +126,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle(tr("Enquber"));
-    setWindowIcon(theme::icon({"view-barcode-qr", "view-barcode"}));
+    setWindowIcon(theme::appIcon());
     setAcceptDrops(true);
     resize(560, 700);
 

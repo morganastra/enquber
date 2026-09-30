@@ -34,6 +34,19 @@ target_include_directories(enquber_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(enquber_core PUBLIC Qt6::Widgets PkgConfig::QRENCODE)
 target_compile_options(enquber_core PRIVATE -Wall -Wextra)
 
+# The action glyphs and the app icon are embedded so that the interface keeps
+# its pictures even on a session whose icon theme only ships hicolor.
+qt_add_resources(enquber_core "enquber_icons"
+    PREFIX "/enquber/icons"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/data/icon"
+    FILES
+        data/icon/enquber.png
+        data/icon/actions/document-save.png
+        data/icon/actions/edit-clear.png
+        data/icon/actions/edit-copy.png
+        data/icon/actions/insert-link.png
+)
+
 qt_add_executable(enquber src/main.cpp)
 target_link_libraries(enquber PRIVATE enquber_core)
 

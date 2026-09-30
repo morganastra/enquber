@@ -3,14 +3,19 @@
 #include "mimetext.h"
 #include "qrcode.h"
 #include "qrview.h"
+#include "theme.h"
 
 #include <QApplication>
 #include <QClipboard>
+#include <QColor>
 #include <QMimeData>
+#include <QPalette>
 #include <QStackedWidget>
 #include <QDir>
 #include <QFileDialog>
+#include <QIcon>
 #include <QLabel>
+#include <QPixmap>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -68,6 +73,21 @@ QPushButton *buttonContaining(QWidget *window, const QString &needle)
     return nullptr;
 }
 
+/// The colour of a strongly opaque pixel of a tinted glyph; the source is
+/// recoloured through SourceIn, so every opaque pixel carries the tint.
+QColor inkOf(const QImage &image)
+{
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            const QColor color = image.pixelColor(x, y);
+            if (color.alpha() > 200) {
+                return color;
+            }
+        }
+    }
+    return {};
+}
+
 } // namespace
 
 class TestEnquber : public QObject
@@ -107,6 +127,11 @@ private slots:
     void saveAppendsPngSuffix();
 
     void windowAcceptsDrops();
+
+    void buttonsCarryIcons();
+    void dropZoneCarriesAnIcon();
+    void windowUsesTheBundledAppIcon();
+    void fallbackIconsFollowThePalette();
 };
 
 void TestEnquber::encodesText_data()
@@ -535,6 +560,79 @@ void TestEnquber::windowAcceptsDrops()
     QVERIFY(window.acceptDrops());
     QVERIFY(window.findChild<DropZone *>()->acceptDrops());
     QVERIFY(window.minimumSizeHint().isValid());
+}
+
+void TestEnquber::buttonsCarryIcons()
+{
+    // The offscreen platform always reports a null QIcon::fromTheme, so a
+    // non-null icon here can only come from the bundled fallback glyphs. That
+    // is exactly the plain-XDG/hicolor case the fallbacks exist for.
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://icons.example"));
+
+    for (const QString &needle : {QStringLiteral("copy"), QStringLiteral("save"), QStringLiteral("lear")}) {
+        QPushButton *button = buttonContaining(&window, needle);
+        QVERIFY2(button, qPrintable(needle));
+        QVERIFY2(!button->icon().isNull(), qPrintable(needle));
+        QVERIFY2(!button->icon().pixmap(24).isNull(), qPrintable(needle));
+    }
+}
+
+void TestEnquber::dropZoneCarriesAnIcon()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *zone = window.findChild<DropZone *>();
+    QVERIFY(zone);
+
+    // The drop target shows its link glyph through a QLabel pixmap.
+    bool hasPixmap = false;
+    const QList<QLabel *> labels = zone->findChildren<QLabel *>();
+    for (QLabel *label : labels) {
+        if (!label->pixmap(Qt::ReturnByValue).isNull()) {
+            hasPixmap = true;
+            break;
+        }
+    }
+    QVERIFY(hasPixmap);
+}
+
+void TestEnquber::windowUsesTheBundledAppIcon()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    const QImage actual = window.windowIcon().pixmap(64).toImage();
+    QVERIFY(!actual.isNull());
+
+    const QImage expected = QIcon(QStringLiteral(":/enquber/icons/enquber.png")).pixmap(64).toImage();
+    QVERIFY(!expected.isNull());
+    QCOMPARE(actual, expected);
+}
+
+void TestEnquber::fallbackIconsFollowThePalette()
+{
+    const QPalette original = QApplication::palette();
+
+    // On a dark palette the glyph has to come out light...
+    QPalette dark = original;
+    dark.setColor(QPalette::WindowText, QColor(Qt::white));
+    QApplication::setPalette(dark);
+    const QColor onDark = inkOf(theme::icon({"edit-copy"}).pixmap(64).toImage());
+
+    // ...and on a light one, dark.
+    QPalette light = original;
+    light.setColor(QPalette::WindowText, QColor(Qt::black));
+    QApplication::setPalette(light);
+    const QColor onLight = inkOf(theme::icon({"edit-copy"}).pixmap(64).toImage());
+
+    QApplication::setPalette(original);
+
+    QVERIFY(onDark.isValid());
+    QVERIFY(onLight.isValid());
+    QVERIFY2(onDark.lightness() > 200, qPrintable(onDark.name()));
+    QVERIFY2(onLight.lightness() < 80, qPrintable(onLight.name()));
 }
 
 QTEST_MAIN(TestEnquber)
