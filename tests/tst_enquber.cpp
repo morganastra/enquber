@@ -97,6 +97,9 @@ class TestEnquber : public QObject
     Q_OBJECT
 
 private slots:
+    void initTestCase();
+    void cleanupTestCase();
+
     void encodesText_data();
     void encodesText();
 
@@ -136,7 +139,30 @@ private slots:
     void windowUsesTheBundledAppIcon();
     void fallbackIconsFollowThePalette();
     void bundledFallbacksCoverNavigationAndHelp();
+    void buttonIconsFollowRuntimePaletteChanges();
+
+private:
+    QString m_savedThemeName;
+    QString m_savedFallbackThemeName;
 };
+
+void TestEnquber::initTestCase()
+{
+    // Several tests assert on the bundled fallback glyphs, which are only used
+    // when no system icon theme answers. Point the theme lookup at a name that
+    // cannot exist so those tests are deterministic even when the binary is run
+    // from a desktop session instead of the offscreen platform.
+    m_savedThemeName = QIcon::themeName();
+    m_savedFallbackThemeName = QIcon::fallbackThemeName();
+    QIcon::setThemeName(QStringLiteral("enquber-no-such-theme"));
+    QIcon::setFallbackThemeName(QStringLiteral("enquber-no-such-theme"));
+}
+
+void TestEnquber::cleanupTestCase()
+{
+    QIcon::setThemeName(m_savedThemeName);
+    QIcon::setFallbackThemeName(m_savedFallbackThemeName);
+}
 
 void TestEnquber::encodesText_data()
 {
@@ -678,6 +704,39 @@ void TestEnquber::bundledFallbacksCoverNavigationAndHelp()
 
     // A name with no bundled glyph stays null instead of guessing.
     QVERIFY(theme::icon({"this-icon-does-not-exist"}).isNull());
+}
+
+void TestEnquber::buttonIconsFollowRuntimePaletteChanges()
+{
+    // The fallback glyph is tinted when the icon is built, so a live palette
+    // change has to rebuild the button icons or they keep the old colour.
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://palette.example"));
+    QPushButton *copy = buttonContaining(&window, QStringLiteral("copy"));
+    QVERIFY(copy);
+    QVERIFY(!copy->icon().isNull());
+
+    const QPalette original = QApplication::palette();
+
+    QPalette dark = original;
+    dark.setColor(QPalette::WindowText, QColor(Qt::white));
+    QApplication::setPalette(dark);
+    QCoreApplication::processEvents();
+    const QColor onDark = inkOf(copy->icon().pixmap(64).toImage());
+
+    QPalette light = original;
+    light.setColor(QPalette::WindowText, QColor(Qt::black));
+    QApplication::setPalette(light);
+    QCoreApplication::processEvents();
+    const QColor onLight = inkOf(copy->icon().pixmap(64).toImage());
+
+    QApplication::setPalette(original);
+
+    QVERIFY(onDark.isValid());
+    QVERIFY(onLight.isValid());
+    QVERIFY2(onDark.lightness() > 200, qPrintable(onDark.name()));
+    QVERIFY2(onLight.lightness() < 80, qPrintable(onLight.name()));
 }
 
 QTEST_MAIN(TestEnquber)

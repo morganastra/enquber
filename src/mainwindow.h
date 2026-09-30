@@ -12,6 +12,7 @@ class QLabel;
 class QPushButton;
 class QStackedWidget;
 class QTimer;
+class QEvent;
 class QDragEnterEvent;
 class QDragLeaveEvent;
 class QDropEvent;
@@ -50,6 +51,10 @@ private:
 
     void buildUi();
     void buildActions();
+    /// (Re)builds the action icons. The bundled fallback glyphs are tinted with
+    /// the palette when they are created, so this has to run again whenever the
+    /// palette changes; theme icons simply ignore the call.
+    void refreshActionIcons();
     void showCode(const qr::Code &code);
     void showPlaceholder();
     void updateTextLabel();
@@ -59,6 +64,7 @@ private:
     QString suggestedFileName() const;
     QImage renderForExport() const;
 
+    void changeEvent(QEvent *event) override;
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dragMoveEvent(QDragMoveEvent *event) override;
     void dragLeaveEvent(QDragLeaveEvent *event) override;
