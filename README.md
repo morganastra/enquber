@@ -1,6 +1,6 @@
 # enquber
 
-Enquber is a simple QR code maker application with a nice UX and near-instant startup
+Enquber is a simple cross-platform QR code maker application with a nice UX and near-instant startup
 
 Drop or paste text into the window to generate a QR code; then save or copy the resulting PNG
 
@@ -14,6 +14,10 @@ On archlinux-like systems, that would be the following packages:
 
     base-devel cmake ninja qt6-base qrencode 
 
+On macos, use brew:
+
+    brew install cmake ninja qtbase qrencode pkgconf
+
 To run the smoke tests you also need
 
     zbar imagemagick xclip python-xlib
@@ -23,6 +27,8 @@ To build:
     cmake -S . -B build -G Ninja
     cmake --build build
     ./build/enquber
+
+On macos, you need to set `-DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
 
 ## Development
 
@@ -57,6 +63,12 @@ Build with `ENQUBER_BUILD_TEST_TOOLS` turned on and run the smoke test script:
     tools/smoke.py --display :0
 
 Smoke test screenshots are written to `$TMPDIR/enquber-smoke` 
+
+## Acknowledgements
+
+This would not be possible without Kentaro Fukuchi's wonderful [libqrencode](https://github.com/fukuchi/libqrencode)
+
+Thanks to @loferris and Khalid for testing
 
 ## License
 
