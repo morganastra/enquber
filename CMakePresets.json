@@ -1,0 +1,55 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "ENQUBER_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "default",
+      "displayName": "Default",
+      "description": "The application and the unit tests",
+      "inherits": "base"
+    },
+    {
+      "name": "smoke",
+      "displayName": "Smoke test",
+      "description": "A separate build tree with the GUI smoke test helpers",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/smoke",
+      "cacheVariables": {
+        "ENQUBER_BUILD_TESTS": "OFF",
+        "ENQUBER_BUILD_TEST_TOOLS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    },
+    {
+      "name": "smoke",
+      "configurePreset": "smoke"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
