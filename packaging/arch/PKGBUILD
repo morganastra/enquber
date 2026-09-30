@@ -1,0 +1,28 @@
+# Maintainer: Morgan Astra
+pkgname=enquber
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Simple QR code maker with a nice UX and near-instant startup"
+arch=('x86_64')
+url="https://github.com/morganastra/enquber"
+license=('GPL-3.0-or-later')
+depends=('glibc' 'gcc-libs' 'qt6-base' 'qrencode' 'hicolor-icon-theme')
+makedepends=('cmake' 'ninja')
+optdepends=('breeze-icons: window and menu icon')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('992a8d0d79fbd1fd2286cf346eb17641f791e7bb9ab73f25b367b7e371d2a553')
+
+build() {
+    cmake -S "$pkgname-$pkgver" -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+check() {
+    ctest --test-dir build --output-on-failure
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+}

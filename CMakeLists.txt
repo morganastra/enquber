@@ -39,6 +39,11 @@ target_link_libraries(enquber PRIVATE enquber_core)
 
 include(GNUInstallDirs)
 install(TARGETS enquber RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES data/enquber.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES data/icon/enquber.svg
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+install(FILES data/icon/enquber.png
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/512x512/apps)
 
 option(ENQUBER_BUILD_TESTS "Build the unit tests" ON)
 if(ENQUBER_BUILD_TESTS)
