@@ -8,7 +8,6 @@ url="https://github.com/morganastra/enquber"
 license=('GPL-3.0-or-later')
 depends=('glibc' 'gcc-libs' 'qt6-base' 'qrencode' 'hicolor-icon-theme')
 makedepends=('cmake' 'ninja' 'git')
-optdepends=('breeze-icons: window and menu icon')
 provides=('enquber')
 conflicts=('enquber')
 source=("enquber::git+https://github.com/morganastra/enquber.git#branch=main")

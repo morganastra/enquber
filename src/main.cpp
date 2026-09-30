@@ -1,7 +1,7 @@
 #include "mainwindow.h"
+#include "theme.h"
 
 #include <QApplication>
-#include <QIcon>
 #include <QStyle>
 #include <QStyleFactory>
 
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
     QApplication::setOrganizationName(QStringLiteral("enquber"));
     QApplication::setDesktopFileName(QStringLiteral("enquber"));
-    QApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral("view-barcode-qr")));
+    QApplication::setWindowIcon(theme::appIcon());
     preferDesktopStyle();
 
     MainWindow window;
