@@ -214,9 +214,27 @@ class Smoke:
         self.x.screenshot(str(path))
         return path
 
-    def decode(self, window: Window, name: str) -> str | None:
-        """Screenshots the window and returns the text of the QR code on it."""
-        return decode_png(self.screenshot(window, name))
+    def decode(self, window: Window, name: str) -> tuple[str | None, Path]:
+        """Screenshots the window and returns its QR text and the screenshot.
+
+        Include screenshot path in return tuple so we can print it on failure.
+        """
+        path = self.screenshot(window, name)
+        return decode_png(path), path
+
+    def check_decoded(self, decoded: str | None, expected: str | None,
+                      message: str, path: Path) -> None:
+        """Checks a decoded QR text, pointing at @p path when it does not scan."""
+        if decoded != expected:
+            if decoded is None and expected is not None:
+                raise Failure(f"{message}: no QR code could be scanned in {path} "
+                              f"(is the window hidden behind another one?)")
+            if expected is None:
+                raise Failure(f"{message}: expected no QR code, but {path} "
+                              f"decodes to {decoded!r}")
+            raise Failure(f"{message}: {path} decodes to {decoded!r}, "
+                          f"not {expected!r}")
+        self.log(f"ok - {message} ({decoded!r})")
 
 
 def decode_png(path: Path) -> str | None:
@@ -226,25 +244,26 @@ def decode_png(path: Path) -> str | None:
 
 
 def drag_until_dropped(smoke: Smoke, source: Window, target: Window, expected: str,
-                       label: str, attempts: int = 3) -> str | None:
+                       label: str, attempts: int = 3) -> tuple[str | None, Path]:
     """Drags from one window onto another until it shows @p expected.
 
     Window managers move windows around between attempts, and Qt's platform
     plugin swallows a drop now and then, so one shot would be flaky rather than
-    informative.
+    informative. Returns the last decoded text together with its screenshot.
     """
-    decoded = None
+    decoded: str | None = None
+    path = Path()
     for attempt in range(1, attempts + 1):
         source_now = smoke.geometry(source)
         target_now = smoke.geometry(target)
         centre = (target_now.x + target_now.width // 2, target_now.y + target_now.height // 2)
         drag_with_mouse(smoke, source_now, centre)
         time.sleep(0.8)
-        decoded = smoke.decode(target, f"{label}-{attempt}")
+        decoded, path = smoke.decode(target, f"{label}-{attempt}")
         smoke.log(f"{label}: attempt {attempt} shows {decoded!r}")
         if decoded == expected:
             break
-    return decoded
+    return decoded, path
 
 
 def drag_with_mouse(smoke: Smoke, source: Window, target: tuple[int, int], release: bool = True):
@@ -280,8 +299,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="the application binary (default: build/enquber)")
     parser.add_argument("--dragsource", default="build/tools/dragsource",
                         help="the drag helper, built with -DENQUBER_BUILD_TEST_TOOLS=ON")
-    parser.add_argument("--shots", default=str(Path(tempfile.gettempdir()) / "enquber-smoke"),
-                        help="where screenshots and the saved PNG go")
+    parser.add_argument("--shots", default=None,
+                        help="where to write screenshots (default: a date-time "
+                             "stamped directory under $TMPDIR/enquber-smoke)")
     args = parser.parse_args(argv)
 
     for tool in ("import", "xclip", "zbarimg", "identify"):
@@ -289,9 +309,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"missing required tool: {tool}", file=sys.stderr)
             return 2
 
+    if args.shots:
+        shots = Path(args.shots)
+    else:
+        shots = (Path(tempfile.gettempdir()) / "enquber-smoke"
+                 / time.strftime("%Y-%m-%d_%H-%M-%S"))
+
     install_signal_handlers()
     smoke = Smoke(Path(args.app).resolve(), Path(args.dragsource).resolve(),
-                  args.display, Path(args.shots))
+                  args.display, shots)
     try:
         run(smoke)
     except Failure as failure:
@@ -319,8 +345,9 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     smoke.step("the application takes a link on the command line")
     command_line = smoke.launch([str(smoke.app), PASTED_URL], "Enquber")
     command_line.window = smoke.place(command_line.window.id, 40, 40, 560, 700)
-    on_start = smoke.decode(command_line.window, "command-line")
-    smoke.check(on_start == PASTED_URL, f"the link from the command line is on screen ({on_start!r})")
+    on_start, on_start_shot = smoke.decode(command_line.window, "command-line")
+    smoke.check_decoded(on_start, PASTED_URL,
+                        "the link from the command line is on screen", on_start_shot)
     command_line.process.terminate()
     command_line.process.wait(timeout=10)
     time.sleep(0.5)
@@ -336,25 +363,26 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     window = smoke.place(hosted.id, 40, 40, 560, 700)
     smoke.check(window.width > 300 and window.height > 300,
                 f"window is {window.width}x{window.height}")
-    smoke.screenshot(window, "empty")
-    smoke.check(smoke.decode(window, "empty") is None, "no QR code before anything arrives")
+    empty, empty_shot = smoke.decode(window, "empty")
+    smoke.check_decoded(empty, None, "no QR code before anything arrives", empty_shot)
     x.set_clipboard_text("")
 
     smoke.step("drag a link onto the rectangle with the mouse")
     source = smoke.place(x.find("dragsource", pid=app.process.pid, title_only=True).id,
                          700, 700, 320, 160)
-    dropped = None
+    dropped: str | None = None
+    dropped_shot = Path()
     for attempt in range(1, 4):
         source_now = smoke.geometry(source)
         window = smoke.geometry(window)
         centre = (window.x + window.width // 2, window.y + window.height // 2)
         drag_with_mouse(smoke, source_now, centre)
         time.sleep(0.8)
-        dropped = smoke.decode(window, f"dropped-{attempt}")
+        dropped, dropped_shot = smoke.decode(window, f"dropped-{attempt}")
         smoke.log(f"in-process drag: attempt {attempt} shows {dropped!r}")
         if dropped == DROPPED_URL:
             break
-    smoke.check(dropped == DROPPED_URL, f"the dropped link is on screen ({dropped!r})")
+    smoke.check_decoded(dropped, DROPPED_URL, "the dropped link is on screen", dropped_shot)
     smoke.screenshot_screen("dropped")
     output = smoke.output_so_far(app.process, timeout=4.0,
                                  until=lambda text: "app text:" in text)
@@ -370,8 +398,9 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     x.set_clipboard_text(PASTED_URL)
     x.shortcut("ctrl+v")
     time.sleep(0.7)
-    pasted = smoke.decode(window, "pasted")
-    smoke.check(pasted == PASTED_URL, f"the pasted link replaced the dropped one ({pasted!r})")
+    pasted, pasted_shot = smoke.decode(window, "pasted")
+    smoke.check_decoded(pasted, PASTED_URL,
+                        "the pasted link replaced the dropped one", pasted_shot)
 
     smoke.step("copy the code to the clipboard")
     x.set_clipboard_text("")
@@ -381,7 +410,7 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     smoke.check(x.clipboard_image(str(clipboard_png)), "a PNG image is on the clipboard")
     smoke.check("image/png" in x.clipboard_targets(), "the clipboard advertises image/png")
     decoded = decode_png(clipboard_png)
-    smoke.check(decoded == PASTED_URL, f"the copied PNG decodes to {decoded!r}")
+    smoke.check_decoded(decoded, PASTED_URL, "the copied PNG decodes", clipboard_png)
     size = subprocess.run(["identify", "-format", "%wx%h", str(clipboard_png)],
                           capture_output=True, text=True).stdout.strip()
     width, height = (int(part) for part in size.split("x"))
@@ -422,19 +451,20 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
 
     smoke.check(target_png.exists(), f"{target_png.name} was written")
     decoded = decode_png(target_png)
-    smoke.check(decoded == PASTED_URL, f"the saved PNG decodes to {decoded!r}")
+    smoke.check_decoded(decoded, PASTED_URL, "the saved PNG decodes", target_png)
     smoke.screenshot(window, "after-save")
 
     smoke.step("clear the code and drag a new link in")
     x.focus(window.id)
     x.key("Escape")
     time.sleep(0.8)
-    cleared = smoke.decode(window, "cleared")
-    smoke.check(cleared is None, "the window went back to the drop target")
+    cleared, cleared_shot = smoke.decode(window, "cleared")
+    smoke.check_decoded(cleared, None, "the window went back to the drop target", cleared_shot)
     smoke.check(smoke.geometry(window).width > 0, "the window is still there")
 
-    again = drag_until_dropped(smoke, source, window, DROPPED_URL, label="after clearing")
-    smoke.check(again == DROPPED_URL, f"the drop target works again ({again!r})")
+    again, again_shot = drag_until_dropped(smoke, source, window, DROPPED_URL,
+                                           label="after clearing")
+    smoke.check_decoded(again, DROPPED_URL, "the drop target works again", again_shot)
 
     smoke.step("quit with Ctrl+Q")
     quitting = smoke.launch([str(smoke.app)], "Enquber")
@@ -485,13 +515,13 @@ def foreign_drag(smoke: Smoke) -> None:
     smoke.screenshot(target.window, "drag-hovering")
     x.release(1)
     time.sleep(0.8)
-    dropped_in = smoke.decode(target.window, "dropped-in-1")
+    dropped_in, dropped_in_shot = smoke.decode(target.window, "dropped-in-1")
     if dropped_in != FOREIGN_URL:
         # Qt swallows the odd drop, so try again before believing it.
-        dropped_in = drag_until_dropped(smoke, source, target.window, FOREIGN_URL,
-                                        label="foreign drag", attempts=5)
-    smoke.check(dropped_in == FOREIGN_URL,
-                f"the link dragged in from another process is on screen ({dropped_in!r})")
+        dropped_in, dropped_in_shot = drag_until_dropped(smoke, source, target.window, FOREIGN_URL,
+                                                         label="foreign drag", attempts=5)
+    smoke.check_decoded(dropped_in, FOREIGN_URL,
+                        "the link dragged in from another process is on screen", dropped_in_shot)
     smoke.screenshot(target.window, "dropped-in")
 
     foreign.process.terminate()
