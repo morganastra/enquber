@@ -61,7 +61,7 @@ We also have a very luxurious smoke test setup which drives automated UI interac
 
 Extra arguments are passed through to the smoke test driver; see `just smoke-test --help` for details
 
-Smoke test screenshots are written to `$TMPDIR/enquber-smoke` 
+Smoke test screenshots are written to a date-time stamped directory under `$TMPDIR/enquber-smoke`
 
 ## Acknowledgements
 
