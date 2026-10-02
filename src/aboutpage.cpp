@@ -33,12 +33,12 @@ QLabel *makeLabel(QWidget *parent, const QString &text)
     return label;
 }
 
-/// Dims a label the same way the status line and the drop-zone hint do.
+/// Dims a label the same way the status line and the drop-zone hint do. The
+/// placeholder role is resolved when the label paints rather than frozen into
+/// an explicit palette, so the text follows a light/dark theme switch.
 void mute(QLabel *label)
 {
-    QPalette palette = label->palette();
-    palette.setColor(QPalette::WindowText, palette.color(QPalette::PlaceholderText));
-    label->setPalette(palette);
+    label->setForegroundRole(QPalette::PlaceholderText);
 }
 
 QFont scaled(const QFont &base, qreal factor)

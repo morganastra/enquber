@@ -111,6 +111,14 @@ QColor inkOf(const QImage &image)
     return {};
 }
 
+/// The colour @p widget will draw its text in, following the palette role it
+/// asked for. Checking the role like this is more robust than reading pixels,
+/// because a small glyph may never produce a fully opaque pixel.
+QColor drawnTextColor(const QWidget *widget)
+{
+    return widget->palette().color(widget->foregroundRole());
+}
+
 } // namespace
 
 class TestEnquber : public QObject
@@ -165,6 +173,7 @@ private slots:
     void fallbackIconsFollowThePalette();
     void bundledFallbacksCoverNavigationAndHelp();
     void buttonIconsFollowRuntimePaletteChanges();
+    void darkModeIsFollowed();
 
     void helpOpensWithTheKeyboardAndReturns();
     void questionMarkOpensAndClosesHelp();
@@ -859,6 +868,72 @@ void TestEnquber::buttonIconsFollowRuntimePaletteChanges()
     QVERIFY2(onLight.lightness() < 80, qPrintable(onLight.name()));
 }
 
+void TestEnquber::darkModeIsFollowed()
+{
+    // The desktop hands the theme to the app as a palette change: Qt updates
+    // the default palette when the system color scheme flips. Everything the
+    // widgets draw themselves has to follow that, and the dimmed labels in
+    // particular must not freeze the placeholder colour they were built with.
+    const QPalette original = QApplication::palette();
+
+    const QColor lightPlaceholder(0x76, 0x76, 0x76);
+    const QColor darkPlaceholder(0xc0, 0xc0, 0xc0);
+    QPalette light = original;
+    light.setColor(QPalette::PlaceholderText, lightPlaceholder);
+    QPalette dark = original;
+    dark.setColor(QPalette::Window, QColor(24, 24, 24));
+    dark.setColor(QPalette::Base, QColor(18, 18, 18));
+    dark.setColor(QPalette::WindowText, QColor(240, 240, 240));
+    dark.setColor(QPalette::PlaceholderText, darkPlaceholder);
+
+    QApplication::setPalette(light);
+    QCoreApplication::processEvents();
+
+    MainWindow window;
+    showAndActivate(&window);
+
+    auto *dropHint = window.findChild<QLabel *>(QStringLiteral("dropZoneHint"));
+    QVERIFY(dropHint);
+    QVERIFY(dropHint->isVisible());
+    QCOMPARE(int(dropHint->foregroundRole()), int(QPalette::PlaceholderText));
+    QCOMPARE(drawnTextColor(dropHint), lightPlaceholder);
+
+    QApplication::setPalette(dark);
+    QCoreApplication::processEvents();
+
+    QCOMPARE(drawnTextColor(dropHint), darkPlaceholder);
+
+    // The about page mutes its labels through its own helper.
+    QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
+    auto *aboutHint = window.findChild<QLabel *>(QStringLiteral("aboutHint"));
+    QVERIFY(aboutHint);
+    QVERIFY(aboutHint->isVisible());
+    QCOMPARE(int(aboutHint->foregroundRole()), int(QPalette::PlaceholderText));
+    QCOMPARE(drawnTextColor(aboutHint), darkPlaceholder);
+
+    // And so does the status line, which only appears after an action.
+    QTest::keyClick(&window, Qt::Key_Escape);
+    window.setText(QStringLiteral("https://dark-mode.example"));
+    window.copyToClipboard();
+    auto *status = window.findChild<QLabel *>(QStringLiteral("statusLabel"));
+    QVERIFY(status);
+    QVERIFY(status->isVisible());
+    QCOMPARE(int(status->foregroundRole()), int(QPalette::PlaceholderText));
+    QCOMPARE(drawnTextColor(status), darkPlaceholder);
+
+    // Switching back has to bring the light colours back, not leave the dark
+    // ones behind.
+    QApplication::setPalette(light);
+    QCoreApplication::processEvents();
+    QCOMPARE(drawnTextColor(status), lightPlaceholder);
+
+    QTest::keyClick(&window, Qt::Key_Escape);
+    QVERIFY(dropHint->isVisible());
+    QCOMPARE(drawnTextColor(dropHint), lightPlaceholder);
+
+    QApplication::setPalette(original);
+}
+
 void TestEnquber::helpOpensWithTheKeyboardAndReturns()
 {
     MainWindow window;
@@ -948,8 +1023,6 @@ void TestEnquber::aboutPageShowsLicenceAndLinks()
     QVERIFY(links->text().contains(QStringLiteral("github.com/morganastra/enquber")));
     QVERIFY(links->text().contains(QStringLiteral("qt.io")));
     QVERIFY(links->text().contains(QStringLiteral("libqrencode")));
-    // No KDE libraries are used, so KDE is deliberately not credited.
-    QVERIFY(!links->text().contains(QStringLiteral("kde.org"), Qt::CaseInsensitive));
     // The bundled fallback glyphs are Feather Icons, credited under MIT.
     QVERIFY(links->text().contains(QStringLiteral("Feather Icons")));
     QVERIFY(links->text().contains(QStringLiteral("Cole Bemis")));

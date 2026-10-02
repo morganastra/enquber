@@ -302,12 +302,13 @@ void MainWindow::buildUi()
     connect(m_statusTimer, &QTimer::timeout, this, &MainWindow::clearStatus);
 
     m_statusLabel = new QLabel(central);
+    m_statusLabel->setObjectName(QStringLiteral("statusLabel"));
     m_statusLabel->setAlignment(Qt::AlignCenter);
     m_statusLabel->setTextFormat(Qt::PlainText);
     m_statusLabel->setWordWrap(true);
-    QPalette statusPalette = m_statusLabel->palette();
-    statusPalette.setColor(QPalette::WindowText, statusPalette.color(QPalette::PlaceholderText));
-    m_statusLabel->setPalette(statusPalette);
+    // Same secondary-text role as the drop-zone hint: resolved at paint time,
+    // so the status line keeps up with a light/dark theme switch.
+    m_statusLabel->setForegroundRole(QPalette::PlaceholderText);
     centralLayout->addWidget(m_statusLabel);
 
     // The help button floats over the stack in the window's upper-right corner

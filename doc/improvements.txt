@@ -18,9 +18,6 @@ Platforms
 
 	Support windows
 
-Theming
-	Follow system UI theme including dark mode
-
 Misc UX
 	Draw an error banner across the top of the window if there are real errors 
 	(failure to encode a QR code, failure to decode one, etc). 
