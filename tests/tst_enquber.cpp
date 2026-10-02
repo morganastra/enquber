@@ -9,6 +9,7 @@
 #include <QApplication>
 #include <QAbstractButton>
 #include <QAction>
+#include <QByteArray>
 #include <QClipboard>
 #include <QColor>
 #include <QFileInfo>
@@ -120,6 +121,73 @@ QColor drawnTextColor(const QWidget *widget)
     return widget->palette().color(widget->foregroundRole());
 }
 
+/// Writes a minimal freedesktop icon theme under @p root named @p themeName
+/// that provides exactly one action icon, @p iconName, filled with @p color.
+/// The probe test uses this to drive the theme branch without depending on the
+/// host's installed icon themes. Returns false when anything could not be
+/// written.
+bool writeIconTheme(const QString &root, const QString &themeName,
+                    const QString &iconName, const QColor &color)
+{
+    const QString directory = QDir(root).filePath(themeName);
+    if (!QDir().mkpath(directory + QStringLiteral("/16x16/actions"))) {
+        return false;
+    }
+
+    QFile index(directory + QStringLiteral("/index.theme"));
+    if (!index.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return false;
+    }
+    const QString contents =
+        QStringLiteral("[Icon Theme]\n"
+                       "Name=%1\n"
+                       "Directories=16x16/actions\n"
+                       "\n"
+                       "[16x16/actions]\n"
+                       "Size=16\n"
+                       "Type=Fixed\n"
+                       "Context=Actions\n")
+            .arg(themeName);
+    index.write(contents.toUtf8());
+    index.close();
+
+    QImage marker(16, 16, QImage::Format_ARGB32_Premultiplied);
+    marker.fill(color);
+    return marker.save(directory + QStringLiteral("/16x16/actions/") + iconName
+                           + QStringLiteral(".png"),
+                       "PNG");
+}
+
+/// Puts the global icon-theme settings back when it goes out of scope, so a
+/// QVERIFY that fails part way through a test cannot leak a synthetic theme into
+/// the tests that follow. QVERIFY returns from the test function, which runs the
+/// guard.
+class ThemeStateRestorer
+{
+public:
+    ThemeStateRestorer()
+        : m_paths(QIcon::themeSearchPaths())
+        , m_name(QIcon::themeName())
+        , m_fallback(QIcon::fallbackThemeName())
+    {
+    }
+
+    ~ThemeStateRestorer()
+    {
+        QIcon::setThemeSearchPaths(m_paths);
+        QIcon::setFallbackThemeName(m_fallback);
+        QIcon::setThemeName(m_name);
+    }
+
+    ThemeStateRestorer(const ThemeStateRestorer &) = delete;
+    ThemeStateRestorer &operator=(const ThemeStateRestorer &) = delete;
+
+private:
+    QStringList m_paths;
+    QString m_name;
+    QString m_fallback;
+};
+
 } // namespace
 
 class TestEnquber : public QObject
@@ -174,7 +242,7 @@ private slots:
     void fallbackIconsFollowThePalette();
     void bundledFallbacksCoverNavigationAndHelp();
     void themeProbeTracksTheActiveIconTheme();
-    void repeatedBundledLookupsStayStable();
+    void bundledGlyphsCacheByColour();
     void buttonIconsFollowRuntimePaletteChanges();
     void darkModeIsFollowed();
 
@@ -840,68 +908,76 @@ void TestEnquber::bundledFallbacksCoverNavigationAndHelp()
 
 void TestEnquber::themeProbeTracksTheActiveIconTheme()
 {
-    // Build a minimal, self-contained icon theme that can answer the probe.
-    // Its icon is magenta, a colour no tinted bundled glyph can ever take, so
-    // the theme branch and the fallback branch are told apart unambiguously.
+    // Two throwaway themes: one answers the probe ("edit-copy"), the other does
+    // not but still carries another name the window asks for ("document-save").
+    // Their icons are magenta and cyan, colours no palette-tinted bundled glyph
+    // can take, so the theme and fallback branches are told apart unambiguously.
     QTemporaryDir root;
     QVERIFY(root.isValid());
-    const QString themeName = QStringLiteral("enquber-probe-test");
-    const QString themeDir = root.filePath(themeName);
-    QVERIFY(QDir().mkpath(themeDir + QStringLiteral("/16x16/actions")));
+    const QString magentaName = QStringLiteral("enquber-probe-magenta");
+    const QString cyanName = QStringLiteral("enquber-probe-cyan");
+    QVERIFY(writeIconTheme(root.path(), magentaName, QStringLiteral("edit-copy"),
+                           QColor(255, 0, 255)));
+    QVERIFY(writeIconTheme(root.path(), cyanName, QStringLiteral("document-save"),
+                           QColor(0, 255, 255)));
 
-    QFile index(themeDir + QStringLiteral("/index.theme"));
-    QVERIFY(index.open(QIODevice::WriteOnly | QIODevice::Text));
-    index.write("[Icon Theme]\n"
-                "Name=Enquber Probe Test\n"
-                "Directories=16x16/actions\n"
-                "\n"
-                "[16x16/actions]\n"
-                "Size=16\n"
-                "Type=Fixed\n"
-                "Context=Actions\n");
-    index.close();
+    // What the bundled save glyph looks like while the active theme answers
+    // nothing at all. The cyan theme must not be able to replace it: it only
+    // carries document-save, not the probe, so the lookup has to go negative.
+    const QImage bundledSave =
+        theme::icon({"document-save", "document-save-as"}).pixmap(16).toImage();
+    QVERIFY(!bundledSave.isNull());
 
-    QImage marker(16, 16, QImage::Format_ARGB32_Premultiplied);
-    marker.fill(QColor(255, 0, 255));
-    QVERIFY(marker.save(themeDir + QStringLiteral("/16x16/actions/edit-copy.png"), "PNG"));
-
-    const QStringList savedPaths = QIcon::themeSearchPaths();
-    const QString savedName = QIcon::themeName();
-    const QString savedFallback = QIcon::fallbackThemeName();
-
+    ThemeStateRestorer restore;
     QIcon::setThemeSearchPaths({root.path()});
     QIcon::setFallbackThemeName(QString());
-    QIcon::setThemeName(themeName);
 
-    // The theme answers the probe, so its own icon is handed back...
-    const QColor themed = inkOf(theme::icon({"edit-copy"}).pixmap(16).toImage());
-    QVERIFY2(themed.isValid(), "the synthetic theme did not provide edit-copy");
-    QCOMPARE(themed, QColor(255, 0, 255));
+    // A theme that answers the probe hands back its own icon.
+    QIcon::setThemeName(magentaName);
+    const QColor magenta = inkOf(theme::icon({"edit-copy"}).pixmap(16).toImage());
+    QVERIFY2(magenta.isValid(), "the magenta theme did not provide edit-copy");
+    QCOMPARE(magenta, QColor(255, 0, 255));
 
-    // ...while a name that theme does not carry still falls back to the bundled
-    // glyph rather than coming back empty.
-    QVERIFY(!theme::icon({"document-save"}).isNull());
+    // A theme without the probe re-probes and goes negative, so the whole lookup
+    // falls back to the bundled glyph instead of the theme's cyan document-save.
+    // A cache that ignored the theme name would keep the magenta answer and hand
+    // back the cyan icon here.
+    QIcon::setThemeName(cyanName);
+    QCOMPARE(theme::icon({"document-save", "document-save-as"}).pixmap(16).toImage(),
+             bundledSave);
 
-    // Switching back to a theme with no action icons has to re-probe: the theme
-    // icon goes away and the palette-tinted bundled glyph returns.
-    QIcon::setThemeSearchPaths(savedPaths);
-    QIcon::setFallbackThemeName(savedFallback);
-    QIcon::setThemeName(savedName);
-
-    const QColor bundled = inkOf(theme::icon({"edit-copy"}).pixmap(64).toImage());
-    QVERIFY(bundled.isValid());
-    QVERIFY(bundled != QColor(255, 0, 255));
+    // Switching back has to re-probe positive again and return the theme icon; a
+    // cache stuck on the cyan answer would keep the bundled glyph.
+    QIcon::setThemeName(magentaName);
+    QCOMPARE(inkOf(theme::icon({"edit-copy"}).pixmap(16).toImage()), QColor(255, 0, 255));
 }
 
-void TestEnquber::repeatedBundledLookupsStayStable()
+void TestEnquber::bundledGlyphsCacheByColour()
 {
-    // The second lookup is served from the bundled-glyph cache; it has to be
-    // indistinguishable from the first.
-    const QIcon first = theme::icon({"edit-copy"});
-    const QIcon second = theme::icon({"edit-copy"});
-    QVERIFY(!first.isNull());
-    QVERIFY(!second.isNull());
-    QCOMPARE(first.pixmap(24).toImage(), second.pixmap(24).toImage());
+    // The bundled-glyph cache is keyed on the tint, so the same glyph under two
+    // foreground colours must not collide, and the first colour has to come back
+    // exactly from its still-cached entry.
+    const QPalette original = QApplication::palette();
+
+    QPalette light = original;
+    light.setColor(QPalette::WindowText, QColor(Qt::black));
+    QApplication::setPalette(light);
+    const QImage onLight = theme::icon({"edit-copy"}).pixmap(64).toImage();
+
+    QPalette dark = original;
+    dark.setColor(QPalette::WindowText, QColor(Qt::white));
+    QApplication::setPalette(dark);
+    const QImage onDark = theme::icon({"edit-copy"}).pixmap(64).toImage();
+
+    QApplication::setPalette(light);
+    const QImage onLightAgain = theme::icon({"edit-copy"}).pixmap(64).toImage();
+
+    QApplication::setPalette(original);
+
+    QVERIFY(!onLight.isNull());
+    QVERIFY(!onDark.isNull());
+    QVERIFY2(onLight != onDark, "the cache returned one colour's glyph for another");
+    QCOMPARE(onLightAgain, onLight);
 }
 
 void TestEnquber::buttonIconsFollowRuntimePaletteChanges()
