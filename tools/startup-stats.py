@@ -60,14 +60,19 @@ def numbers(runs, key: str) -> list[float]:
 
     @p runs may be a list of run dicts (the normal per-command shape) or the
     flat list of floats that startup-settle.py emits for its paired delta.
+    Values that are not numbers are treated as unusable rather than raising.
     """
     if not isinstance(runs, list):
         return []
-    if all(isinstance(value, (int, float)) for value in runs):
+    if all(isinstance(value, (int, float)) and not isinstance(value, bool)
+           for value in runs):
         return [float(value) for value in runs]
     if not all(isinstance(run, dict) and key in run for run in runs):
         return []
-    return [float(run[key]) for run in runs]
+    try:
+        return [float(run[key]) for run in runs]
+    except (TypeError, ValueError):
+        return []
 
 
 def load_json(text: str):
@@ -112,16 +117,36 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {error}", file=sys.stderr)
         return 2
 
+    if not isinstance(payload, dict):
+        print("error: the input is not a JSON object", file=sys.stderr)
+        return 2
     if not payload:
         print("error: no runs in the input", file=sys.stderr)
         return 2
 
     paired_delta = payload.pop("paired_delta", None)
+    # startup-settle records the pair's labels when they are not the defaults.
+    baseline_label = payload.pop("baseline", None)
+    candidate_label = payload.pop("candidate", None)
 
     # Explicitly-named baseline/candidate come first; otherwise fall back to the
     # enquber-versus-reference convention used by the startup-settle recipe.
     labels = list(payload)
-    if "baseline" in labels and "candidate" in labels:
+    if paired_delta and baseline_label and candidate_label \
+            and baseline_label in labels and candidate_label in labels:
+        enquber = candidate_label
+        other = [label for label in labels if label not in (baseline_label, candidate_label)]
+        if args.reference in labels:
+            reference = args.reference
+        elif "reference" in labels:
+            reference = "reference"
+        elif len(other) == 1:
+            reference = other[0]
+        elif other:
+            reference = find_command(other, args.reference)
+        else:
+            reference = baseline_label
+    elif "baseline" in labels and "candidate" in labels:
         enquber = "candidate"
         if args.reference in labels:
             reference = args.reference
@@ -134,7 +159,9 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 reference = find_command(other, args.reference)
         else:
-            reference = None
+            # With just a pair, compare the candidate against the baseline itself
+            # and report the paired delta; the usual kcalc reference is optional.
+            reference = "baseline"
     else:
         enquber = find_command(labels, "enquber")
         reference = find_command(labels, args.reference)

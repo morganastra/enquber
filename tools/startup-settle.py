@@ -221,7 +221,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="seconds of no change needed to call it settled "
                              "(default: 0.3)")
     parser.add_argument("--video", default=None,
-                        help="directory for one .mp4 per run (half resolution)")
+                        help="directory for one .mp4 per measured run, named "
+                             "<label>-<round>.mp4 (half resolution)")
     parser.add_argument("--json", action="store_true",
                         help="print the raw runs as JSON instead of a table")
     parser.add_argument("--verbose", action="store_true",
@@ -237,67 +238,89 @@ def main(argv: list[str] | None = None) -> int:
         """Splits an optional 'label,command' spec; shlex then tokenises it.
 
         The separator is a comma rather than a semicolon because `just` splices
-        *args back into a shell line and a semicolon would end the command.
+        *args back into a shell line and a semicolon would end the command. The
+        text before the comma is only treated as a label when it is a single
+        bare word (no spaces, no quotes), so a command that happens to contain a
+        comma — `--command 'python3 -c "print(1,2)"'` — keeps working.
         """
         label, separator, body = text.partition(",")
-        if not separator:
-            label, body = default_label, text
-        command = shlex.split(body)
+        if separator and label == label.strip() and label and " " not in label and "\t" not in label:
+            try:
+                command = shlex.split(body)
+            except ValueError:
+                command = []
+            if command:
+                return (label, command)
+        try:
+            command = shlex.split(text)
+        except ValueError as error:
+            parser.error(f"could not parse command '{text}': {error}")
         if not command:
             parser.error(f"empty command in '{text}'")
-        return (label or " ".join(command)), command
+        return ((default_label or " ".join(command)), command)
 
     # Commands are measured in rounds and the launch order is rotated each round,
     # so a period where the machine is slow hits every command equally. A single
     # command is just sequential runs; the pair (or more) get drift-resistant
-    # medians instead of whichever happened to run last.
-    specs: list[tuple[str, list[str]]] = []
+    # medians instead of whichever happened to run last. The role is kept apart
+    # from the display label so a custom label cannot hide the baseline/candidate
+    # pair from the paired-delta calculation.
+    specs: list[tuple[str, str, list[str]]] = []
     if args.baseline is not None or args.candidate is not None:
         if args.baseline is None or args.candidate is None:
             parser.error("--baseline and --candidate have to be given together")
-        specs.append(parse_spec(args.baseline, "baseline"))
-        specs.append(parse_spec(args.candidate, "candidate"))
+        base_label, base_command = parse_spec(args.baseline, "baseline")
+        cand_label, cand_command = parse_spec(args.candidate, "candidate")
+        specs.append(("baseline", base_label, base_command))
+        specs.append(("candidate", cand_label, cand_command))
         # Any --command on top is an extra reference measured in the same rounds.
         for text in args.command or []:
-            specs.append(parse_spec(text))
+            label, command = parse_spec(text)
+            specs.append(("reference", label, command))
     elif args.command:
         for text in args.command:
-            specs.append(parse_spec(text))
+            label, command = parse_spec(text)
+            specs.append((label, label, command))
     else:
-        specs.append(("./build/enquber", ["./build/enquber"]))
+        specs.append(("./build/enquber", "./build/enquber", ["./build/enquber"]))
+
+    roles = {role for role, _, _ in specs}
+    if "baseline" in roles and "candidate" in roles:
+        if len({label for _, label, _ in specs}) != len(specs):
+            parser.error("commands must have distinct labels to be summarised apart")
 
     video_dir = Path(args.video) if args.video else None
     if video_dir:
         video_dir.mkdir(parents=True, exist_ok=True)
 
-    results: dict[str, list[Run]] = {name: [] for name, _ in specs}
+    results: dict[str, list[Run]] = {label: [] for _, label, _ in specs}
     paired: list[float] = []
     try:
         for round_index in range(args.runs):
             offset = round_index % len(specs)
             sequence = specs[offset:] + specs[:offset]
             stable_this_round: dict[str, float] = {}
-            for name, command in sequence:
+            for role, label, command in sequence:
                 try:
                     frames = record(command, args.display, args.duration, args.lead,
                                     args.fps, video_dir is not None)
                     result = analyse(frames, args.appear_threshold,
                                      args.change_threshold, args.stable_window)
                 except (Failure, FileNotFoundError) as failure:
-                    print(f"  {name}: {failure}", file=sys.stderr)
+                    print(f"  {label}: {failure}", file=sys.stderr)
                     continue
-                result.command = name
+                result.command = label
                 if video_dir:
-                    result.clip = video_dir / f"{Path(command[0]).name}-{round_index + 1}.mp4"
+                    result.clip = video_dir / f"{label}-{round_index + 1}.mp4"
                     try:
                         write_video(result.clip, frames, args.fps)
                     except (subprocess.CalledProcessError, FileNotFoundError) as error:
                         print(f"     could not write {result.clip}: {error}",
                               file=sys.stderr)
                         result.clip = None
-                results[name].append(result)
-                stable_this_round[name] = result.stable
-                print(f"  round {round_index + 1} {name}: appear {result.appear:.2f}s  "
+                results[label].append(result)
+                stable_this_round[role] = result.stable
+                print(f"  round {round_index + 1} {label}: appear {result.appear:.2f}s  "
                       f"stable {result.stable:.2f}s  settle {result.settle:.2f}s"
                       + (f"  -> {result.clip.name}" if result.clip else ""),
                       file=sys.stderr)
@@ -308,11 +331,15 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.json:
-        payload = {name: [vars(run) | {"clip": str(run.clip) if run.clip else None}
-                          for run in runs]
-                   for name, runs in results.items()}
+        payload = {label: [vars(run) | {"clip": str(run.clip) if run.clip else None}
+                           for run in results[label]]
+                   for _, label, _ in specs}
         if paired:
             payload["paired_delta"] = paired
+            # Record which labels the pair belongs to, so a summariser can report
+            # the paired delta without relying on the default label names.
+            payload["baseline"] = next(label for role, label, _ in specs if role == "baseline")
+            payload["candidate"] = next(label for role, label, _ in specs if role == "candidate")
         print(json.dumps(payload, indent=2, default=str))
         return 0
 
@@ -328,17 +355,17 @@ def main(argv: list[str] | None = None) -> int:
           f"change > {args.change_threshold:g}/255)")
     header = f"  {'command':<28} {'appear':>7} {'stable':>7} {'settle':>7} {'tail':>7}  status"
     print(header)
-    for name, _ in specs:
-        runs = results[name]
+    for _, label, _ in specs:
+        runs = results[label]
         if not runs:
-            print(f"  {name:<28} no successful runs")
+            print(f"  {label:<28} no successful runs")
             continue
         appears = [run.appear for run in runs]
         stables = [run.stable for run in runs]
         settles = [run.settle for run in runs]
         tails = [run.tail for run in runs]
         status = "settled" if all(run.settled for run in runs) else "still moving at clip end"
-        print(f"  {name:<28} {statistics.median(appears):6.2f}s "
+        print(f"  {label:<28} {statistics.median(appears):6.2f}s "
               f"{statistics.median(stables):6.2f}s {statistics.median(settles):6.2f}s "
               f"{statistics.median(tails):6.2f}s  {status}")
         if len(runs) > 1:
