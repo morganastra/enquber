@@ -68,8 +68,7 @@ QImage tinted(const QImage &source, const QColor &color)
 
 /// Upper bound on the bundled-glyph cache: seven glyphs times a few palette
 /// tints (a light and a dark foreground in practice), with headroom for the odd
-/// intermediate colour. Tightening it to the light/dark working set would clear
-/// the whole cache on a third tint and throw away entries still in use.
+/// intermediate colour. 
 constexpr int kMaxCachedGlyphs = 64;
 
 /// Loads the bundled glyph for @p themeName and tints it, or a null QIcon when
@@ -108,24 +107,8 @@ QIcon bundledIcon(const QString &themeName)
     return icon;
 }
 
-/// Whether the active icon theme can resolve the action icons enquber uses.
-///
-/// A plain XDG session only ships the hicolor theme, which has no action icons,
-/// so every QIcon::fromTheme() call is a guaranteed miss. Checking one ubiquitous
-/// name once and caching the answer turns a dozen of those failures into a single
-/// one. The check is deliberately all-or-nothing: a theme that lacks the probe
-/// ("edit-copy", which every real icon theme provides) is assumed to lack the
-/// rest too, and enquber's bundled glyphs are used without asking again. A theme
-/// that has the probe still goes through the normal per-name lookup.
-///
-/// The answer is tied to the theme name it was probed under, so switching icon
-/// themes at runtime re-probes. Only the name is watched: changing
-/// QIcon::themeSearchPaths() without also changing the name would not invalidate
-/// the answer. enquber never does that; callers that swap search paths at runtime
-/// (tests) have to change the name as well. An empty theme name is treated as
-/// "not settled yet" (the probe can run before the platform theme is applied) and
-/// is never cached, so an early miss cannot stick around for the rest of the
-/// process.
+/// If the system theme does not provide action icons, we can skip subsequent
+/// QIcon::fromTheme() calls (which cost thousands of syscalls each!)
 bool themeProvidesActionIcons()
 {
     const QString themeName = QIcon::themeName();
@@ -151,9 +134,7 @@ bool themeProvidesActionIcons()
 
 QIcon icon(std::initializer_list<const char *> names)
 {
-    // Only ask the icon theme when it is worth it: on a plain session every one
-    // of these calls would fail, and the bundled glyphs below can answer just as
-    // well. See themeProvidesActionIcons() for the trade-off.
+    // Only try to get action icons if the theme actually provides them
     if (themeProvidesActionIcons()) {
         for (const char *name : names) {
             const QIcon candidate = QIcon::fromTheme(QString::fromLatin1(name));

@@ -23,11 +23,3 @@ Misc UX
 	(failure to encode a QR code, failure to decode one, etc). 
 
 	Only show one error banner at a time; auto-dismiss if another action happens successfully
-
-Performance
-	Startup theme-icon lookups are done: MainWindow now probes the active icon
-	theme once and falls back to the bundled glyphs for the whole set when the
-	theme has no action icons, and the never-displayed quit/help action icons
-	were dropped. Fully-settled startup is now faster than kcalc on Xvfb; see
-	doc/startup-performance.md.
-

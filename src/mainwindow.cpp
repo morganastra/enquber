@@ -414,8 +414,6 @@ void MainWindow::refreshActionIcons()
     m_copyAction->setIcon(theme::icon({"edit-copy"}));
     m_saveAction->setIcon(theme::icon({"document-save", "document-save-as"}));
     m_clearAction->setIcon(theme::icon({"edit-clear", "edit-clear-all", "window-close"}));
-    // The quit and help actions never show an icon (help is the custom-painted
-    // HelpButton, quit has no widget), so they are not resolved at all.
 
     m_copyButton->setIcon(m_copyAction->icon());
     m_saveButton->setIcon(m_saveAction->icon());
