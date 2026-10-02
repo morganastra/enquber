@@ -174,6 +174,7 @@ private slots:
     void fallbackIconsFollowThePalette();
     void bundledFallbacksCoverNavigationAndHelp();
     void themeProbeTracksTheActiveIconTheme();
+    void repeatedBundledLookupsStayStable();
     void buttonIconsFollowRuntimePaletteChanges();
     void darkModeIsFollowed();
 
@@ -890,6 +891,17 @@ void TestEnquber::themeProbeTracksTheActiveIconTheme()
     const QColor bundled = inkOf(theme::icon({"edit-copy"}).pixmap(64).toImage());
     QVERIFY(bundled.isValid());
     QVERIFY(bundled != QColor(255, 0, 255));
+}
+
+void TestEnquber::repeatedBundledLookupsStayStable()
+{
+    // The second lookup is served from the bundled-glyph cache; it has to be
+    // indistinguishable from the first.
+    const QIcon first = theme::icon({"edit-copy"});
+    const QIcon second = theme::icon({"edit-copy"});
+    QVERIFY(!first.isNull());
+    QVERIFY(!second.isNull());
+    QCOMPARE(first.pixmap(24).toImage(), second.pixmap(24).toImage());
 }
 
 void TestEnquber::buttonIconsFollowRuntimePaletteChanges()
