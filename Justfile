@@ -30,6 +30,16 @@ smoke-test *args:
     cmake --build --preset smoke
     tools/smoke.py --app build/smoke/enquber --dragsource build/smoke/tools/dragsource {{args}}
 
+# Build, then measure how long an app's window takes to stop changing.
+#
+# This records the framebuffer and compares frames, so it catches late-loading
+# UI. Repeat --command to compare applications; the default command is
+# ./build/enquber:
+#
+#     just startup-settle --display :9 --command ./build/enquber --command dolphin
+startup-settle *args: build
+    tools/startup-settle.py {{args}}
+
 # Build, then launch the application.
 run: build
     ./build/enquber

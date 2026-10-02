@@ -21,6 +21,8 @@ rebuild first):
 - `just build`, `just run`
 - `just test` — build + unit tests
 - `just smoke-test [args]` — build smoke helpers + drive the real GUI
+- `just startup-settle [args]` — record the Xvfb framebuffer and measure when
+  the UI stops changing (compare apps with repeated `--command`)
 - `just package-arch`
 
 There are two build trees from `CMakePresets.json`; use the presets rather than
