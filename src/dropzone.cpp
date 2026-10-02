@@ -41,10 +41,12 @@ DropZone::DropZone(QWidget *parent)
     m_title->setFont(titleFont(font()));
 
     m_hint = new QLabel(tr("or press Ctrl+V to paste one"), this);
+    m_hint->setObjectName(QStringLiteral("dropZoneHint"));
     m_hint->setAlignment(Qt::AlignCenter);
-    QPalette hintPalette = m_hint->palette();
-    hintPalette.setColor(QPalette::WindowText, hintPalette.color(QPalette::PlaceholderText));
-    m_hint->setPalette(hintPalette);
+    // Secondary text takes the palette's placeholder colour. Asking for the
+    // role instead of copying the colour into the palette means it is resolved
+    // when the label paints, so it follows a switch to dark mode.
+    m_hint->setForegroundRole(QPalette::PlaceholderText);
 
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(24, 24, 24, 24);
