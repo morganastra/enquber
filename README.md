@@ -22,7 +22,7 @@ On macos, use brew:
 
 To run the smoke tests you also need
 
-    zbar imagemagick xclip python-xlib xorg-server-xvfb
+    zbar imagemagick xclip python-xlib python-pyqt6 xorg-server-xvfb
 
 To build/run:
 
