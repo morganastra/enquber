@@ -309,6 +309,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"missing required tool: {tool}", file=sys.stderr)
             return 2
 
+    # The drag-out step needs a drop target, which is built on PyQt6 (see
+    # tools/droptarget.py). The other steps do not, but there is no point
+    # starting a run that will fail part way through.
+    import importlib.util
+
+    if importlib.util.find_spec("PyQt6") is None:
+        print("missing required module: PyQt6 (needed by tools/droptarget.py)",
+              file=sys.stderr)
+        return 2
+
     if args.shots:
         shots = Path(args.shots)
     else:
@@ -454,6 +464,9 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     smoke.check_decoded(decoded, PASTED_URL, "the saved PNG decodes", target_png)
     smoke.screenshot(window, "after-save")
 
+    smoke.step("drag the code out to another application")
+    drag_out(smoke, window, PASTED_URL)
+
     smoke.step("clear the code and drag a new link in")
     x.focus(window.id)
     x.key("Escape")
@@ -481,6 +494,48 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     smoke.check(code == 0, f"the application exited cleanly (code {code})")
     smoke.check(x.find("Enquber", pid=quitting.process.pid) is None,
                 "the window is gone once the process has exited")
+
+
+def drag_out(smoke: Smoke, source: Window, expected: str) -> None:
+    """Drags the generated code onto a drop target and checks what arrived.
+
+    The target is the mirror of tools/dragsource.cpp: it accepts the drag and
+    copies the file it is offered, which is what a file manager does. It exits
+    once it has copied something, so the test drags until it has.
+    """
+    received = smoke.shots / "drag-out"
+    if received.exists():
+        shutil.rmtree(received)
+
+    target = smoke.launch([sys.executable,
+                           str(Path(__file__).resolve().parent / "droptarget.py"),
+                           "--save", str(received)], "drop-target")
+    target.window = smoke.place(target.window.id, 700, 40, 360, 240)
+    destination = (target.window.x + target.window.width // 2,
+                   target.window.y + target.window.height // 2)
+
+    for attempt in range(1, 7):
+        drag_with_mouse(smoke, smoke.geometry(source), destination)
+        time.sleep(1.0)
+        # Numbered like the other retry loops, so a failure keeps the evidence
+        # of every attempt instead of only the last one.
+        smoke.screenshot_screen(f"drag-out-{attempt}")
+        if sorted(received.glob("*.png")):
+            break
+    else:
+        target.process.terminate()
+        target.process.wait(timeout=5)
+        raise Failure("the drag out was never accepted by the drop target "
+                      f"(screenshots in {smoke.shots})")
+
+    saved = sorted(received.glob("*.png"))
+    smoke.check(bool(saved), "the target saved a PNG file")
+    # The name itself is suggestedFileName()'s business and may change; what
+    # the drag guarantees is that the file arrives named after the link.
+    smoke.check(saved[0].suffix == ".png" and "example.com" in saved[0].name,
+                f"the dropped file is named after the link ({saved[0].name})")
+    decoded = decode_png(saved[0])
+    smoke.check_decoded(decoded, expected, f"the dragged file {saved[0].name} decodes", saved[0])
 
 
 def foreign_drag(smoke: Smoke) -> None:
