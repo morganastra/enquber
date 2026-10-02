@@ -23,6 +23,8 @@ add_library(enquber_core STATIC
     src/dropzone.h
     src/mainwindow.cpp
     src/mainwindow.h
+    src/mimeimage.cpp
+    src/mimeimage.h
     src/mimetext.cpp
     src/mimetext.h
     src/qrcode.cpp
