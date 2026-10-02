@@ -37,35 +37,38 @@ which the interface stops moving is the honest number.
   also the last change, `stable` coincides with `appear`, and `settle` reads
   0.000 s. `stable` is the meaningful figure.
 
-`tools/startup-stats.py` turns `startup-settle.py --json` output into the
-medians, spread and delta. It is stdlib-only and needs no numpy.
+`tools/startup-settle.py` measures the given commands in rounds and rotates the
+launch order every round, so a slow stretch of the machine hits each command
+equally instead of whichever happened to run next. A single `--command` is just
+sequential runs; several commands get drift-resistant medians; naming a
+`--baseline` and `--candidate` additionally reports the paired per-round delta.
 
-`tools/startup-ab.py` does the same for a pairwise comparison, but measures the
-baseline and the candidate once per round and rotates the launch order each
-round, so machine drift cannot bias whichever runs first.
+`tools/startup-stats.py` turns `startup-settle.py --json` output into a
+paste-ready table with the delta and target verdict. It is stdlib-only and needs
+no numpy.
 
 ## How to reproduce
 
-Start a throwaway display, then compare against the default reference (`kcalc`):
+Start a throwaway display, then compare against a reference (`kcalc`):
 
     Xvfb :9 -screen 0 1280x1024x24 -nolisten tcp &
-    DISPLAY=:9 just startup-compare
+    DISPLAY=:9 just startup-settle --runs 12 --command ./build/enquber --command kcalc
 
-`just startup-compare` builds first, runs `--runs 12` per command (override with
-`runs=N`) and forwards any extra arguments. The `--display` value comes from
-`$DISPLAY`; pass `--display :N` as an extra argument to override it. The
-reference defaults to `kcalc` (override with `reference=NAME`).
+`just startup-settle` builds first and forwards its arguments. The `--display`
+value comes from `$DISPLAY`; pass `--display :N` to override it.
 
-For a paste-ready summary, feed the JSON through the stats helper:
+For a paste-ready summary with a target verdict, feed the JSON through the stats
+helper:
 
-    DISPLAY=:9 just startup-compare --json | tools/startup-stats.py
+    DISPLAY=:9 just startup-settle --runs 12 --command ./build/enquber --command kcalc \
+        --json | tools/startup-stats.py --reference kcalc
 
 For the same-session A/B between a `main` binary and the optimized one, build
-`main` into its own tree and use the order-balanced harness:
+`main` into its own tree and name the pair:
 
     git worktree add /tmp/enq-main f5f4758
     (cd /tmp/enq-main && cmake --preset default && cmake --build --preset default)
-    DISPLAY=:9 just startup-ab /tmp/enq-main/build/enquber ./build/enquber --reference kcalc
+    DISPLAY=:9 just startup-bench /tmp/enq-main/build/enquber ./build/enquber --runs 15
 
 ## Baseline results
 
@@ -102,9 +105,9 @@ longer re-scale and re-tint them.
 
 To separate the change from machine drift, two binaries were built from the same
 compiler and flags — `main` at `f5f4758` versus the optimized branch — and run
-with `tools/startup-ab.py` on Xvfb 1280x1024x24. It measures all three commands
-once per round and rotates the launch order each round, so a slow period hits
-every command equally. n=15 rounds per command.
+with `tools/startup-settle.py --baseline … --candidate …` on Xvfb 1280x1024x24.
+It measures all three commands once per round and rotates the launch order each
+round, so a slow period hits every command equally. n=15 rounds per command.
 
 | command | n | stable min | stable median | stable p90 | stable max |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -127,7 +130,8 @@ launch on hicolor drops the filesystem calls touching `/icons/` from ~129k to
 Reproduce the target metric with:
 
     Xvfb :9 -screen 0 1280x1024x24 -nolisten tcp &
-    DISPLAY=:9 just runs=15 startup-compare --json | tools/startup-stats.py
+    DISPLAY=:9 just startup-settle --runs 15 --command ./build/enquber --command 'kcalc,kcalc' \
+        --json | tools/startup-stats.py --reference kcalc
 
 ## Conclusion
 

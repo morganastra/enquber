@@ -3,19 +3,25 @@
 
 Reads the JSON from a file or stdin and prints, per command, the median, min,
 p90 and max of the "stable" time (launch -> last frame change), plus the
-enquber-minus-reference delta and whether the median target is met. Only the
+candidate-minus-reference delta and whether the median target is met. Only the
 standard library is used, so it needs no numpy.
+
+With a --baseline/--candidate pair it also prints the paired per-round delta
+under the table; the candidate is then the "enquber" side of the verdict.
 
 A piped run may be preceded by build logs (just(1) builds first and cmake writes
 to stdout), so any leading lines before the JSON document are ignored.
 
     tools/startup-settle.py --display :9 --runs 12 --json \
-        --command ./build/enquber --command kcalc \
+        --command ./build/enquber --command 'kcalc,kcalc' \
+        | tools/startup-stats.py --reference kcalc
+    tools/startup-settle.py --display :9 --runs 15 --json \
+        --baseline /tmp/enq-main/build/enquber --candidate ./build/enquber \
         | tools/startup-stats.py
     tools/startup-stats.py results.json --reference kcalc
 
-The exit status is 0 when enquber's median is within --threshold seconds of the
-reference median, 1 when it is not, and 2 on an input error.
+The exit status is 0 when the candidate's median is within --threshold seconds
+of the reference median, 1 when it is not, and 2 on an input error.
 """
 
 from __future__ import annotations
@@ -49,12 +55,19 @@ def find_command(labels: list[str], needle: str) -> str | None:
     return None
 
 
-def numbers(runs: list[dict], key: str) -> list[float]:
-    """The values of @p key across @p runs; empty if the key is absent."""
-    values = [run[key] for run in runs if key in run]
-    if len(values) != len(runs):
+def numbers(runs, key: str) -> list[float]:
+    """The values of @p key across @p runs; empty if the key is absent.
+
+    @p runs may be a list of run dicts (the normal per-command shape) or the
+    flat list of floats that startup-settle.py emits for its paired delta.
+    """
+    if not isinstance(runs, list):
         return []
-    return [float(value) for value in values]
+    if all(isinstance(value, (int, float)) for value in runs):
+        return [float(value) for value in runs]
+    if not all(isinstance(run, dict) and key in run for run in runs):
+        return []
+    return [float(run[key]) for run in runs]
 
 
 def load_json(text: str):
@@ -103,12 +116,31 @@ def main(argv: list[str] | None = None) -> int:
         print("error: no runs in the input", file=sys.stderr)
         return 2
 
+    paired_delta = payload.pop("paired_delta", None)
+
+    # Explicitly-named baseline/candidate come first; otherwise fall back to the
+    # enquber-versus-reference convention used by the startup-settle recipe.
     labels = list(payload)
-    enquber = find_command(labels, "enquber")
-    reference = find_command(labels, args.reference)
-    if enquber is None:
-        print(f"error: no enquber command in {labels}", file=sys.stderr)
-        return 2
+    if "baseline" in labels and "candidate" in labels:
+        enquber = "candidate"
+        if args.reference in labels:
+            reference = args.reference
+        elif "reference" in labels:
+            reference = "reference"
+        elif len(labels) > 2:
+            other = [label for label in labels if label not in ("baseline", "candidate")]
+            if len(other) == 1:
+                reference = other[0]
+            else:
+                reference = find_command(other, args.reference)
+        else:
+            reference = None
+    else:
+        enquber = find_command(labels, "enquber")
+        reference = find_command(labels, args.reference)
+        if enquber is None:
+            print(f"error: no enquber command in {labels}", file=sys.stderr)
+            return 2
 
     stable: dict[str, list[float]] = {}
     appear: dict[str, list[float]] = {}
@@ -120,12 +152,15 @@ def main(argv: list[str] | None = None) -> int:
         appear[label] = numbers(runs, "appear")
         settle[label] = numbers(runs, "settle")
 
+    empty = [label for label, values in stable.items() if not values]
+    if stable.get(enquber) and empty:
+        print(f"warning: no usable stable values for {', '.join(empty)}",
+              file=sys.stderr)
     if not stable[enquber]:
         print(f"error: no usable stable values for {enquber}", file=sys.stderr)
         return 2
-    if reference is not None and not stable[reference]:
-        print(f"error: no usable stable values for {args.reference}",
-              file=sys.stderr)
+    if reference is not None and not stable.get(reference):
+        print(f"error: no usable stable values for '{reference}'", file=sys.stderr)
         return 2
 
     has_appear = any(appear.values())
@@ -139,7 +174,8 @@ def main(argv: list[str] | None = None) -> int:
     if has_settle:
         header += " settle med |"
         rule += " ---: |"
-    print(f"startup stats ({args.reference} reference, seconds)\n")
+    title = f"startup stats ({reference or args.reference} reference, seconds)"
+    print(f"{title}\n")
     print(header)
     print(rule)
     for label in labels:
@@ -173,7 +209,12 @@ def main(argv: list[str] | None = None) -> int:
     met = delta <= args.threshold
     print(f"{enquber} stable median {enquber_median:.3f}s vs {reference} "
           f"{reference_median:.3f}s: delta {delta:+.3f}s")
-    print(f"target ({enquber.split()[0]} <= {args.reference}, "
+    if paired_delta:
+        deltas = numbers(paired_delta, "")
+        faster = sum(1 for value in deltas if value < 0)
+        print(f"paired {enquber} - baseline delta: median "
+              f"{statistics.median(deltas):+.3f}s ({faster}/{len(deltas)} rounds faster)")
+    print(f"target ({enquber.split()[0]} <= {reference}, "
           f"threshold {args.threshold:+.3f}s): "
           f"{'MET' if met else 'NOT MET'}")
     return 0 if met else 1

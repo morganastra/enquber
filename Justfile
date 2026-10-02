@@ -43,13 +43,18 @@ clean:
 package-arch: 
     cd packaging/arch && makepkg -f
 
-# Shortcuts for startup performance measurement tools:
-runs := "12"
-reference := "kcalc"
+# Shortcuts for startup performance measurement:
+#
+# startup-settle rotates the launch order every round, so its medians are
+# drift-resistant; pass --json and pipe through tools/startup-stats.py for a
+# table and verdict. startup-bench compares a candidate binary against a
+# baseline with the paired per-round delta:
+#
+#     DISPLAY=:9 just startup-settle --runs 5 --command ./build/enquber --command kcalc
+#     DISPLAY=:9 just startup-bench /tmp/enq-main/build/enquber ./build/enquber --runs 15
+startup-settle *args: build
+    tools/startup-settle.py {{args}}
 
-startup-compare *args: build
-    tools/startup-settle.py --runs {{runs}} --command ./build/enquber --command "{{reference}}" {{args}}
-
-startup-ab baseline candidate *args: build
-    tools/startup-ab.py --baseline "{{baseline}}" --candidate "{{candidate}}" {{args}}
+startup-bench baseline candidate *args: build
+    tools/startup-settle.py --baseline "{{baseline}}" --candidate "{{candidate}}" {{args}}
 
