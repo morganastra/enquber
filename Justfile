@@ -40,6 +40,37 @@ smoke-test *args:
 startup-settle *args: build
     tools/startup-settle.py {{args}}
 
+# Defaults for startup-compare; override before the recipe name, e.g.
+# `just runs=20 reference=dolphin startup-compare`.
+runs := "12"
+reference := "kcalc"
+
+# Build, then compare enquber's settled startup against a reference app.
+#
+# Runs tools/startup-settle.py with the full run count for both ./build/enquber
+# and the reference, so the medians are directly comparable. The display comes
+# from $DISPLAY (tools/startup-settle.py's own default); pass --display as an
+# extra argument to override it. Extra arguments are forwarded verbatim:
+#
+#     DISPLAY=:9 just startup-compare
+#     just runs=20 reference=dolphin startup-compare
+#     DISPLAY=:9 just startup-compare --json | tools/startup-stats.py
+#
+# `runs` and `reference` are justfile variables (just passes recipe parameters
+# positionally, so they cannot be given as name=value after the recipe name);
+# override them before the recipe.
+startup-compare *args: build
+    tools/startup-settle.py --runs {{runs}} --command ./build/enquber --command "{{reference}}" {{args}}
+
+# Build, then A/B a candidate binary against a baseline binary with the launch
+# order rotated each round, so machine drift cannot favour either side. An
+# optional reference (e.g. kcalc) is measured in the same session:
+#
+#     Xvfb :9 -screen 0 1280x1024x24 -nolisten tcp &
+#     DISPLAY=:9 just startup-ab /tmp/enq-main/build/enquber ./build/enquber --reference kcalc
+startup-ab baseline candidate *args: build
+    tools/startup-ab.py --baseline "{{baseline}}" --candidate "{{candidate}}" {{args}}
+
 # Build, then launch the application.
 run: build
     ./build/enquber
