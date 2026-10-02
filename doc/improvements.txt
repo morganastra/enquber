@@ -1,5 +1,8 @@
 Features
-	Support drag and drop of a generated QR code (e.g. drag the QR code onto the desktop to save it as a file there, drag it into a document to insert it, etc)
+	Improve the file name used when the QR code is dragged or saved: a link
+	with an opaque path segment or a long id (e.g. .../d/AbC123.../view)
+	still produces a long, ugly name. Prefer the host and the last meaningful
+	path segment, and collapse long hex/uuid runs.
 
 	If the QR code encodes a URL, make it clickable
 

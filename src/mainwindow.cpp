@@ -2,15 +2,16 @@
 
 #include "aboutpage.h"
 #include "dropzone.h"
+#include "mimeimage.h"
 #include "mimetext.h"
 #include "qrview.h"
 #include "theme.h"
 
 #include <QAbstractButton>
 #include <QAction>
-#include <QBuffer>
 #include <QClipboard>
 #include <QDir>
+#include <QDrag>
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
@@ -26,12 +27,15 @@
 #include <QLoggingCategory>
 #include <QMimeData>
 #include <QPainter>
+#include <QPixmap>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QTextLayout>
 #include <QTimer>
+#include <QtGlobal>
+#include <QUrl>
 #include <QVBoxLayout>
 
 /// Set QT_LOGGING_RULES="enquber.dnd.debug=true" to watch what the window is
@@ -46,6 +50,13 @@ constexpr int kExportPixels = 1024;
 
 /// 300 dpi, so that printing the PNG gets a sensible physical size.
 constexpr int kDotsPerMeter = 11811;
+
+/// Side of the pixmap that follows the cursor while the code is dragged out.
+constexpr int kDragPixmapPixels = 120;
+
+/// How long the finished drag is kept alive so a target can still fetch the
+/// payload over the X11 selection after the drop. See startCodeDrag().
+constexpr int kDragLingerMs = 1000;
 
 constexpr int kStatusTimeoutMs = 4000;
 
@@ -247,6 +258,7 @@ void MainWindow::buildUi()
 
     m_qrView = new QrView(codePage);
     codeLayout->addWidget(m_qrView, 1);
+    connect(m_qrView, &QrView::dragRequested, this, &MainWindow::startCodeDrag);
 
     m_textLabel = new QLabel(codePage);
     m_textLabel->setObjectName(QStringLiteral("encodedText"));
@@ -584,17 +596,55 @@ void MainWindow::copyToClipboard()
     }
 
     const QImage image = renderForExport();
-    QByteArray png;
-    QBuffer buffer(&png);
-    buffer.open(QIODevice::WriteOnly);
-    image.save(&buffer, "PNG");
 
     auto *data = new QMimeData;
     data->setImageData(image);
-    data->setData(QStringLiteral("image/png"), png);
+    data->setData(QStringLiteral("image/png"), mime::encodePng(image));
     QGuiApplication::clipboard()->setMimeData(data);
 
     showStatus(tr("Copied the QR code to the clipboard"));
+}
+
+void MainWindow::startCodeDrag()
+{
+    if (!m_code.isValid()) {
+        return;
+    }
+
+    const QImage image = renderForExport();
+    const QString path = writeDragFile(image);
+    if (path.isEmpty()) {
+        showStatus(tr("Could not prepare the image for dragging"));
+        return;
+    }
+
+    auto *drag = new QDrag(m_qrView);
+    drag->setMimeData(mime::payloadForDrag(image, path));
+    // A small copy of the symbol follows the cursor. Nearest-neighbour scaling
+    // keeps the modules square instead of blurring them, and the ratio keeps
+    // its size honest on a scaled display.
+    QPixmap preview = QPixmap::fromImage(image.scaled(kDragPixmapPixels, kDragPixmapPixels,
+                                                      Qt::KeepAspectRatio,
+                                                      Qt::FastTransformation));
+    preview.setDevicePixelRatio(m_qrView->devicePixelRatioF());
+    drag->setPixmap(preview);
+    // The hot spot is in logical pixels, but pixmap() reports device pixels once
+    // a ratio is set, so the size has to come from the device independent one:
+    // Qt's own documented pixmap().width() / 2 would put the cursor in the
+    // preview's bottom right corner on a scaled display.
+    const QSizeF logical = preview.deviceIndependentSize();
+    drag->setHotSpot(QPoint(qRound(logical.width() / 2), qRound(logical.height() / 2)));
+
+    qCDebug(lcDnd) << "dragging the code out of the window";
+    const Qt::DropAction action = drag->exec(Qt::CopyAction);
+    qCDebug(lcDnd) << "drag finished with action" << action;
+
+    // exec() returns as soon as the drop is delivered, but the target fetches
+    // the payload (text/uri-list, image/png) from us afterwards, over the X11
+    // selection. Dropping the drag here would drop that selection with it and
+    // the target would receive an empty payload, so it is kept alive briefly
+    // and then deleted once the transfer has certainly finished.
+    QTimer::singleShot(kDragLingerMs, drag, [drag] { drag->deleteLater(); });
 }
 
 void MainWindow::askWhereToSave()
@@ -649,6 +699,28 @@ QImage MainWindow::renderForExport() const
     return image;
 }
 
+QString MainWindow::writeDragFile(const QImage &image)
+{
+    // A failed temp directory would send the path relative to the working
+    // directory, dropping PNGs beside wherever the app was started.
+    if (!m_dragDir.isValid()) {
+        return {};
+    }
+    // A fresh subdirectory per drag keeps a target that reads the file lazily
+    // (or a macOS file promise) from tripping over the next drag's file, while
+    // the file inside keeps the pretty name the user expects to find after a
+    // drop. The whole directory goes away with the window.
+    const QString directory = QDir(m_dragDir.path()).filePath(QString::number(++m_dragCount));
+    if (!QDir().mkpath(directory)) {
+        return {};
+    }
+    const QString path = QDir(directory).filePath(suggestedFileName());
+    if (!image.save(path, "PNG")) {
+        return {};
+    }
+    return path;
+}
+
 QString MainWindow::suggestedFileName() const
 {
     QString stem = m_code.text();
@@ -689,8 +761,21 @@ void MainWindow::setDropHighlight(bool active)
     m_dropZone->setActive(active);
 }
 
+bool MainWindow::dragFromThisWindow(const QDropEvent *event) const
+{
+    // External drags have no source widget. A drag started elsewhere in this
+    // process (the smoke test's helper) has one that is not our child, so only
+    // our own code is ignored.
+    QWidget *source = qobject_cast<QWidget *>(event->source());
+    return source && isAncestorOf(source);
+}
+
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
+    if (dragFromThisWindow(event)) {
+        qCDebug(lcDnd) << "ignoring a drag that started in this window";
+        return;
+    }
     qCDebug(lcDnd) << "drag enter with" << event->mimeData()->formats();
     if (m_payload.observe(event->mimeData()).isEmpty()) {
         qCDebug(lcDnd) << "nothing to encode, ignoring it";
@@ -705,6 +790,9 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 
 void MainWindow::dragMoveEvent(QDragMoveEvent *event)
 {
+    if (dragFromThisWindow(event)) {
+        return;
+    }
     qCDebug(lcDnd) << "drag move" << event->position();
     // Qt only delivers the drop if the drag was still accepted at the position
     // the button was released on, and an ignored move ends the drag.
@@ -724,6 +812,9 @@ void MainWindow::dragLeaveEvent(QDragLeaveEvent *event)
 
 void MainWindow::dropEvent(QDropEvent *event)
 {
+    if (dragFromThisWindow(event)) {
+        return;
+    }
     qCDebug(lcDnd) << "drop with" << event->mimeData()->formats() << "at" << event->position();
     setDropHighlight(false);
     clearStatus();

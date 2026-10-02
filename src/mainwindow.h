@@ -4,6 +4,9 @@
 #include "qrcode.h"
 
 #include <QMainWindow>
+#include <QTemporaryDir>
+
+class QDir;
 
 class AboutPage;
 class DropZone;
@@ -73,6 +76,18 @@ private:
     void positionHelpButton();
     QString suggestedFileName() const;
     QImage renderForExport() const;
+    /// Starts dragging the current code out to another application. The payload
+    /// and the temporary file it points at are prepared here, because the
+    /// window owns export and naming.
+    void startCodeDrag();
+    /// Writes @p image to a fresh file under the session temp directory, so a
+    /// file manager or the desktop has something real to save. Returns the path,
+    /// or an empty string when the file could not be written.
+    QString writeDragFile(const QImage &image);
+    /// True when @p event belongs to a drag that started inside this window, so
+    /// the window does not offer to encode its own dragged image back over the
+    /// code.
+    bool dragFromThisWindow(const QDropEvent *event) const;
 
     void changeEvent(QEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -109,4 +124,9 @@ private:
     qr::Code m_code;
 
     mime::Payload m_payload;
+
+    /// Holds the PNGs the code is dragged as; wiped when the window goes away.
+    /// Built explicitly so that the directory names itself after the app.
+    QTemporaryDir m_dragDir {QDir(QDir::tempPath()).filePath(QStringLiteral("enquber-XXXXXX")) };
+    int m_dragCount = 0;
 };

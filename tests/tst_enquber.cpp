@@ -1,5 +1,6 @@
 #include "dropzone.h"
 #include "mainwindow.h"
+#include "mimeimage.h"
 #include "mimetext.h"
 #include "qrcode.h"
 #include "qrview.h"
@@ -10,9 +11,12 @@
 #include <QAction>
 #include <QClipboard>
 #include <QColor>
+#include <QFileInfo>
 #include <QKeySequence>
 #include <QMimeData>
+#include <QMouseEvent>
 #include <QPalette>
+#include <QSignalSpy>
 #include <QStackedWidget>
 #include <QDir>
 #include <QFileDialog>
@@ -22,6 +26,7 @@
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QUrl>
 #include <QTest>
 
 namespace {
@@ -39,6 +44,21 @@ void performDrop(QWidget *target, const QMimeData *mime)
     sendDragEnter(target, mime);
     QDropEvent event(QPointF(target->rect().center()), Qt::CopyAction, mime, Qt::LeftButton, Qt::NoModifier);
     QCoreApplication::sendEvent(target, &event);
+}
+
+/// Sends the press and move that begin dragging from @p target. The move
+/// carries the held button explicitly, unlike QTest::mouseMove(), which sends a
+/// move with no button and would not reach an ordinary widget.
+void sendDragGesture(QWidget *target, const QPoint &from, const QPoint &to, bool hold = true)
+{
+    QMouseEvent press(QEvent::MouseButtonPress, QPointF(from), target->mapToGlobal(QPointF(from)),
+                      Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(target, &press);
+
+    const Qt::MouseButtons buttons = hold ? Qt::LeftButton : Qt::NoButton;
+    QMouseEvent move(QEvent::MouseMove, QPointF(to), target->mapToGlobal(QPointF(to)),
+                     Qt::NoButton, buttons, Qt::NoModifier);
+    QCoreApplication::sendEvent(target, &move);
 }
 
 /// Shows the window and makes it the active one, which is what keyboard
@@ -120,6 +140,10 @@ private slots:
     void pasteWithoutTextIsIgnored();
 
     void copyPutsImageOnClipboard();
+    void draggingOffersImageAndFile();
+    void qrViewStartsDragOnGesture();
+    void draggingBelowTheThresholdDoesNothing();
+    void draggingWithoutACodeDoesNothing();
     void longTextIsShapedForTheLabel();
     void repeatingAStatusMessageRestartsItsTimeout();
     void clearingReturnsToTheDropTarget_data();
@@ -373,6 +397,94 @@ void TestEnquber::copyPutsImageOnClipboard()
     QVERIFY(image.width() > 500);
     QCOMPARE(image.width(), image.height());
     QVERIFY(image.pixelColor(0, 0) == QColor(Qt::white));
+}
+
+void TestEnquber::draggingOffersImageAndFile()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+
+    // A real PNG on disk, which is what the payload builder is handed: a file
+    // manager can only save a drop if the file it points at exists.
+    const qr::Code code = qr::Code::encode(QStringLiteral("https://payload.example"));
+    QVERIFY(code.isValid());
+    const QImage image = code.toImage(4);
+    const QString path = directory.filePath(QStringLiteral("payload.png"));
+    QVERIFY(image.save(path, "PNG"));
+
+    QScopedPointer<QMimeData> payload(mime::payloadForDrag(image, path));
+
+    // Documents get the pixels, file managers get a file to copy.
+    QVERIFY(payload->hasImage());
+    QVERIFY(payload->hasFormat(QStringLiteral("image/png")));
+    QVERIFY(payload->hasUrls());
+
+    const QList<QUrl> urls = payload->urls();
+    QCOMPARE(urls.size(), 1);
+    QVERIFY(urls.first().isLocalFile());
+    QCOMPARE(urls.first().toLocalFile(), path);
+
+    QVERIFY(QFileInfo::exists(path));
+    const QImage reloaded(path);
+    QVERIFY(!reloaded.isNull());
+    QCOMPARE(reloaded.size(), image.size());
+
+    // The explicit PNG bytes are the same image as the file.
+    const QImage fromBytes = QImage::fromData(payload->data(QStringLiteral("image/png")), "PNG");
+    QVERIFY(!fromBytes.isNull());
+    QCOMPARE(fromBytes.size(), image.size());
+}
+
+void TestEnquber::qrViewStartsDragOnGesture()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://drag.example"));
+
+    auto *view = window.findChild<QrView *>();
+    QVERIFY(view);
+    QSignalSpy spy(view, &QrView::dragRequested);
+
+    const QPoint start = view->rect().center();
+    sendDragGesture(view, start, start + QPoint(QApplication::startDragDistance() + 5, 0));
+
+    QCOMPARE(spy.count(), 1);
+}
+
+void TestEnquber::draggingBelowTheThresholdDoesNothing()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://drag.example"));
+
+    auto *view = window.findChild<QrView *>();
+    QVERIFY(view);
+    QSignalSpy spy(view, &QrView::dragRequested);
+
+    // A twitch of the hand is a click, not a drag.
+    const QPoint start = view->rect().center();
+    sendDragGesture(view, start, start + QPoint(2, 2));
+    QCOMPARE(spy.count(), 0);
+
+    // A move that carries no held button is not a drag either.
+    sendDragGesture(view, start, start + QPoint(QApplication::startDragDistance() + 5, 0),
+                    /*hold=*/false);
+    QCOMPARE(spy.count(), 0);
+}
+
+void TestEnquber::draggingWithoutACodeDoesNothing()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    QVERIFY(!window.hasCode());
+
+    auto *view = window.findChild<QrView *>();
+    QVERIFY(view);
+    QSignalSpy spy(view, &QrView::dragRequested);
+
+    const QPoint start = view->rect().center();
+    sendDragGesture(view, start, start + QPoint(QApplication::startDragDistance() + 5, 0));
+    QCOMPARE(spy.count(), 0);
 }
 
 void TestEnquber::longTextIsShapedForTheLabel()

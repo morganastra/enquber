@@ -1,5 +1,7 @@
 #include "qrview.h"
 
+#include <QApplication>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -16,6 +18,8 @@ QrView::QrView(QWidget *parent)
     : QWidget(parent)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    // The code can be dragged out; an open hand is the usual cue for that.
+    setCursor(Qt::OpenHandCursor);
 }
 
 void QrView::setCode(const qr::Code &code)
@@ -28,6 +32,7 @@ void QrView::setCode(const qr::Code &code)
 void QrView::clear()
 {
     m_code = qr::Code();
+    m_pressed = false;
     dropCache();
     update();
 }
@@ -95,4 +100,33 @@ void QrView::paintEvent(QPaintEvent *)
         painter.setPen(pen);
         painter.drawRoundedRect(bounds.adjusted(-6.0, -6.0, 6.0, 6.0), kCornerRadius, kCornerRadius);
     }
+}
+
+void QrView::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton && hasCode()) {
+        m_pressed = true;
+        m_pressPos = event->position().toPoint();
+    }
+    QWidget::mousePressEvent(event);
+}
+
+void QrView::mouseMoveEvent(QMouseEvent *event)
+{
+    // m_pressed is tracked rather than read from event->buttons() alone, so the
+    // gesture can be driven by a test; requiring the held button as well keeps
+    // the check honest for real input.
+    if (m_pressed && (event->buttons() & Qt::LeftButton)
+        && (event->position().toPoint() - m_pressPos).manhattanLength()
+               >= QApplication::startDragDistance()) {
+        m_pressed = false; // one drag per press
+        Q_EMIT dragRequested();
+    }
+    QWidget::mouseMoveEvent(event);
+}
+
+void QrView::mouseReleaseEvent(QMouseEvent *event)
+{
+    m_pressed = false;
+    QWidget::mouseReleaseEvent(event);
 }
