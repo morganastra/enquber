@@ -74,6 +74,9 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("no display: set DISPLAY or pass --display")
     if args.runs < 1:
         parser.error("--runs must be at least 1")
+    for flag, text in (("--baseline", args.baseline), ("--candidate", args.candidate)):
+        if not shlex.split(text):
+            parser.error(f"{flag} must not be empty")
 
     settle = load_settle()
     commands = [
