@@ -19,7 +19,8 @@ namespace theme {
 /// directly. The trade-off is all-or-nothing per theme: a theme that happens to
 /// lack the probe but provides another requested name is not asked for it and
 /// falls back to the bundled glyph. The result is cached per icon-theme name and
-/// re-probed when the theme changes.
+/// re-probed when that name changes; a change to the icon search paths alone is
+/// not noticed.
 QIcon icon(std::initializer_list<const char *> names);
 
 /// The application's own window icon, independent of the icon theme.

@@ -66,10 +66,11 @@ QImage tinted(const QImage &source, const QColor &color)
     return result;
 }
 
-/// Upper bound on the bundled-glyph cache. There are only a handful of distinct
-/// glyphs and, in practice, one or two foreground colours (a light and a dark
-/// palette), so this only ever trips after a long run of palette changes.
-constexpr int kMaxCachedGlyphs = 16;
+/// Upper bound on the bundled-glyph cache: seven glyphs times a few palette
+/// tints (a light and a dark foreground in practice), with headroom for the odd
+/// intermediate colour. Tightening it to the light/dark working set would clear
+/// the whole cache on a third tint and throw away entries still in use.
+constexpr int kMaxCachedGlyphs = 64;
 
 /// Loads the bundled glyph for @p themeName and tints it, or a null QIcon when
 /// there is no glyph for that name.
@@ -109,7 +110,7 @@ QIcon bundledIcon(const QString &themeName)
 
 /// Whether the active icon theme can resolve the action icons enquber uses.
 ///
-/// A plain XDG session only ships the HiColor theme, which has no action icons,
+/// A plain XDG session only ships the hicolor theme, which has no action icons,
 /// so every QIcon::fromTheme() call is a guaranteed miss. Checking one ubiquitous
 /// name once and caching the answer turns a dozen of those failures into a single
 /// one. The check is deliberately all-or-nothing: a theme that lacks the probe
@@ -118,9 +119,13 @@ QIcon bundledIcon(const QString &themeName)
 /// that has the probe still goes through the normal per-name lookup.
 ///
 /// The answer is tied to the theme name it was probed under, so switching icon
-/// themes at runtime re-probes. An empty theme name is treated as "not settled
-/// yet" (the probe can run before the platform theme is applied) and is never
-/// cached, so an early miss cannot stick around for the rest of the process.
+/// themes at runtime re-probes. Only the name is watched: changing
+/// QIcon::themeSearchPaths() without also changing the name would not invalidate
+/// the answer. enquber never does that; callers that swap search paths at runtime
+/// (tests) have to change the name as well. An empty theme name is treated as
+/// "not settled yet" (the probe can run before the platform theme is applied) and
+/// is never cached, so an early miss cannot stick around for the rest of the
+/// process.
 bool themeProvidesActionIcons()
 {
     const QString themeName = QIcon::themeName();
