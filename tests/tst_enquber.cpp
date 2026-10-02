@@ -19,6 +19,7 @@
 #include <QSignalSpy>
 #include <QStackedWidget>
 #include <QDir>
+#include <QFile>
 #include <QFileDialog>
 #include <QIcon>
 #include <QLabel>
@@ -172,6 +173,7 @@ private slots:
     void windowUsesTheBundledAppIcon();
     void fallbackIconsFollowThePalette();
     void bundledFallbacksCoverNavigationAndHelp();
+    void themeProbeTracksTheActiveIconTheme();
     void buttonIconsFollowRuntimePaletteChanges();
     void darkModeIsFollowed();
 
@@ -833,6 +835,61 @@ void TestEnquber::bundledFallbacksCoverNavigationAndHelp()
 
     // A name with no bundled glyph stays null instead of guessing.
     QVERIFY(theme::icon({"this-icon-does-not-exist"}).isNull());
+}
+
+void TestEnquber::themeProbeTracksTheActiveIconTheme()
+{
+    // Build a minimal, self-contained icon theme that can answer the probe.
+    // Its icon is magenta, a colour no tinted bundled glyph can ever take, so
+    // the theme branch and the fallback branch are told apart unambiguously.
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString themeName = QStringLiteral("enquber-probe-test");
+    const QString themeDir = root.filePath(themeName);
+    QVERIFY(QDir().mkpath(themeDir + QStringLiteral("/16x16/actions")));
+
+    QFile index(themeDir + QStringLiteral("/index.theme"));
+    QVERIFY(index.open(QIODevice::WriteOnly | QIODevice::Text));
+    index.write("[Icon Theme]\n"
+                "Name=Enquber Probe Test\n"
+                "Directories=16x16/actions\n"
+                "\n"
+                "[16x16/actions]\n"
+                "Size=16\n"
+                "Type=Fixed\n"
+                "Context=Actions\n");
+    index.close();
+
+    QImage marker(16, 16, QImage::Format_ARGB32_Premultiplied);
+    marker.fill(QColor(255, 0, 255));
+    QVERIFY(marker.save(themeDir + QStringLiteral("/16x16/actions/edit-copy.png"), "PNG"));
+
+    const QStringList savedPaths = QIcon::themeSearchPaths();
+    const QString savedName = QIcon::themeName();
+    const QString savedFallback = QIcon::fallbackThemeName();
+
+    QIcon::setThemeSearchPaths({root.path()});
+    QIcon::setFallbackThemeName(QString());
+    QIcon::setThemeName(themeName);
+
+    // The theme answers the probe, so its own icon is handed back...
+    const QColor themed = inkOf(theme::icon({"edit-copy"}).pixmap(16).toImage());
+    QVERIFY2(themed.isValid(), "the synthetic theme did not provide edit-copy");
+    QCOMPARE(themed, QColor(255, 0, 255));
+
+    // ...while a name that theme does not carry still falls back to the bundled
+    // glyph rather than coming back empty.
+    QVERIFY(!theme::icon({"document-save"}).isNull());
+
+    // Switching back to a theme with no action icons has to re-probe: the theme
+    // icon goes away and the palette-tinted bundled glyph returns.
+    QIcon::setThemeSearchPaths(savedPaths);
+    QIcon::setFallbackThemeName(savedFallback);
+    QIcon::setThemeName(savedName);
+
+    const QColor bundled = inkOf(theme::icon({"edit-copy"}).pixmap(64).toImage());
+    QVERIFY(bundled.isValid());
+    QVERIFY(bundled != QColor(255, 0, 255));
 }
 
 void TestEnquber::buttonIconsFollowRuntimePaletteChanges()
