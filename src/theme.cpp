@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QGuiApplication>
+#include <QHash>
 #include <QIcon>
 #include <QImage>
 #include <QPainter>
@@ -65,33 +66,81 @@ QImage tinted(const QImage &source, const QColor &color)
     return result;
 }
 
+/// Upper bound on the bundled-glyph cache: seven glyphs times a few palette
+/// tints (a light and a dark foreground in practice), with headroom for the odd
+/// intermediate colour. 
+constexpr int kMaxCachedGlyphs = 64;
+
 /// Loads the bundled glyph for @p themeName and tints it, or a null QIcon when
 /// there is no glyph for that name.
+///
+/// Scaling and tinting five sizes is the expensive part and a palette change
+/// asks for the same pictures again in a new colour, so the finished icons are
+/// kept in a small cache keyed on the resolved glyph name and the exact tint.
+/// A different colour never reuses another one's entry.
 QIcon bundledIcon(const QString &themeName)
 {
-    const QImage source(
-        QStringLiteral(":/enquber/icons/actions/%1.png").arg(bundledGlyphName(themeName)));
+    const QString glyph = bundledGlyphName(themeName);
+    const QColor color = foreground();
+    const QString key = glyph + QLatin1Char(':') + QString::number(color.rgba());
+
+    static QHash<QString, QIcon> cache;
+    if (const auto cached = cache.constFind(key); cached != cache.constEnd()) {
+        return cached.value();
+    }
+
+    const QImage source(QStringLiteral(":/enquber/icons/actions/%1.png").arg(glyph));
     if (source.isNull()) {
         return {};
     }
 
-    const QColor color = foreground();
     QIcon icon;
     for (const int size : {16, 24, 32, 48, 64}) {
         const QImage scaled = source.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         icon.addPixmap(QPixmap::fromImage(tinted(scaled, color)));
     }
+
+    if (cache.size() >= kMaxCachedGlyphs) {
+        cache.clear();
+    }
+    cache.insert(key, icon);
     return icon;
+}
+
+/// If the system theme does not provide action icons, we can skip subsequent
+/// QIcon::fromTheme() calls (which cost thousands of syscalls each!)
+bool themeProvidesActionIcons()
+{
+    const QString themeName = QIcon::themeName();
+    static QString probedThemeName;
+    static bool cachedResult = false;
+    static bool hasCachedResult = false;
+
+    if (hasCachedResult && themeName == probedThemeName) {
+        return cachedResult;
+    }
+
+    const bool providesIcons = !QIcon::fromTheme(QStringLiteral("edit-copy")).isNull();
+
+    if (!themeName.isEmpty()) {
+        probedThemeName = themeName;
+        cachedResult = providesIcons;
+        hasCachedResult = true;
+    }
+    return providesIcons;
 }
 
 } // namespace
 
 QIcon icon(std::initializer_list<const char *> names)
 {
-    for (const char *name : names) {
-        const QIcon candidate = QIcon::fromTheme(QString::fromLatin1(name));
-        if (!candidate.isNull()) {
-            return candidate;
+    // Only try to get action icons if the theme actually provides them
+    if (themeProvidesActionIcons()) {
+        for (const char *name : names) {
+            const QIcon candidate = QIcon::fromTheme(QString::fromLatin1(name));
+            if (!candidate.isNull()) {
+                return candidate;
+            }
         }
     }
 

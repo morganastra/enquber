@@ -30,16 +30,6 @@ smoke-test *args:
     cmake --build --preset smoke
     tools/smoke.py --app build/smoke/enquber --dragsource build/smoke/tools/dragsource {{args}}
 
-# Build, then measure how long an app's window takes to stop changing.
-#
-# This records the framebuffer and compares frames, so it catches late-loading
-# UI. Repeat --command to compare applications; the default command is
-# ./build/enquber:
-#
-#     just startup-settle --display :9 --command ./build/enquber --command dolphin
-startup-settle *args: build
-    tools/startup-settle.py {{args}}
-
 # Build, then launch the application.
 run: build
     ./build/enquber
@@ -52,3 +42,19 @@ clean:
 [group('package')]
 package-arch: 
     cd packaging/arch && makepkg -f
+
+# Shortcuts for startup performance measurement:
+#
+# startup-settle rotates the launch order every round, so its medians are
+# drift-resistant; pass --json and pipe through tools/startup-stats.py for a
+# table and verdict. startup-bench compares a candidate binary against a
+# baseline with the paired per-round delta:
+#
+#     DISPLAY=:9 just startup-settle --runs 5 --command ./build/enquber --command kcalc
+#     DISPLAY=:9 just startup-bench /tmp/enq-main/build/enquber ./build/enquber --runs 15
+startup-settle *args: build
+    tools/startup-settle.py {{args}}
+
+startup-bench baseline candidate *args: build
+    tools/startup-settle.py --baseline "{{baseline}}" --candidate "{{candidate}}" {{args}}
+
