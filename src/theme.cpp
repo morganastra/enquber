@@ -69,8 +69,8 @@ QImage tinted(const QImage &source, const QColor &color)
 /// there is no glyph for that name.
 QIcon bundledIcon(const QString &themeName)
 {
-    const QImage source(
-        QStringLiteral(":/enquber/icons/actions/%1.png").arg(bundledGlyphName(themeName)));
+    const QString glyph = bundledGlyphName(themeName);
+    const QImage source(QStringLiteral(":/enquber/icons/actions/%1.png").arg(glyph));
     if (source.isNull()) {
         return {};
     }
@@ -84,14 +84,40 @@ QIcon bundledIcon(const QString &themeName)
     return icon;
 }
 
+/// If the system theme does not provide action icons, we can skip subsequent
+/// QIcon::fromTheme() calls (which cost thousands of syscalls each!)
+bool themeProvidesActionIcons()
+{
+    const QString themeName = QIcon::themeName();
+    static QString probedThemeName;
+    static bool cachedResult = false;
+    static bool hasCachedResult = false;
+
+    if (hasCachedResult && themeName == probedThemeName) {
+        return cachedResult;
+    }
+
+    const bool providesIcons = !QIcon::fromTheme(QStringLiteral("edit-copy")).isNull();
+
+    if (!themeName.isEmpty()) {
+        probedThemeName = themeName;
+        cachedResult = providesIcons;
+        hasCachedResult = true;
+    }
+    return providesIcons;
+}
+
 } // namespace
 
 QIcon icon(std::initializer_list<const char *> names)
 {
-    for (const char *name : names) {
-        const QIcon candidate = QIcon::fromTheme(QString::fromLatin1(name));
-        if (!candidate.isNull()) {
-            return candidate;
+    // Only try to get action icons if the theme actually provides them
+    if (themeProvidesActionIcons()) {
+        for (const char *name : names) {
+            const QIcon candidate = QIcon::fromTheme(QString::fromLatin1(name));
+            if (!candidate.isNull()) {
+                return candidate;
+            }
         }
     }
 
