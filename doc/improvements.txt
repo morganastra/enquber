@@ -23,13 +23,3 @@ Misc UX
 	(failure to encode a QR code, failure to decode one, etc). 
 
 	Only show one error banner at a time; auto-dismiss if another action happens successfully
-
-Performance
-	Startup: the MainWindow constructor resolves 13 theme icon names (theme::icon()
-	via refreshActionIcons() and the DropZone). Failed icon lookups are surprisingly
-	expensive; cumulatively they account for ~95 ms of a ~300 ms start up time in Xvfb
-	when the default (HiColor) theme lacks those icons. We should probe one icon name 
-	first: if the active theme cannot resolve it, use the bundled glyphs for all icons.
-
-	Drop action icons that are never displayed (m_quitAction, m_helpAction)
-
