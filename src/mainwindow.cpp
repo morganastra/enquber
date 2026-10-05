@@ -270,6 +270,7 @@ void MainWindow::buildUi()
     m_qrView = new QrView(codePage);
     codeLayout->addWidget(m_qrView, 1);
     connect(m_qrView, &QrView::dragRequested, this, &MainWindow::startCodeDrag);
+    m_qrView->installEventFilter(this);
 
     m_textLabel = new QLabel(codePage);
     m_textLabel->setObjectName(QStringLiteral("encodedText"));
@@ -283,7 +284,8 @@ void MainWindow::buildUi()
 
     // The inline editor, in the caption slot under the QR view. It is swapped
     // with m_textLabel while editing so the symbol stays on screen and rebuilds
-    // as the text changes.
+    // as the text changes. Its width is matched to the symbol in
+    // positionCaptionEditor().
     m_captionEditor = new TypeEditor(codePage);
     m_captionEditor->setObjectName(QStringLiteral("captionEditor"));
     // About three lines tall: enough to show a small multi-line payload without
@@ -556,6 +558,7 @@ void MainWindow::beginLiveInput()
 
     m_textLabel->hide();
     m_captionEditor->show();
+    positionCaptionEditor();
     m_captionEditor->setFocus(Qt::OtherFocusReason);
     m_captionEditor->selectAll();
 
@@ -582,6 +585,7 @@ void MainWindow::liveEncode()
         // still reads as a QR maker rather than a blank text box.
         m_code = qr::Code();
         m_qrView->setCode(qr::Code::encode(kPlaceholderText));
+        positionCaptionEditor();
         clearStatus();
         return;
     }
@@ -599,6 +603,7 @@ void MainWindow::liveEncode()
     // cancelLiveInput() decide their final state.
     m_code = code;
     m_qrView->setCode(code);
+    positionCaptionEditor();
     clearStatus();
 }
 
@@ -667,6 +672,14 @@ void MainWindow::finishTypeInput()
         m_textLabel->show();
     }
     m_pasteAction->setEnabled(true);
+}
+
+void MainWindow::positionCaptionEditor()
+{
+    const int side = m_qrView->codeSide();
+    if (side > 0) {
+        m_captionEditor->setFixedWidth(side);
+    }
 }
 
 void MainWindow::setCodeActionsEnabled(bool enabled)
@@ -792,6 +805,9 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
     if (event->type() == QEvent::Resize) {
         if (watched == m_central) {
             positionHelpButton();
+        } else if (watched == m_qrView) {
+            // Keep the field as wide as the symbol above it.
+            positionCaptionEditor();
         } else if (watched == m_textLabel && m_textLabel->width() != m_shapedWidth) {
             // The first shape happens before the layout has settled, so the
             // label can still be narrow; re-shape it once it has its real width.

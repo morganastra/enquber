@@ -84,6 +84,8 @@ private:
     void cancelLiveInput();
     /// Rests and hides the field, restoring the normal actions.
     void finishTypeInput();
+    /// Matches the field's width to the symbol above it.
+    void positionCaptionEditor();
     /// Enables/disables Copy, Save and Clear (actions and their buttons) as one,
     /// so the buttons never look live while their action is disabled.
     void setCodeActionsEnabled(bool enabled);
