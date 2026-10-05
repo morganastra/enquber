@@ -260,6 +260,7 @@ void MainWindow::buildUi()
     placeholderLayout->addWidget(m_dropZone, 0, Qt::AlignCenter);
     placeholderLayout->addStretch(1);
     connect(m_dropZone, &DropZone::textDropped, this, &MainWindow::setText);
+    connect(m_dropZone, &DropZone::clicked, this, &MainWindow::typeText);
     m_stack->addWidget(placeholderPage);
 
     auto *codePage = new QWidget(m_stack);

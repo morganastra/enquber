@@ -8,6 +8,7 @@
 #include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QLabel>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QVBoxLayout>
 
@@ -33,6 +34,9 @@ DropZone::DropZone(QWidget *parent)
     setAcceptDrops(true);
     setFixedSize(440, 240);
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    // The prompt doubles as a "click here to type" affordance; an I-beam over
+    // the zone is the usual cue that text can be entered.
+    setCursor(Qt::IBeamCursor);
 
     m_icon = new QLabel(this);
     m_icon->setAlignment(Qt::AlignCenter);
@@ -44,7 +48,7 @@ DropZone::DropZone(QWidget *parent)
     m_title->setFont(titleFont(font()));
 
     //@ DropZone
-    //% "or press Ctrl+V to paste one"
+    //% "or press Ctrl+V to paste, Ctrl+L to type"
     m_hint = new QLabel(qtTrId("dropzone.hint"), this);
     m_hint->setObjectName(QStringLiteral("dropZoneHint"));
     m_hint->setAlignment(Qt::AlignCenter);
@@ -107,6 +111,14 @@ void DropZone::paintEvent(QPaintEvent *)
     painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
     painter.drawRoundedRect(frame, kCornerRadius, kCornerRadius);
+}
+
+void DropZone::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        Q_EMIT clicked();
+    }
+    QWidget::mousePressEvent(event);
 }
 
 void DropZone::dragEnterEvent(QDragEnterEvent *event)

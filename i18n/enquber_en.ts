@@ -47,171 +47,172 @@
         <translation type="unfinished"></translation>
     </message>
     <message id="dropzone.title">
-        <location filename="../src/dropzone.cpp" line="42"/>
+        <location filename="../src/dropzone.cpp" line="46"/>
         <source>Drop a link here</source>
         <label>DropZone</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="dropzone.hint">
-        <location filename="../src/dropzone.cpp" line="48"/>
-        <source>or press Ctrl+V to paste one</source>
+        <location filename="../src/dropzone.cpp" line="52"/>
+        <source>or press Ctrl+V to paste, Ctrl+L to type</source>
+        <oldsource>or press Ctrl+V to paste one</oldsource>
         <label>DropZone</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="typeeditor.placeholder">
-        <location filename="../src/mainwindow.cpp" line="300"/>
+        <location filename="../src/mainwindow.cpp" line="303"/>
         <source>Type or paste text</source>
         <label>TypeEditor</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.help.tooltip">
-        <location filename="../src/mainwindow.cpp" line="357"/>
-        <location filename="../src/mainwindow.cpp" line="438"/>
-        <location filename="../src/mainwindow.cpp" line="761"/>
+        <location filename="../src/mainwindow.cpp" line="360"/>
+        <location filename="../src/mainwindow.cpp" line="441"/>
+        <location filename="../src/mainwindow.cpp" line="775"/>
         <source>Show help and info (Ctrl+H or ?)</source>
         <extracomment>Tooltip on the floating help button; it also opens the help page with the keyboard shortcuts Ctrl+H or the &quot;?&quot; key.</extracomment>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.help.accessible">
-        <location filename="../src/mainwindow.cpp" line="360"/>
-        <location filename="../src/mainwindow.cpp" line="764"/>
+        <location filename="../src/mainwindow.cpp" line="363"/>
+        <location filename="../src/mainwindow.cpp" line="778"/>
         <source>Help and info</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.paste">
-        <location filename="../src/mainwindow.cpp" line="372"/>
+        <location filename="../src/mainwindow.cpp" line="375"/>
         <source>&amp;Paste link</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.type">
-        <location filename="../src/mainwindow.cpp" line="380"/>
+        <location filename="../src/mainwindow.cpp" line="383"/>
         <source>&amp;Type text…</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.type.tooltip">
-        <location filename="../src/mainwindow.cpp" line="385"/>
+        <location filename="../src/mainwindow.cpp" line="388"/>
         <source>Type the text to encode (Ctrl+L)</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.copy">
-        <location filename="../src/mainwindow.cpp" line="391"/>
+        <location filename="../src/mainwindow.cpp" line="394"/>
         <source>&amp;Copy image</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.copy.tooltip">
-        <location filename="../src/mainwindow.cpp" line="395"/>
+        <location filename="../src/mainwindow.cpp" line="398"/>
         <source>Copy the QR code to the clipboard as a PNG image (Ctrl+C)</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.save">
-        <location filename="../src/mainwindow.cpp" line="401"/>
+        <location filename="../src/mainwindow.cpp" line="404"/>
         <source>&amp;Save…</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.save.tooltip">
-        <location filename="../src/mainwindow.cpp" line="405"/>
+        <location filename="../src/mainwindow.cpp" line="408"/>
         <source>Save the QR code as a PNG file (Ctrl+S)</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.clear">
-        <location filename="../src/mainwindow.cpp" line="419"/>
+        <location filename="../src/mainwindow.cpp" line="422"/>
         <source>C&amp;lear</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.clear.tooltip">
-        <location filename="../src/mainwindow.cpp" line="424"/>
+        <location filename="../src/mainwindow.cpp" line="427"/>
         <source>Go back to the drop target (Esc, Backspace or Delete)</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.help">
-        <location filename="../src/mainwindow.cpp" line="434"/>
+        <location filename="../src/mainwindow.cpp" line="437"/>
         <source>&amp;Help and info</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.quit">
-        <location filename="../src/mainwindow.cpp" line="453"/>
+        <location filename="../src/mainwindow.cpp" line="456"/>
         <source>&amp;Quit</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.action.quit.tooltip">
-        <location filename="../src/mainwindow.cpp" line="472"/>
+        <location filename="../src/mainwindow.cpp" line="475"/>
         <source>Quit enquber (Ctrl+Q)</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.status.clipboard-empty">
-        <location filename="../src/mainwindow.cpp" line="528"/>
+        <location filename="../src/mainwindow.cpp" line="531"/>
         <source>The clipboard holds no text or link</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.help.back.tooltip">
-        <location filename="../src/mainwindow.cpp" line="736"/>
+        <location filename="../src/mainwindow.cpp" line="750"/>
         <source>Back to Enquber (Esc or Ctrl+H)</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.help.back.accessible">
-        <location filename="../src/mainwindow.cpp" line="739"/>
+        <location filename="../src/mainwindow.cpp" line="753"/>
         <source>Back to Enquber</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.status.copied">
-        <location filename="../src/mainwindow.cpp" line="834"/>
+        <location filename="../src/mainwindow.cpp" line="851"/>
         <source>Copied the QR code to the clipboard</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.status.drag-failed">
-        <location filename="../src/mainwindow.cpp" line="848"/>
+        <location filename="../src/mainwindow.cpp" line="865"/>
         <source>Could not prepare the image for dragging</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.dialog.save.title">
-        <location filename="../src/mainwindow.cpp" line="895"/>
+        <location filename="../src/mainwindow.cpp" line="912"/>
         <source>Save QR Code</source>
         <extracomment>Title of the file chooser that saves the QR code as an image.</extracomment>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.dialog.save.filter">
-        <location filename="../src/mainwindow.cpp" line="900"/>
+        <location filename="../src/mainwindow.cpp" line="917"/>
         <source>PNG image (*.png)</source>
         <extracomment>File-type filter in the save dialog; the star and the extension must stay unchanged so Qt can match PNG files.</extracomment>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.status.write-failed">
-        <location filename="../src/mainwindow.cpp" line="927"/>
+        <location filename="../src/mainwindow.cpp" line="944"/>
         <source>Could not write %1</source>
         <extracomment>%1 is the path the code could not be written to.</extracomment>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.status.saved-to">
-        <location filename="../src/mainwindow.cpp" line="934"/>
+        <location filename="../src/mainwindow.cpp" line="951"/>
         <source>Saved to %1</source>
         <extracomment>%1 is the path the code was written to.</extracomment>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
     </message>
     <message id="mainwindow.status.drop-replace">
-        <location filename="../src/mainwindow.cpp" line="1035"/>
+        <location filename="../src/mainwindow.cpp" line="1052"/>
         <source>Drop to replace the current code</source>
         <label>MainWindow</label>
         <translation type="unfinished"></translation>
