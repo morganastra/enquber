@@ -35,6 +35,8 @@ add_library(enquber_core STATIC
     src/qrview.h
     src/theme.cpp
     src/theme.h
+    src/typeeditor.cpp
+    src/typeeditor.h
 )
 target_include_directories(enquber_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(enquber_core PUBLIC Qt6::Widgets PkgConfig::QRENCODE)
