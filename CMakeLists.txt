@@ -89,6 +89,8 @@ if(ENQUBER_BUILD_TESTS)
                     --source ${CMAKE_CURRENT_SOURCE_DIR}/src
                     --translations ${CMAKE_CURRENT_SOURCE_DIR}/i18n
                     --require-translated es)
+    else()
+        message(WARNING "Python3 not found: the check_i18n translation lint will not run")
     endif()
 endif()
 
