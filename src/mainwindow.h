@@ -69,6 +69,8 @@ private:
     void showAbout();
     void showCode(const qr::Code &code);
     void showPlaceholder();
+    /// Enables/disables the Copy, Save and Clear actions together.
+    void setCodeActionsEnabled(bool enabled);
     void updateTextLabel();
     void showStatus(const QString &message);
     void clearStatus();
