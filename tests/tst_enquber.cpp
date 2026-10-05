@@ -256,6 +256,7 @@ private slots:
     void aboutPageShowsLicenceAndLinks();
     void aboutTextSurvivesAShortWindow();
     void spanishTranslationIsApplied();
+    void englishCatalogResolvesEveryId();
 
 private:
     QString m_savedThemeName;
@@ -1240,6 +1241,55 @@ void TestEnquber::spanishTranslationIsApplied()
     // every other test.
     QVERIFY(i18n::install(*qApp, QLocale(QLocale::English)));
     QCOMPARE(qtTrId("dropzone.title"), QStringLiteral("Drop a link here"));
+}
+
+void TestEnquber::englishCatalogResolvesEveryId()
+{
+    // Every ID the app uses has to resolve to English, never to the id itself.
+    // This guards against a catalog that was not regenerated after a source
+    // change, and against an lrelease that dropped source-language entries.
+    const QStringList ids = {
+        QStringLiteral("app.name"),
+        QStringLiteral("about.version"),
+        QStringLiteral("about.tagline"),
+        QStringLiteral("about.copyright"),
+        QStringLiteral("about.licence"),
+        QStringLiteral("about.links"),
+        QStringLiteral("about.hint"),
+        QStringLiteral("dropzone.title"),
+        QStringLiteral("dropzone.hint"),
+        QStringLiteral("mainwindow.help.tooltip"),
+        QStringLiteral("mainwindow.help.accessible"),
+        QStringLiteral("mainwindow.action.paste"),
+        QStringLiteral("mainwindow.action.copy"),
+        QStringLiteral("mainwindow.action.copy.tooltip"),
+        QStringLiteral("mainwindow.action.save"),
+        QStringLiteral("mainwindow.action.save.tooltip"),
+        QStringLiteral("mainwindow.action.clear"),
+        QStringLiteral("mainwindow.action.clear.tooltip"),
+        QStringLiteral("mainwindow.action.help"),
+        QStringLiteral("mainwindow.action.quit"),
+        QStringLiteral("mainwindow.action.quit.tooltip"),
+        QStringLiteral("mainwindow.status.clipboard-empty"),
+        QStringLiteral("mainwindow.help.back.tooltip"),
+        QStringLiteral("mainwindow.help.back.accessible"),
+        QStringLiteral("mainwindow.status.copied"),
+        QStringLiteral("mainwindow.status.drag-failed"),
+        QStringLiteral("mainwindow.dialog.save.title"),
+        QStringLiteral("mainwindow.dialog.save.filter"),
+        QStringLiteral("mainwindow.status.write-failed"),
+        QStringLiteral("mainwindow.status.saved-to"),
+        QStringLiteral("mainwindow.status.drop-replace"),
+        QStringLiteral("qrcode.error.too-much-data"),
+        QStringLiteral("qrcode.error.out-of-memory"),
+        QStringLiteral("qrcode.error.nothing"),
+    };
+
+    for (const QString &id : ids) {
+        const QString text = qtTrId(id.toUtf8().constData());
+        QVERIFY2(!text.isEmpty(), qPrintable(id));
+        QVERIFY2(text != id, qPrintable(id));
+    }
 }
 
 QTEST_MAIN(TestEnquber)
