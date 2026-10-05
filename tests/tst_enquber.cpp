@@ -98,8 +98,8 @@ QPushButton *buttonContaining(QWidget *window, const QString &needle)
     return nullptr;
 }
 
-/// The colour of a strongly opaque pixel of a tinted glyph; the source is
-/// recoloured through SourceIn, so every opaque pixel carries the tint.
+/// The color of a strongly opaque pixel of a tinted glyph; the source is
+/// recolored through SourceIn, so every opaque pixel carries the tint.
 QColor inkOf(const QImage &image)
 {
     for (int y = 0; y < image.height(); ++y) {
@@ -113,7 +113,7 @@ QColor inkOf(const QImage &image)
     return {};
 }
 
-/// The colour @p widget will draw its text in, following the palette role it
+/// The color @p widget will draw its text in, following the palette role it
 /// asked for. Checking the role like this is more robust than reading pixels,
 /// because a small glyph may never produce a fully opaque pixel.
 QColor drawnTextColor(const QWidget *widget)
@@ -242,7 +242,7 @@ private slots:
     void fallbackIconsFollowThePalette();
     void bundledFallbacksCoverNavigationAndHelp();
     void themeProbeTracksTheActiveIconTheme();
-    void bundledGlyphsCacheByColour();
+    void bundledGlyphsCacheByColor();
     void buttonIconsFollowRuntimePaletteChanges();
     void darkModeIsFollowed();
 
@@ -910,7 +910,7 @@ void TestEnquber::themeProbeTracksTheActiveIconTheme()
 {
     // Two throwaway themes: one answers the probe ("edit-copy"), the other does
     // not but still carries another name the window asks for ("document-save").
-    // Their icons are magenta and cyan, colours no palette-tinted bundled glyph
+    // Their icons are magenta and cyan, colors no palette-tinted bundled glyph
     // can take, so the theme and fallback branches are told apart unambiguously.
     QTemporaryDir root;
     QVERIFY(root.isValid());
@@ -952,10 +952,10 @@ void TestEnquber::themeProbeTracksTheActiveIconTheme()
     QCOMPARE(inkOf(theme::icon({"edit-copy"}).pixmap(16).toImage()), QColor(255, 0, 255));
 }
 
-void TestEnquber::bundledGlyphsCacheByColour()
+void TestEnquber::bundledGlyphsCacheByColor()
 {
     // The bundled-glyph cache is keyed on the tint, so the same glyph under two
-    // foreground colours must not collide, and the first colour has to come back
+    // foreground colors must not collide, and the first color has to come back
     // exactly from its still-cached entry.
     const QPalette original = QApplication::palette();
 
@@ -976,14 +976,14 @@ void TestEnquber::bundledGlyphsCacheByColour()
 
     QVERIFY(!onLight.isNull());
     QVERIFY(!onDark.isNull());
-    QVERIFY2(onLight != onDark, "the cache returned one colour's glyph for another");
+    QVERIFY2(onLight != onDark, "the cache returned one color's glyph for another");
     QCOMPARE(onLightAgain, onLight);
 }
 
 void TestEnquber::buttonIconsFollowRuntimePaletteChanges()
 {
     // The fallback glyph is tinted when the icon is built, so a live palette
-    // change has to rebuild the button icons or they keep the old colour.
+    // change has to rebuild the button icons or they keep the old color.
     MainWindow window;
     showAndActivate(&window);
     window.setText(QStringLiteral("https://palette.example"));
@@ -1018,7 +1018,7 @@ void TestEnquber::darkModeIsFollowed()
     // The desktop hands the theme to the app as a palette change: Qt updates
     // the default palette when the system color scheme flips. Everything the
     // widgets draw themselves has to follow that, and the dimmed labels in
-    // particular must not freeze the placeholder colour they were built with.
+    // particular must not freeze the placeholder color they were built with.
     const QPalette original = QApplication::palette();
 
     const QColor lightPlaceholder(0x76, 0x76, 0x76);
@@ -1066,7 +1066,7 @@ void TestEnquber::darkModeIsFollowed()
     QCOMPARE(int(status->foregroundRole()), int(QPalette::PlaceholderText));
     QCOMPARE(drawnTextColor(status), darkPlaceholder);
 
-    // Switching back has to bring the light colours back, not leave the dark
+    // Switching back has to bring the light colors back, not leave the dark
     // ones behind.
     QApplication::setPalette(light);
     QCoreApplication::processEvents();

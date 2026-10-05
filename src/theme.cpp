@@ -46,7 +46,7 @@ QString bundledGlyphName(const QString &themeName)
     return themeName;
 }
 
-/// The colour a fallback glyph should take: the application's foreground, so
+/// The color a fallback glyph should take: the application's foreground, so
 /// that one black-on-transparent source reads well on light and dark palettes.
 QColor foreground()
 {
@@ -54,7 +54,7 @@ QColor foreground()
     return color.isValid() ? color : QColor(Qt::black);
 }
 
-/// Recolours a monochrome image while keeping its alpha channel, which is what
+/// Recolors a monochrome image while keeping its alpha channel, which is what
 /// turns the black source glyph into one matching the palette.
 QImage tinted(const QImage &source, const QColor &color)
 {
@@ -68,16 +68,16 @@ QImage tinted(const QImage &source, const QColor &color)
 
 /// Upper bound on the bundled-glyph cache: seven glyphs times a few palette
 /// tints (a light and a dark foreground in practice), with headroom for the odd
-/// intermediate colour. 
+/// intermediate color. 
 constexpr int kMaxCachedGlyphs = 64;
 
 /// Loads the bundled glyph for @p themeName and tints it, or a null QIcon when
 /// there is no glyph for that name.
 ///
 /// Scaling and tinting five sizes is the expensive part and a palette change
-/// asks for the same pictures again in a new colour, so the finished icons are
+/// asks for the same pictures again in a new color, so the finished icons are
 /// kept in a small cache keyed on the resolved glyph name and the exact tint.
-/// A different colour never reuses another one's entry.
+/// A different color never reuses another one's entry.
 QIcon bundledIcon(const QString &themeName)
 {
     const QString glyph = bundledGlyphName(themeName);

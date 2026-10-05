@@ -115,15 +115,15 @@ protected:
         painter.drawEllipse(circle);
 
         if (m_back) {
-            const QPointF centre = circle.center();
+            const QPointF center = circle.center();
             const qreal half = 4.5;
             painter.setPen(QPen(glyph, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
             painter.setBrush(Qt::NoBrush);
-            painter.drawLine(QPointF(centre.x() + half, centre.y()), QPointF(centre.x() - half, centre.y()));
-            painter.drawLine(QPointF(centre.x() - half, centre.y()),
-                             QPointF(centre.x() - half + 4.0, centre.y() - 4.0));
-            painter.drawLine(QPointF(centre.x() - half, centre.y()),
-                             QPointF(centre.x() - half + 4.0, centre.y() + 4.0));
+            painter.drawLine(QPointF(center.x() + half, center.y()), QPointF(center.x() - half, center.y()));
+            painter.drawLine(QPointF(center.x() - half, center.y()),
+                             QPointF(center.x() - half + 4.0, center.y() - 4.0));
+            painter.drawLine(QPointF(center.x() - half, center.y()),
+                             QPointF(center.x() - half + 4.0, center.y() + 4.0));
         } else {
             QFont question = font();
             question.setBold(true);
@@ -159,7 +159,7 @@ struct ShapedText
 
 /// Word wraps @p text into at most @p maxLines lines of @p width pixels.
 ///
-/// Newlines are honoured explicitly: a QLabel breaks on them, QTextLayout does
+/// Newlines are honored explicitly: a QLabel breaks on them, QTextLayout does
 /// not, so laying the whole string out would count a paragraph of six lines as
 /// one and hand it back untouched. Wrapping inside long unbreakable tokens is
 /// allowed for the same reason, otherwise a link without spaces comes back as a
@@ -619,7 +619,7 @@ void MainWindow::startCodeDrag()
 
     auto *drag = new QDrag(m_qrView);
     drag->setMimeData(mime::payloadForDrag(image, path));
-    // A small copy of the symbol follows the cursor. Nearest-neighbour scaling
+    // A small copy of the symbol follows the cursor. Nearest-neighbor scaling
     // keeps the modules square instead of blurring them, and the ratio keeps
     // its size honest on a scaled display.
     QPixmap preview = QPixmap::fromImage(image.scaled(kDragPixmapPixels, kDragPixmapPixels,

@@ -7,7 +7,7 @@ Status: optimization complete; fully-settled startup is faster than `kcalc`.
 Fully-settled startup — from process launch until the window has stopped
 changing — should be no slower than a reference application (`kcalc`), under the
 same conditions, without giving up theme flexibility (Enquber still resolves
-icons and colours from the active platform theme).
+icons and colors from the active platform theme).
 
 Measuring "settled" rather than "window appeared" matters: a window can show up
 quickly and then keep redrawing as late-loaded icons or widgets arrive. The
@@ -100,7 +100,7 @@ Two changes were made:
    `m_helpAction` — help is the custom-painted `HelpButton` and quit has no
    widget) are no longer resolved at all.
 
-Bundled glyphs are also cached per glyph-and-colour, so palette changes no
+Bundled glyphs are also cached per glyph-and-color, so palette changes no
 longer re-scale and re-tint them.
 
 To separate the change from machine drift, two binaries were built from the same
@@ -154,5 +154,5 @@ icons removes their lookups outright.
 
 Fully-settled Enquber startup is now faster than `kcalc` (median 0.147 s versus
 0.185 s), comfortably meeting the goal, with no reduction in theme flexibility:
-real themes are still honoured and the fallback glyphs still follow light/dark
+real themes are still honored and the fallback glyphs still follow light/dark
 palette changes, both covered by the unit tests.

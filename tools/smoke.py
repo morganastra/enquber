@@ -256,8 +256,8 @@ def drag_until_dropped(smoke: Smoke, source: Window, target: Window, expected: s
     for attempt in range(1, attempts + 1):
         source_now = smoke.geometry(source)
         target_now = smoke.geometry(target)
-        centre = (target_now.x + target_now.width // 2, target_now.y + target_now.height // 2)
-        drag_with_mouse(smoke, source_now, centre)
+        center = (target_now.x + target_now.width // 2, target_now.y + target_now.height // 2)
+        drag_with_mouse(smoke, source_now, center)
         time.sleep(0.8)
         decoded, path = smoke.decode(target, f"{label}-{attempt}")
         smoke.log(f"{label}: attempt {attempt} shows {decoded!r}")
@@ -385,8 +385,8 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     for attempt in range(1, 4):
         source_now = smoke.geometry(source)
         window = smoke.geometry(window)
-        centre = (window.x + window.width // 2, window.y + window.height // 2)
-        drag_with_mouse(smoke, source_now, centre)
+        center = (window.x + window.width // 2, window.y + window.height // 2)
+        drag_with_mouse(smoke, source_now, center)
         time.sleep(0.8)
         dropped, dropped_shot = smoke.decode(window, f"dropped-{attempt}")
         smoke.log(f"in-process drag: attempt {attempt} shows {dropped!r}")

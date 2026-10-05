@@ -233,7 +233,7 @@ class X11:
 
     def activate(self, window_id: int):
         window = self.d.create_resource_object("window", window_id)
-        # source indication 2 means "pager", which window managers always honour.
+        # source indication 2 means "pager", which window managers always honor.
         self._client_message(window, "_NET_ACTIVE_WINDOW", [2, X.CurrentTime, 0])
         try:
             window.configure(stack_mode=X.Above)

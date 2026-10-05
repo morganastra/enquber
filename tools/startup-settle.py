@@ -60,7 +60,7 @@ class Failure(Exception):
 class Frame:
     t: float                    # seconds relative to launch (negative before it)
     gray: np.ndarray            # downsampled luminance, for the comparisons
-    bgr: np.ndarray | None = None  # downsampled colour, kept only for --video
+    bgr: np.ndarray | None = None  # downsampled color, kept only for --video
 
 
 @dataclass
@@ -134,7 +134,7 @@ def record(command: list[str], display: str, duration: float, lead: float,
     return frames
 
 
-def analyse(frames: list[Frame], appear_threshold: float, change_threshold: float,
+def analyze(frames: list[Frame], appear_threshold: float, change_threshold: float,
             stable_window: float) -> Run:
     if len(frames) < 3:
         raise Failure("not enough frames were captured")
@@ -306,7 +306,7 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     frames = record(command, args.display, args.duration, args.lead,
                                     args.fps, video_dir is not None)
-                    result = analyse(frames, args.appear_threshold,
+                    result = analyze(frames, args.appear_threshold,
                                      args.change_threshold, args.stable_window)
                 except (Failure, FileNotFoundError) as failure:
                     print(f"  {label}: {failure}", file=sys.stderr)
