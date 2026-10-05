@@ -490,6 +490,13 @@ void MainWindow::pasteFromClipboard()
     setText(text);
 }
 
+void MainWindow::setCodeActionsEnabled(bool enabled)
+{
+    m_copyAction->setEnabled(enabled);
+    m_saveAction->setEnabled(enabled);
+    m_clearAction->setEnabled(enabled);
+}
+
 void MainWindow::showCode(const qr::Code &code)
 {
     if (m_aboutOpen) {
@@ -498,9 +505,7 @@ void MainWindow::showCode(const qr::Code &code)
     m_qrView->setCode(code);
     m_stack->setCurrentIndex(CodePage);
     updateTextLabel();
-    m_copyAction->setEnabled(true);
-    m_saveAction->setEnabled(true);
-    m_clearAction->setEnabled(true);
+    setCodeActionsEnabled(true);
 
     m_copyButton->setFocus(Qt::OtherFocusReason);
     clearStatus();
@@ -516,9 +521,7 @@ void MainWindow::showPlaceholder()
     m_qrView->clear();
     m_textLabel->clear();
     m_stack->setCurrentIndex(PlaceholderPage);
-    m_copyAction->setEnabled(false);
-    m_saveAction->setEnabled(false);
-    m_clearAction->setEnabled(false);
+    setCodeActionsEnabled(false);
     clearStatus();
 }
 
@@ -552,9 +555,7 @@ void MainWindow::showAbout()
 
     // The page is read-only, so nothing below it should act on the code.
     m_pasteAction->setEnabled(false);
-    m_copyAction->setEnabled(false);
-    m_saveAction->setEnabled(false);
-    m_clearAction->setEnabled(false);
+    setCodeActionsEnabled(false);
     m_closeAboutAction->setEnabled(true);
 
     clearStatus();
@@ -582,9 +583,7 @@ void MainWindow::closeAbout()
     m_stack->setCurrentIndex(m_pageBeforeAbout);
 
     const bool hasCode = m_code.isValid();
-    m_copyAction->setEnabled(hasCode);
-    m_saveAction->setEnabled(hasCode);
-    m_clearAction->setEnabled(hasCode);
+    setCodeActionsEnabled(hasCode);
 
     if (m_pageBeforeAbout == CodePage && hasCode) {
         m_copyButton->setFocus(Qt::OtherFocusReason);
