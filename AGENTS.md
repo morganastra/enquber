@@ -12,6 +12,13 @@ CMake + Ninja and wrapping `libqrencode`.
 - Flow: `MainWindow::setText()` -> `qr::Code::encode()` (libqrencode) ->
   `QrView` rasterises the matrix; exports re-render at ~1024 px via
   `renderForExport()`.
+- Typing is the other way in: a `TypeEditor` replaces the caption label and
+  `MainWindow::liveEncode()` re-runs `encode()` on every keystroke, so `m_code`
+  is provisional until Return (`commitLiveInput()`) keeps it or Escape
+  (`cancelLiveInput()`) restores `m_codeBeforeType`. Paste, Copy, Save and Clear
+  are disabled meanwhile so the editor gets their keys; a new window-level
+  shortcut needs the same treatment in `beginLiveInput()`. Ctrl+L runs
+  `typeText()`.
 - `src/i18n.{h,cpp}` installs the embedded Qt translation catalogs. All UI text
   goes through `qtTrId("some.id")`; the English wording is a `//%` comment above
   the call (never a string literal passed to a widget). Catalogs live in

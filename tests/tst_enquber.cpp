@@ -228,6 +228,16 @@ private slots:
     void typeEditorTabMovesOnInsteadOfTyping();
     void typeEditorKeepsEveryParagraphCentered();
 
+    void liveTypeOpensTheFieldWithPlaceholder();
+    void liveTypeEncodesAsYouGo();
+    void liveClearingRestoresThePlaceholder();
+    void livePrefillsTheCurrentCode();
+    void liveCtrlEnterInsertsANewline();
+    void liveEditorAcceptsPaste();
+    void liveReturnClosesTheField();
+    void liveEscapeRestoresThePreviousCode();
+    void captionEditorTextIsCentered();
+
     void copyPutsImageOnClipboard();
     void draggingOffersImageAndFile();
     void qrViewStartsDragOnGesture();
@@ -573,6 +583,188 @@ void TestEnquber::typeEditorKeepsEveryParagraphCentered()
 
     editor.clear();
     QVERIFY(allCentered());
+}
+
+void TestEnquber::liveTypeOpensTheFieldWithPlaceholder()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    QVERIFY(editor->isVisible());
+    // Typing has to land in the field, not be swallowed by a shortcut.
+    QCOMPARE(QApplication::focusWidget(), editor);
+    // The field starts empty, but the page is not blank: a placeholder symbol
+    // stands in. It is not the user's code, so hasCode() stays false.
+    QVERIFY(!window.hasCode());
+    QVERIFY(window.findChild<QrView *>()->hasCode());
+    QCOMPARE(window.findChild<QStackedWidget *>()->currentIndex(), 1);
+    // Nothing real to export yet, so the buttons must not look live.
+    QPushButton *copy = buttonContaining(&window, QStringLiteral("copy"));
+    QVERIFY(copy);
+    QVERIFY(!copy->isEnabled());
+}
+
+void TestEnquber::liveTypeEncodesAsYouGo()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+
+    QTest::keyClicks(editor, QStringLiteral("live"));
+    // No Return: the symbol is already built from what has been typed.
+    QVERIFY(window.hasCode());
+    QCOMPARE(window.encodedText(), QStringLiteral("live"));
+}
+
+void TestEnquber::liveClearingRestoresThePlaceholder()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    QTest::keyClicks(editor, QStringLiteral("gone"));
+    QVERIFY(window.hasCode());
+
+    editor->clear();
+
+    // Back to empty: the placeholder returns, the user's code is gone, and the
+    // field stays open.
+    QVERIFY(!window.hasCode());
+    QVERIFY(window.findChild<QrView *>()->hasCode());
+    QVERIFY(editor->isVisible());
+}
+
+void TestEnquber::livePrefillsTheCurrentCode()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://before.example"));
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    // Reopening the field starts from what is currently encoded.
+    QCOMPARE(editor->toPlainText(), QStringLiteral("https://before.example"));
+
+    editor->setPlainText(QStringLiteral("https://typed.example"));
+    QTest::keyClick(editor, Qt::Key_Return);
+
+    QVERIFY(window.hasCode());
+    QCOMPARE(window.encodedText(), QStringLiteral("https://typed.example"));
+    QVERIFY(!editor->isVisible());
+}
+
+void TestEnquber::liveCtrlEnterInsertsANewline()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+
+    QTest::keyClicks(editor, QStringLiteral("one"));
+    QTest::keyClick(editor, Qt::Key_Return, Qt::ControlModifier);
+    QTest::keyClicks(editor, QStringLiteral("two"));
+
+    QCOMPARE(editor->toPlainText(), QStringLiteral("one\ntwo"));
+    QCOMPARE(window.encodedText(), QStringLiteral("one\ntwo"));
+}
+
+void TestEnquber::liveEditorAcceptsPaste()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    QGuiApplication::clipboard()->setText(QStringLiteral("pasted\nvalue"));
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+
+    // Paste has to land in the field (multi-line included), not trigger the
+    // window's Paste action and replace the code behind it.
+    QTest::keyClick(editor, Qt::Key_V, Qt::ControlModifier);
+    QCOMPARE(editor->toPlainText(), QStringLiteral("pasted\nvalue"));
+    QCOMPARE(window.encodedText(), QStringLiteral("pasted\nvalue"));
+}
+
+void TestEnquber::liveReturnClosesTheField()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    QTest::keyClicks(editor, QStringLiteral("hello"));
+    QVERIFY(editor->isVisible());
+
+    QTest::keyClick(editor, Qt::Key_Return);
+
+    // Return confirms: the field steps aside and the caption takes over.
+    QVERIFY(!editor->isVisible());
+    QVERIFY(window.hasCode());
+    QCOMPARE(window.encodedText(), QStringLiteral("hello"));
+    QVERIFY(window.findChild<QLabel *>(QStringLiteral("encodedText"))->isVisible());
+    // Confirming hands the code back, so the buttons come alive again, and the
+    // keyboard follows the hidden editor to the copy action rather than being
+    // left to Qt's own choice of focus target.
+    QPushButton *copy = buttonContaining(&window, QStringLiteral("copy"));
+    QVERIFY(copy);
+    QVERIFY(copy->isEnabled());
+    QCOMPARE(QApplication::focusWidget(), copy);
+}
+
+void TestEnquber::liveEscapeRestoresThePreviousCode()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://keep.example"));
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    QVERIFY(editor->isVisible());
+    editor->setPlainText(QStringLiteral("https://discard.example"));
+    QVERIFY(window.encodedText() == QStringLiteral("https://discard.example"));
+
+    QTest::keyClick(editor, Qt::Key_Escape);
+
+    QVERIFY(!editor->isVisible());
+    QVERIFY(window.hasCode());
+    QCOMPARE(window.encodedText(), QStringLiteral("https://keep.example"));
+    // Cancelling back to an existing code also has to hand the keyboard on.
+    QCOMPARE(QApplication::focusWidget(), buttonContaining(&window, QStringLiteral("copy")));
+}
+
+void TestEnquber::captionEditorTextIsCentered()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    QCOMPARE(int(editor->document()->firstBlock().blockFormat().alignment()),
+             int(Qt::AlignHCenter));
+
+    // Setting the text again (the prefill path) must not drop the alignment,
+    // and a Ctrl+Enter line must inherit it.
+    editor->setPlainText(QStringLiteral("one\ntwo"));
+    QTest::keyClick(editor, Qt::Key_Return, Qt::ControlModifier);
+    QTest::keyClicks(editor, QStringLiteral("three"));
+    for (QTextBlock block = editor->document()->begin(); block.isValid(); block = block.next()) {
+        QCOMPARE(int(block.blockFormat().alignment()), int(Qt::AlignHCenter));
+    }
 }
 
 void TestEnquber::copyPutsImageOnClipboard()
@@ -1361,9 +1553,12 @@ void TestEnquber::englishCatalogResolvesEveryId()
         QStringLiteral("about.hint"),
         QStringLiteral("dropzone.title"),
         QStringLiteral("dropzone.hint"),
+        QStringLiteral("typeeditor.placeholder"),
         QStringLiteral("mainwindow.help.tooltip"),
         QStringLiteral("mainwindow.help.accessible"),
         QStringLiteral("mainwindow.action.paste"),
+        QStringLiteral("mainwindow.action.type"),
+        QStringLiteral("mainwindow.action.type.tooltip"),
         QStringLiteral("mainwindow.action.copy"),
         QStringLiteral("mainwindow.action.copy.tooltip"),
         QStringLiteral("mainwindow.action.save"),
