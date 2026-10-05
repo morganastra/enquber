@@ -22,7 +22,7 @@ Get a target window id from tools/xui.py, e.g.
 
 The payload is offered as both text/uri-list and plain text/UTF8_STRING, and
 the drop always uses the copy action. Without --x/--y the drop lands on the
-centre of the target window. This is a manual debugging tool; the automated
+center of the target window. This is a manual debugging tool; the automated
 tests use tools/dragsource.cpp instead.
 
 Needs python-xlib and a real X11 display (no native Wayland).
@@ -219,10 +219,10 @@ def main(argv: list[str] | None = None) -> int:
                              "and plain text/UTF8_STRING")
     parser.add_argument("--x", type=int, default=None,
                         help="screen x of the drop (default: the target's "
-                             "centre; pass both --x and --y)")
+                             "center; pass both --x and --y)")
     parser.add_argument("--y", type=int, default=None,
                         help="screen y of the drop (default: the target's "
-                             "centre; pass both --x and --y)")
+                             "center; pass both --x and --y)")
     args = parser.parse_args(argv)
 
     if _XLIB_ERROR is not None:

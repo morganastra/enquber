@@ -23,3 +23,7 @@ Misc UX
 	(failure to encode a QR code, failure to decode one, etc). 
 
 	Only show one error banner at a time; auto-dismiss if another action happens successfully
+
+	Show the keyboard shortcuts on the help / about page. It lists none
+	today, so Ctrl+V, Ctrl+L, Ctrl+C, Ctrl+S, Esc, Ctrl+H and Ctrl+Q are
+	only discoverable from the empty-state hint and the button tooltips.
