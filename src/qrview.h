@@ -24,6 +24,11 @@ public:
     void clear();
     bool hasCode() const { return m_code.isValid(); }
 
+    /// Side, in logical pixels, of the symbol as it would be painted right now
+    /// for the current widget size; 0 when there is nothing to draw. The inline
+    /// editor is matched to this so the field lines up with the code above it.
+    int codeSide() const;
+
     /// Highlights the code; used while a drop is hovering over the window.
     void setHighlighted(bool highlighted);
 
@@ -43,6 +48,10 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
 
 private:
+    /// Device pixels per module at the current widget size: the largest whole
+    /// number that fits. paintEvent() draws with it and codeSide() reports the
+    /// result, so both have to read it from here. Needs a valid code.
+    int fittedModulePixels() const;
     void dropCache();
 
     qr::Code m_code;

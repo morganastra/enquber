@@ -236,6 +236,7 @@ private slots:
     void liveEditorAcceptsPaste();
     void liveReturnClosesTheField();
     void liveEscapeRestoresThePreviousCode();
+    void captionEditorMatchesTheSymbolWidth();
     void captionEditorTextIsCentered();
 
     void copyPutsImageOnClipboard();
@@ -243,6 +244,9 @@ private slots:
     void qrViewStartsDragOnGesture();
     void draggingBelowTheThresholdDoesNothing();
     void draggingWithoutACodeDoesNothing();
+    void codeSideIsZeroWithoutACode();
+    void codeSideIsTheSizeOfThePaintedSymbol_data();
+    void codeSideIsTheSizeOfThePaintedSymbol();
     void longTextIsShapedForTheLabel();
     void repeatingAStatusMessageRestartsItsTimeout();
     void clearingReturnsToTheDropTarget_data();
@@ -746,6 +750,28 @@ void TestEnquber::liveEscapeRestoresThePreviousCode()
     QCOMPARE(QApplication::focusWidget(), buttonContaining(&window, QStringLiteral("copy")));
 }
 
+void TestEnquber::captionEditorMatchesTheSymbolWidth()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://width.example"));
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    QCoreApplication::processEvents();
+
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *view = window.findChild<QrView *>();
+    QVERIFY(editor);
+    QVERIFY(view);
+    const int side = view->codeSide();
+    QVERIFY(side > 0);
+    // About as wide as the symbol, not the whole window (allow a pixel of
+    // rounding from the whole-device-pixel module size).
+    QVERIFY(editor->width() <= side + 2);
+    QVERIFY(editor->width() >= side - 2);
+    QVERIFY(editor->width() < window.width());
+}
+
 void TestEnquber::captionEditorTextIsCentered()
 {
     MainWindow window;
@@ -873,6 +899,81 @@ void TestEnquber::draggingWithoutACodeDoesNothing()
     const QPoint start = view->rect().center();
     sendDragGesture(view, start, start + QPoint(QApplication::startDragDistance() + 5, 0));
     QCOMPARE(spy.count(), 0);
+}
+
+void TestEnquber::codeSideIsZeroWithoutACode()
+{
+    QrView view;
+    view.resize(300, 300);
+    QCOMPARE(view.codeSide(), 0);
+
+    view.setCode(qr::Code::encode(QStringLiteral("https://side.example")));
+    QVERIFY(view.codeSide() > 0);
+
+    // A code that failed to encode has nothing to paint either.
+    view.setCode(qr::Code());
+    QCOMPARE(view.codeSide(), 0);
+
+    view.setCode(qr::Code::encode(QStringLiteral("https://side.example")));
+    view.clear();
+    QCOMPARE(view.codeSide(), 0);
+}
+
+void TestEnquber::codeSideIsTheSizeOfThePaintedSymbol_data()
+{
+    QTest::addColumn<QSize>("viewSize");
+    QTest::addColumn<QString>("text");
+
+    // The symbol is whole modules at whole pixels each, so its side moves in
+    // steps as the view grows and as the text needs a bigger symbol.
+    const QString small = QStringLiteral("x");
+    const QString large = QString(100, QLatin1Char('y'));
+    QTest::newRow("square") << QSize(300, 300) << small;
+    QTest::newRow("odd square") << QSize(333, 333) << small;
+    QTest::newRow("wide, the height limits it") << QSize(600, 301) << small;
+    QTest::newRow("tall, the width limits it") << QSize(299, 700) << small;
+    QTest::newRow("a larger symbol") << QSize(333, 333) << large;
+}
+
+void TestEnquber::codeSideIsTheSizeOfThePaintedSymbol()
+{
+    QFETCH(QSize, viewSize);
+    QFETCH(QString, text);
+
+    QrView view;
+    // On a known gray ground the symbol's quiet zone is the only pure white, so
+    // its bounding box is the painted symbol. The view's faint outline is made
+    // white too: it is drawn half a pixel off the image when the symbol is
+    // centered on a half pixel, and would otherwise tint the edge column.
+    QPalette palette = view.palette();
+    palette.setColor(QPalette::Window, QColor(200, 200, 200));
+    palette.setColor(QPalette::WindowText, Qt::white);
+    view.setPalette(palette);
+    view.setAutoFillBackground(true);
+    view.resize(viewSize);
+    view.setCode(qr::Code::encode(text));
+    QVERIFY(view.hasCode());
+
+    const QImage painted = view.grab().toImage();
+    int left = painted.width();
+    int top = painted.height();
+    int right = -1;
+    int bottom = -1;
+    for (int y = 0; y < painted.height(); ++y) {
+        for (int x = 0; x < painted.width(); ++x) {
+            if (painted.pixel(x, y) == qRgb(255, 255, 255)) {
+                left = qMin(left, x);
+                top = qMin(top, y);
+                right = qMax(right, x);
+                bottom = qMax(bottom, y);
+            }
+        }
+    }
+    QVERIFY2(right >= 0, "nothing white was painted");
+
+    const qreal ratio = painted.devicePixelRatio();
+    QCOMPARE(qRound((right - left + 1) / ratio), view.codeSide());
+    QCOMPARE(qRound((bottom - top + 1) / ratio), view.codeSide());
 }
 
 void TestEnquber::longTextIsShapedForTheLabel()

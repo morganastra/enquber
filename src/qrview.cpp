@@ -56,6 +56,26 @@ QSize QrView::sizeHint() const
     return QSize(360, 360);
 }
 
+int QrView::codeSide() const
+{
+    if (!m_code.isValid()) {
+        return 0;
+    }
+    // Whole modules at whole device pixels each, as paintEvent() draws them, so
+    // the field matched to this lines up with the painted image rather than the
+    // raw available box (which can be a few pixels wider once the module size
+    // is rounded down).
+    const int modules = m_code.modules() + 2 * qr::Code::QuietZone;
+    return static_cast<int>(std::lround(fittedModulePixels() * modules / devicePixelRatioF()));
+}
+
+int QrView::fittedModulePixels() const
+{
+    const int modules = m_code.modules() + 2 * qr::Code::QuietZone;
+    const qreal available = std::max<qreal>(1.0, std::min(width(), height()) - 2 * kPadding);
+    return std::max(1, static_cast<int>(std::floor(available * devicePixelRatioF() / modules)));
+}
+
 void QrView::dropCache()
 {
     m_cache = QImage();
@@ -69,9 +89,7 @@ void QrView::paintEvent(QPaintEvent *)
     }
 
     const qreal dpr = devicePixelRatioF();
-    const int modules = m_code.modules() + 2 * qr::Code::QuietZone;
-    const qreal available = std::max<qreal>(1.0, std::min(width(), height()) - 2 * kPadding);
-    const int modulePixels = std::max(1, static_cast<int>(std::floor(available * dpr / modules)));
+    const int modulePixels = fittedModulePixels();
 
     if (modulePixels != m_cacheModulePixels || m_cache.isNull()) {
         m_cache = m_code.toImage(modulePixels);
