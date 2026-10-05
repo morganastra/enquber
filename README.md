@@ -2,7 +2,7 @@
 
 Enquber is a simple cross-platform QR code maker application with a nice UX and near-instant startup
 
-Drop or paste text into the window to generate a QR code; then save, copy, or drag the resulting PNG into another application
+Drop, paste, or type text into the window to generate a QR code; then save, copy, or drag the resulting PNG into another application
 
 ![Enquber UI: the drop target and QR code view](doc/image/enquber-ui.png)
 
@@ -46,6 +46,13 @@ Basic flow when a link is dropped or pasted:
 2. `QrView` picks the largest whole number of pixels per module that fits and
    rasterises the matrix once per size; `QrView::paintEvent()` just blits it.
 3. The exports re-render at ~1024 px with `MainWindow::renderForExport()`.
+
+Typing is the other way in. Ctrl+L swaps the caption under the code for a
+`TypeEditor`, and every change to its text runs `MainWindow::liveEncode()`,
+which feeds the same `qr::Code::encode()` and `QrView` as above, so the symbol
+follows the text. Return keeps what is shown; Escape puts back the code that
+was there before. While the field is open the window's Paste, Copy, Save and
+Clear shortcuts are disabled, so the editor gets those keys.
 
 ### Debug Logging
 

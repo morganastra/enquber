@@ -6,6 +6,7 @@
 #include "mimetext.h"
 #include "qrview.h"
 #include "theme.h"
+#include "typeeditor.h"
 
 #include <QAbstractButton>
 #include <QAction>
@@ -33,6 +34,7 @@
 #include <QRegularExpression>
 #include <QStackedWidget>
 #include <QStandardPaths>
+#include <QTextDocument>
 #include <QTextLayout>
 #include <QTimer>
 #include <QtGlobal>
@@ -64,6 +66,11 @@ constexpr int kStatusTimeoutMs = 4000;
 constexpr int kMaxTextLines = 3;
 
 constexpr int kWindowMargin = 24;
+
+/// The symbol shown under an empty inline field, so the code page never looks
+/// blank at the moment the user is about to type. It is data, not UI text, so
+/// it is deliberately not translated.
+const QString kPlaceholderText = QStringLiteral("enquber");
 
 /// Distance of the help button from the top-right corner of the window.
 constexpr int kHelpButtonMargin = 10;
@@ -274,6 +281,29 @@ void MainWindow::buildUi()
     m_textLabel->installEventFilter(this);
     codeLayout->addWidget(m_textLabel);
 
+    // The inline editor, in the caption slot under the QR view. It is swapped
+    // with m_textLabel while editing so the symbol stays on screen and rebuilds
+    // as the text changes.
+    m_captionEditor = new TypeEditor(codePage);
+    m_captionEditor->setObjectName(QStringLiteral("captionEditor"));
+    // About three lines tall: enough to show a small multi-line payload without
+    // the field dominating the window. Anything longer scrolls.
+    const QFontMetrics editorMetrics(m_captionEditor->fontMetrics());
+    constexpr int kEditorLines = 3;
+    m_captionEditor->setFixedHeight(kEditorLines * editorMetrics.lineSpacing()
+                                    + 2 * m_captionEditor->frameWidth()
+                                    + 2 * qRound(m_captionEditor->document()->documentMargin())
+                                    + 2);
+    m_captionEditor->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    //@ TypeEditor
+    //% "Type or paste text"
+    m_captionEditor->setCenteredPlaceholder(qtTrId("typeeditor.placeholder"));
+    m_captionEditor->hide();
+    connect(m_captionEditor, &TypeEditor::submitted, this, &MainWindow::commitLiveInput);
+    connect(m_captionEditor, &TypeEditor::cancelled, this, &MainWindow::cancelLiveInput);
+    connect(m_captionEditor, &QTextEdit::textChanged, this, &MainWindow::liveEncode);
+    codeLayout->addWidget(m_captionEditor, 0, Qt::AlignHCenter);
+
     auto *buttons = new QHBoxLayout;
     buttons->setSpacing(12);
     buttons->addStretch(1);
@@ -344,6 +374,17 @@ void MainWindow::buildActions()
     m_pasteAction->setShortcutContext(Qt::WindowShortcut);
     connect(m_pasteAction, &QAction::triggered, this, &MainWindow::pasteFromClipboard);
     addAction(m_pasteAction);
+
+    //@ MainWindow
+    //% "&Type text…"
+    m_typeAction = new QAction(qtTrId("mainwindow.action.type"), this);
+    m_typeAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_L));
+    m_typeAction->setShortcutContext(Qt::WindowShortcut);
+    //@ MainWindow
+    //% "Type the text to encode (Ctrl+L)"
+    m_typeAction->setToolTip(qtTrId("mainwindow.action.type.tooltip"));
+    connect(m_typeAction, &QAction::triggered, this, &MainWindow::typeText);
+    addAction(m_typeAction);
 
     //@ MainWindow
     //% "&Copy image"
@@ -490,11 +531,152 @@ void MainWindow::pasteFromClipboard()
     setText(text);
 }
 
+void MainWindow::typeText()
+{
+    if (m_aboutOpen) {
+        return;
+    }
+    beginLiveInput();
+}
+
+void MainWindow::beginLiveInput()
+{
+    if (m_typeInputActive) {
+        return;
+    }
+    m_typeInputActive = true;
+    m_codeBeforeType = m_code;
+    // The QR view has to be on screen, so this editor lives on the code page
+    // even when there is no symbol yet.
+    m_stack->setCurrentIndex(CodePage);
+
+    m_liveSuppress = true;
+    m_captionEditor->setPlainText(m_code.isValid() ? m_code.text() : QString());
+    m_liveSuppress = false;
+
+    m_textLabel->hide();
+    m_captionEditor->show();
+    m_captionEditor->setFocus(Qt::OtherFocusReason);
+    m_captionEditor->selectAll();
+
+    // While the field owns the keyboard, Escape/Backspace/Delete (Clear) and
+    // Ctrl+V/Ctrl+C (Paste/Copy) belong to the editor, not to the window
+    // actions. finishTypeInput()/cancelLiveInput() put them back.
+    m_pasteAction->setEnabled(false);
+    setCodeActionsEnabled(false);
+    clearStatus();
+
+    // Even with nothing typed yet, show a symbol so the page is not blank.
+    liveEncode();
+}
+
+void MainWindow::liveEncode()
+{
+    if (m_liveSuppress || !m_typeInputActive) {
+        return;
+    }
+
+    const QString trimmed = m_captionEditor->toPlainText().trimmed();
+    if (trimmed.isEmpty()) {
+        // Nothing typed: stand in with a placeholder symbol so the code page
+        // still reads as a QR maker rather than a blank text box.
+        m_code = qr::Code();
+        m_qrView->setCode(qr::Code::encode(kPlaceholderText));
+        clearStatus();
+        return;
+    }
+
+    qr::Code code = qr::Code::encode(trimmed);
+    if (!code.isValid()) {
+        // Keep the last good symbol on screen and explain why this one cannot
+        // be shown; the field keeps whatever the user typed.
+        showStatus(code.error());
+        return;
+    }
+
+    // Copy/Save/Clear stay disabled while the field is up: their shortcuts
+    // (Ctrl+C/S, Esc) have to reach the editor instead. commitLiveInput() and
+    // cancelLiveInput() decide their final state.
+    m_code = code;
+    m_qrView->setCode(code);
+    clearStatus();
+}
+
+void MainWindow::commitLiveInput()
+{
+    if (!m_typeInputActive) {
+        return;
+    }
+
+    const QString trimmed = m_captionEditor->toPlainText().trimmed();
+    if (trimmed.isEmpty()) {
+        finishTypeInput();
+        showPlaceholder();
+        return;
+    }
+
+    qr::Code code = qr::Code::encode(trimmed);
+    if (!code.isValid()) {
+        // Too much to encode: stay in the field with the text intact.
+        showStatus(code.error());
+        return;
+    }
+
+    m_code = code;
+    finishTypeInput();
+    updateTextLabel();
+    setCodeActionsEnabled(true);
+    // The editor was the focused widget and is now hidden; hand the keyboard to
+    // the action most people want next, exactly as showCode() does. Without
+    // this, Qt picks the next focusable widget by itself and a keyboard user can
+    // land somewhere surprising (the floating help button, say).
+    m_copyButton->setFocus(Qt::OtherFocusReason);
+    clearStatus();
+}
+
+void MainWindow::cancelLiveInput()
+{
+    if (!m_typeInputActive) {
+        return;
+    }
+    finishTypeInput();
+    m_code = m_codeBeforeType;
+
+    if (m_code.isValid()) {
+        m_qrView->setCode(m_code);
+        updateTextLabel();
+        setCodeActionsEnabled(true);
+        m_stack->setCurrentIndex(CodePage);
+        // Same reason as commitLiveInput(): the hidden editor cannot keep the
+        // keyboard, so restore focus to the action beside the code.
+        m_copyButton->setFocus(Qt::OtherFocusReason);
+    } else {
+        m_qrView->clear();
+        m_textLabel->clear();
+        setCodeActionsEnabled(false);
+        m_stack->setCurrentIndex(PlaceholderPage);
+    }
+    clearStatus();
+}
+
+void MainWindow::finishTypeInput()
+{
+    m_typeInputActive = false;
+    if (m_captionEditor->isVisible()) {
+        m_captionEditor->hide();
+        m_textLabel->show();
+    }
+    m_pasteAction->setEnabled(true);
+}
+
 void MainWindow::setCodeActionsEnabled(bool enabled)
 {
     m_copyAction->setEnabled(enabled);
     m_saveAction->setEnabled(enabled);
     m_clearAction->setEnabled(enabled);
+    m_copyButton->setEnabled(enabled);
+    m_saveButton->setEnabled(enabled);
+    m_clearButton->setEnabled(enabled);
 }
 
 void MainWindow::showCode(const qr::Code &code)
@@ -502,6 +684,7 @@ void MainWindow::showCode(const qr::Code &code)
     if (m_aboutOpen) {
         closeAbout();
     }
+    finishTypeInput();
     m_qrView->setCode(code);
     m_stack->setCurrentIndex(CodePage);
     updateTextLabel();
@@ -518,6 +701,7 @@ void MainWindow::showPlaceholder()
     }
     m_code = qr::Code();
     m_payload.forget();
+    finishTypeInput();
     m_qrView->clear();
     m_textLabel->clear();
     m_stack->setCurrentIndex(PlaceholderPage);
@@ -539,6 +723,7 @@ void MainWindow::showAbout()
     if (m_aboutOpen) {
         return;
     }
+    cancelLiveInput();
     m_aboutOpen = true;
     m_pageBeforeAbout = static_cast<Page>(m_stack->currentIndex());
 
@@ -555,6 +740,7 @@ void MainWindow::showAbout()
 
     // The page is read-only, so nothing below it should act on the code.
     m_pasteAction->setEnabled(false);
+    m_typeAction->setEnabled(false);
     setCodeActionsEnabled(false);
     m_closeAboutAction->setEnabled(true);
 
@@ -579,6 +765,7 @@ void MainWindow::closeAbout()
 
     m_closeAboutAction->setEnabled(false);
     m_pasteAction->setEnabled(true);
+    m_typeAction->setEnabled(true);
 
     m_stack->setCurrentIndex(m_pageBeforeAbout);
 

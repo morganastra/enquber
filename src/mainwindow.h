@@ -11,6 +11,7 @@ class QDir;
 class AboutPage;
 class DropZone;
 class QrView;
+class TypeEditor;
 class QAbstractButton;
 class QAction;
 class QLabel;
@@ -39,6 +40,9 @@ public slots:
 
     /// Encodes whatever the clipboard holds, if it holds anything usable.
     void pasteFromClipboard();
+
+    /// Opens the inline multi-line field under the QR.
+    void typeText();
 
     /// Copies the current code to the clipboard as a PNG image.
     void copyToClipboard();
@@ -69,7 +73,19 @@ private:
     void showAbout();
     void showCode(const qr::Code &code);
     void showPlaceholder();
-    /// Enables/disables the Copy, Save and Clear actions together.
+    /// Puts the multi-line field in the caption slot under the QR view.
+    void beginLiveInput();
+    /// Rebuilds the symbol from the field's text (run on every keystroke), or
+    /// shows the placeholder while the field is empty.
+    void liveEncode();
+    /// Return closes the field, keeping the symbol it was already showing.
+    void commitLiveInput();
+    /// Escape closes the field and restores the code from before editing.
+    void cancelLiveInput();
+    /// Rests and hides the field, restoring the normal actions.
+    void finishTypeInput();
+    /// Enables/disables Copy, Save and Clear (actions and their buttons) as one,
+    /// so the buttons never look live while their action is disabled.
     void setCodeActionsEnabled(bool enabled);
     void updateTextLabel();
     void showStatus(const QString &message);
@@ -105,6 +121,7 @@ private:
     DropZone *m_dropZone = nullptr;
     QrView *m_qrView = nullptr;
     QLabel *m_textLabel = nullptr;
+    TypeEditor *m_captionEditor = nullptr;
     QLabel *m_statusLabel = nullptr;
     QTimer *m_statusTimer = nullptr;
     QAbstractButton *m_helpButton = nullptr;
@@ -112,6 +129,7 @@ private:
     QPushButton *m_saveButton = nullptr;
     QPushButton *m_clearButton = nullptr;
     QAction *m_pasteAction = nullptr;
+    QAction *m_typeAction = nullptr;
     QAction *m_copyAction = nullptr;
     QAction *m_saveAction = nullptr;
     QAction *m_clearAction = nullptr;
@@ -121,6 +139,13 @@ private:
 
     Page m_pageBeforeAbout = PlaceholderPage;
     bool m_aboutOpen = false;
+    /// What was encoded before the inline editor took over the window; Escape
+    /// puts it back.
+    qr::Code m_codeBeforeType;
+    bool m_typeInputActive = false;
+    /// Set while the caption field is filled in programmatically, so that does
+    /// not look like the user typing and trigger a live rebuild.
+    bool m_liveSuppress = false;
     int m_shapedWidth = -1;
 
     qr::Code m_code;
