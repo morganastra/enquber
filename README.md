@@ -20,6 +20,10 @@ On macos, use brew:
 
     brew install cmake ninja qtbase qrencode pkgconf just
 
+Building the embedded translations also needs Qt's Linguist tools (`lupdate`,
+`lrelease`), which Homebrew ships with the full `qt` formula rather than
+`qtbase` alone.
+
 To run the smoke tests you also need
 
     zbar imagemagick xclip python-xlib python-pyqt6 xorg-server-xvfb
