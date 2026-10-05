@@ -83,7 +83,7 @@ drag->exec(Qt::CopyAction);
 The hot spot is in **logical** pixels, but `QPixmap::width()` reports device
 pixels once a ratio is set. Qt's own documented `pixmap().width() / 2` therefore
 puts the cursor at the preview's bottom-right corner on a scaled display; the
-device independent size is the value that centres it.
+device independent size is the value that centers it.
 
 `mime::payloadForDrag()` (in `src/mimeimage.cpp`) builds the object:
 
@@ -93,7 +93,7 @@ device independent size is the value that centres it.
   copy of the file.
 - Plain text is **not** set: since Qt 5, `setUrls()` makes `hasText()` true and
   `text()` fall back to the file URL, so a text editor pastes
-  `file:///tmp/enquber-…/name.png`. That is the accepted "drag a file" behaviour.
+  `file:///tmp/enquber-…/name.png`. That is the accepted "drag a file" behavior.
 
 The PNG is rendered once with `renderForExport()`, so a dropped file carries the
 same ~1024 px, 300 dpi image that Ctrl+C and Save produce.
@@ -214,7 +214,7 @@ const Qt::DropAction action = drag->exec(Qt::CopyAction);
 QTimer::singleShot(kDragLingerMs, drag, [drag] { drag->deleteLater(); });
 ```
 
-`kDragLingerMs` is 1000 ms. This is the same X11 on-demand-payload behaviour
+`kDragLingerMs` is 1000 ms. This is the same X11 on-demand-payload behavior
 that `mime::Payload` exists to work around in the other direction (see
 `src/mimetext.h`); there the fix is on the target side, here it is on the
 source side. Some targets (Firefox, Thunar, Konqueror) are relaxed enough to win

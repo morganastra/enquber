@@ -43,8 +43,8 @@ DropZone::DropZone(QWidget *parent)
     m_hint = new QLabel(tr("or press Ctrl+V to paste one"), this);
     m_hint->setObjectName(QStringLiteral("dropZoneHint"));
     m_hint->setAlignment(Qt::AlignCenter);
-    // Secondary text takes the palette's placeholder colour. Asking for the
-    // role instead of copying the colour into the palette means it is resolved
+    // Secondary text takes the palette's placeholder color. Asking for the
+    // role instead of copying the color into the palette means it is resolved
     // when the label paints, so it follows a switch to dark mode.
     m_hint->setForegroundRole(QPalette::PlaceholderText);
 
