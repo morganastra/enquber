@@ -17,8 +17,8 @@ CMake + Ninja and wrapping `libqrencode`.
   is provisional until Return (`commitLiveInput()`) keeps it or Escape
   (`cancelLiveInput()`) restores `m_codeBeforeType`. Paste, Copy, Save and Clear
   are disabled meanwhile so the editor gets their keys; a new window-level
-  shortcut needs the same treatment in `beginLiveInput()`. Ctrl+L runs
-  `typeText()`.
+  shortcut needs the same treatment in `beginLiveInput()`. Ctrl+L and a click on
+  the drop zone both run `typeText()`.
 - `src/i18n.{h,cpp}` installs the embedded Qt translation catalogs. All UI text
   goes through `qtTrId("some.id")`; the English wording is a `//%` comment above
   the call (never a string literal passed to a widget). Catalogs live in

@@ -236,6 +236,7 @@ private slots:
     void liveEditorAcceptsPaste();
     void liveReturnClosesTheField();
     void liveEscapeRestoresThePreviousCode();
+    void dropZoneClickOpensTheTypeField();
     void captionEditorMatchesTheSymbolWidth();
     void captionEditorTextIsCentered();
 
@@ -748,6 +749,23 @@ void TestEnquber::liveEscapeRestoresThePreviousCode()
     QCOMPARE(window.encodedText(), QStringLiteral("https://keep.example"));
     // Cancelling back to an existing code also has to hand the keyboard on.
     QCOMPARE(QApplication::focusWidget(), buttonContaining(&window, QStringLiteral("copy")));
+}
+
+void TestEnquber::dropZoneClickOpensTheTypeField()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    auto *zone = window.findChild<DropZone *>();
+    QVERIFY(zone);
+    QTest::mouseClick(zone, Qt::LeftButton);
+
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    QVERIFY(editor->isVisible());
+    // Clicking the empty target lands in the same placeholder state.
+    QVERIFY(!window.hasCode());
+    QVERIFY(window.findChild<QrView *>()->hasCode());
 }
 
 void TestEnquber::captionEditorMatchesTheSymbolWidth()

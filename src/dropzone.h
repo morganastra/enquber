@@ -8,6 +8,7 @@ class QLabel;
 class QDragEnterEvent;
 class QDragLeaveEvent;
 class QDropEvent;
+class QMouseEvent;
 
 class DropZone : public QWidget
 {
@@ -22,10 +23,15 @@ public:
 
 signals:
     void textDropped(const QString &text);
+    /// The user asked to type: a click on the prompt (Ctrl+L is handled by the
+    /// window, which talks to the same slot).
+    void clicked();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
     void changeEvent(QEvent *event) override;
+
+    void mousePressEvent(QMouseEvent *event) override;
 
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dragMoveEvent(QDragMoveEvent *event) override;

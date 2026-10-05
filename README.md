@@ -52,7 +52,8 @@ Typing is the other way in. Ctrl+L swaps the caption under the code for a
 which feeds the same `qr::Code::encode()` and `QrView` as above, so the symbol
 follows the text. Return keeps what is shown; Escape puts back the code that
 was there before. While the field is open the window's Paste, Copy, Save and
-Clear shortcuts are disabled, so the editor gets those keys.
+Clear shortcuts are disabled, so the editor gets those keys. Clicking the drop
+zone starts the same session.
 
 ### Debug Logging
 
