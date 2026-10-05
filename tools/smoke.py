@@ -7,9 +7,22 @@ code the application produces is decoded again with zbarimg, so the test proves
 that what ends up on screen, on the clipboard and on disk is scannable and says
 what it should.
 
-    tools/smoke.py --display :9
+    just smoke-test
 
-Point it at a throwaway display (Xvfb) to keep windows off your desktop.
+Point it at a throwaway display (Xvfb) to keep windows off your desktop; the
+test takes over the mouse and keyboard and overwrites the X clipboard, so do
+not run it on a display you are using. Native Wayland is not supported.
+
+Needs the smoke build tree, because the drag helper is only built there:
+
+    cmake --preset smoke && cmake --build --preset smoke
+
+and these on PATH: import and identify (ImageMagick), xclip, zbarimg (zbar).
+The Python modules python-xlib and PyQt6 (for tools/droptarget.py) are also
+required.
+
+Exit status: 0 all steps passed, 1 a check failed or an error occurred,
+2 a required tool or module is missing, 130 interrupted.
 """
 
 from __future__ import annotations
@@ -28,7 +41,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from xui import X11, Window  # noqa: E402
+try:
+    from xui import X11, Window  # noqa: E402
+except ImportError as error:  # xui imports python-xlib
+    X11 = None  # type: ignore[assignment]
+    Window = None  # type: ignore[assignment]
+    _XLIB_ERROR: ImportError | None = error
+else:
+    _XLIB_ERROR = None
 
 DROPPED_URL = "https://example.com/dragged?from=smoke-test"
 PASTED_URL = "https://example.com/pasted?q=1"
@@ -299,12 +319,18 @@ def drag_with_mouse(smoke: Smoke, source: Window, target: tuple[int, int], relea
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--display", default=os.environ.get("DISPLAY", ":0"))
-    parser.add_argument("--app", default="build/enquber",
-                        help="the application binary (default: build/enquber)")
-    parser.add_argument("--dragsource", default="build/tools/dragsource",
-                        help="the drag helper, built with -DENQUBER_BUILD_TEST_TOOLS=ON")
+    parser.add_argument("--app", default="build/smoke/enquber",
+                        help="the application binary to test "
+                             "(default: build/smoke/enquber)")
+    parser.add_argument("--dragsource", default="build/smoke/tools/dragsource",
+                        help="the drag helper, built with "
+                             "-DENQUBER_BUILD_TEST_TOOLS=ON "
+                             "(default: build/smoke/tools/dragsource)")
     parser.add_argument("--shots", default=None,
                         help="where to write screenshots (default: a date-time "
                              "stamped directory under $TMPDIR/enquber-smoke)")
@@ -314,6 +340,11 @@ def main(argv: list[str] | None = None) -> int:
         if not shutil.which(tool):
             print(f"missing required tool: {tool}", file=sys.stderr)
             return 2
+
+    if _XLIB_ERROR is not None:
+        print(f"missing required module: {_XLIB_ERROR.name} "
+              "(pip install python-xlib)", file=sys.stderr)
+        return 2
 
     # The drag-out step needs a drop target, which is built on PyQt6 (see
     # tools/droptarget.py). The other steps do not, but there is no point

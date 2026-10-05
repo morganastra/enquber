@@ -15,7 +15,17 @@ browser, GTK or Qt does when a link is dragged:
 The data itself travels over the XdndSelection, which this process owns; the
 target converts it when it wants it, and the requests and replies are logged.
 
-    tools/xdnd.py --target <window id> --text https://example.com --x 300 --y 200
+Get a target window id from tools/xui.py, e.g.
+
+    id=$(tools/xui.py find Enquber)
+    tools/xdnd.py --target "$id" --text https://example.com
+
+The payload is offered as both text/uri-list and plain text/UTF8_STRING, and
+the drop always uses the copy action. Without --x/--y the drop lands on the
+centre of the target window. This is a manual debugging tool; the automated
+tests use tools/dragsource.cpp instead.
+
+Needs python-xlib and a real X11 display (no native Wayland).
 
 Exit status is 0 when the target accepted the drop and finished it.
 """
@@ -30,8 +40,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from Xlib import X, Xatom, display  # noqa: E402
-from Xlib.protocol import request  # noqa: E402
+try:
+    from Xlib import X, Xatom, display  # noqa: E402
+    from Xlib.protocol import request  # noqa: E402
+except ImportError as error:
+    _XLIB_ERROR: ImportError | None = error
+else:
+    _XLIB_ERROR = None
 
 XDND_VERSION = 5
 XDND_ACTION_COPY = 1
@@ -188,14 +203,32 @@ class XdndSource:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--display", default=None)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--display", default=None,
+                        help="X display to connect to (default: $DISPLAY); must "
+                             "be X11, not native Wayland")
     parser.add_argument("--target", type=lambda v: int(v, 0), required=True,
-                        help="window id of the drop target")
-    parser.add_argument("--text", required=True, help="the payload to drag")
-    parser.add_argument("--x", type=int, default=None, help="screen x of the drop")
-    parser.add_argument("--y", type=int, default=None, help="screen y of the drop")
+                        help="window id of the drop target, decimal or 0x hex "
+                             "(find one with 'tools/xui.py list' or "
+                             "'tools/xui.py find PATTERN')")
+    parser.add_argument("--text", required=True,
+                        help="the payload to drag; offered as both text/uri-list "
+                             "and plain text/UTF8_STRING")
+    parser.add_argument("--x", type=int, default=None,
+                        help="screen x of the drop (default: the target's "
+                             "centre; pass both --x and --y)")
+    parser.add_argument("--y", type=int, default=None,
+                        help="screen y of the drop (default: the target's "
+                             "centre; pass both --x and --y)")
     args = parser.parse_args(argv)
+
+    if _XLIB_ERROR is not None:
+        print(f"missing required module: {_XLIB_ERROR.name} "
+              "(pip install python-xlib)", file=sys.stderr)
+        return 2
 
     source = XdndSource(args.display, args.text)
     if args.x is None or args.y is None:

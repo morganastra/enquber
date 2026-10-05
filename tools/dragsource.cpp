@@ -120,18 +120,44 @@ int main(int argc, char *argv[])
     bool keepRunning = false;
     const QStringList arguments = QApplication::arguments();
     for (int i = 1; i < arguments.size(); ++i) {
-        if (arguments.at(i) == QLatin1String("--text") && i + 1 < arguments.size()) {
+        const QString argument = arguments.at(i);
+        if (argument == QLatin1String("--text") && i + 1 < arguments.size()) {
             payload = arguments.at(++i);
-        } else if (arguments.at(i) == QLatin1String("--with-app")) {
+        } else if (argument == QLatin1String("--with-app")) {
             withApp = true;
-        } else if (arguments.at(i) == QLatin1String("--keep")) {
+        } else if (argument == QLatin1String("--keep")) {
             // Stay around for more drags: a test can then drag repeatedly from
             // the same window without the window manager reshuffling the screen.
             keepRunning = true;
+        } else if (argument == QLatin1String("--help")
+                   || argument == QLatin1String("-h")) {
+            std::fprintf(stdout,
+                         "usage: dragsource --text <payload> [--with-app] [--keep]\n"
+                         "\n"
+                         "A drag source used by the GUI smoke test.\n"
+                         "\n"
+                         "Shows a window holding <payload>; dragging from it with the\n"
+                         "left button starts a real Qt (XDND) drag carrying text/plain\n"
+                         "and, for a URL, text/uri-list -- what a browser sends when a\n"
+                         "link is dragged onto another window.\n"
+                         "\n"
+                         "  --text <payload>  the text to drag (required)\n"
+                         "  --with-app        also show a real Enquber window in this\n"
+                         "                    process and drop onto it, reporting the\n"
+                         "                    encoded text and drop action on stdout\n"
+                         "  --keep            stay up for more drags instead of\n"
+                         "                    quitting after the first one\n"
+                         "  -h, --help        show this help and exit\n"
+                         "\n"
+                         "Exit status is 0 when a drop finished with the copy action.\n");
+            return 0;
         }
     }
     if (payload.isEmpty()) {
-        std::fprintf(stderr, "usage: dragsource --text <payload> [--with-app]\n");
+        std::fprintf(stderr,
+                     "dragsource: --text is required\n"
+                     "usage: dragsource --text <payload> [--with-app] [--keep]\n"
+                     "try 'dragsource --help' for the details\n");
         return 2;
     }
 
