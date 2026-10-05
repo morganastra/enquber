@@ -7,7 +7,7 @@ arch=('x86_64')
 url="https://github.com/morganastra/enquber"
 license=('GPL-3.0-or-later')
 depends=('glibc' 'gcc-libs' 'qt6-base' 'qrencode' 'hicolor-icon-theme')
-makedepends=('cmake' 'ninja' 'git')
+makedepends=('cmake' 'ninja' 'git' 'qt6-tools' 'python')
 provides=('enquber')
 conflicts=('enquber')
 source=("enquber::git+https://github.com/morganastra/enquber.git#branch=main")
