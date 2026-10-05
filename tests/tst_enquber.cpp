@@ -6,6 +6,7 @@
 #include "qrcode.h"
 #include "qrview.h"
 #include "theme.h"
+#include "typeeditor.h"
 
 #include <QApplication>
 #include <QAbstractButton>
@@ -29,8 +30,10 @@
 #include <QPixmap>
 #include <QPushButton>
 #include <QTemporaryDir>
+#include <QTextBlock>
 #include <QTimer>
 #include <QUrl>
+#include <QVBoxLayout>
 #include <QTest>
 
 namespace {
@@ -218,6 +221,12 @@ private slots:
 
     void pasteEncodesClipboardText();
     void pasteWithoutTextIsIgnored();
+
+    void typeEditorReturnSubmits();
+    void typeEditorModifiedReturnInsertsANewline();
+    void typeEditorEscapeIsReportedNotTyped();
+    void typeEditorTabMovesOnInsteadOfTyping();
+    void typeEditorKeepsEveryParagraphCentered();
 
     void copyPutsImageOnClipboard();
     void draggingOffersImageAndFile();
@@ -470,6 +479,100 @@ void TestEnquber::pasteWithoutTextIsIgnored()
     QTest::keyClick(&window, Qt::Key_V, Qt::ControlModifier);
 
     QVERIFY(!window.hasCode());
+}
+
+void TestEnquber::typeEditorReturnSubmits()
+{
+    TypeEditor editor;
+    QSignalSpy submitted(&editor, &TypeEditor::submitted);
+    QSignalSpy cancelled(&editor, &TypeEditor::cancelled);
+
+    QTest::keyClicks(&editor, QStringLiteral("abc"));
+    QTest::keyClick(&editor, Qt::Key_Return);
+    QTest::keyClick(&editor, Qt::Key_Enter);
+
+    // Return, on the main keys or the keypad, finishes the edit and is not
+    // typed into the field.
+    QCOMPARE(submitted.count(), 2);
+    QCOMPARE(cancelled.count(), 0);
+    QCOMPARE(editor.toPlainText(), QStringLiteral("abc"));
+}
+
+void TestEnquber::typeEditorModifiedReturnInsertsANewline()
+{
+    TypeEditor editor;
+    QSignalSpy submitted(&editor, &TypeEditor::submitted);
+
+    QTest::keyClicks(&editor, QStringLiteral("a"));
+    QTest::keyClick(&editor, Qt::Key_Return, Qt::ControlModifier);
+    QTest::keyClicks(&editor, QStringLiteral("b"));
+    QTest::keyClick(&editor, Qt::Key_Return, Qt::ShiftModifier);
+    QTest::keyClicks(&editor, QStringLiteral("c"));
+
+    QCOMPARE(editor.toPlainText(), QStringLiteral("a\nb\nc"));
+    QCOMPARE(submitted.count(), 0);
+}
+
+void TestEnquber::typeEditorEscapeIsReportedNotTyped()
+{
+    TypeEditor editor;
+    QSignalSpy cancelled(&editor, &TypeEditor::cancelled);
+
+    QTest::keyClicks(&editor, QStringLiteral("abc"));
+    QTest::keyClick(&editor, Qt::Key_Escape);
+
+    QCOMPARE(cancelled.count(), 1);
+    QCOMPARE(editor.toPlainText(), QStringLiteral("abc"));
+}
+
+void TestEnquber::typeEditorTabMovesOnInsteadOfTyping()
+{
+    QWidget window;
+    auto *layout = new QVBoxLayout(&window);
+    auto *editor = new TypeEditor(&window);
+    auto *next = new QPushButton(&window);
+    layout->addWidget(editor);
+    layout->addWidget(next);
+    showAndActivate(&window);
+    editor->setFocus(Qt::OtherFocusReason);
+    QCOMPARE(QApplication::focusWidget(), editor);
+
+    // Tab has to be free to move on; a QR payload rarely wants a tab character,
+    // and trapping the keyboard in the field is worse.
+    QTest::keyClicks(editor, QStringLiteral("a"));
+    QTest::keyClick(editor, Qt::Key_Tab);
+
+    QCOMPARE(editor->toPlainText(), QStringLiteral("a"));
+    QCOMPARE(QApplication::focusWidget(), next);
+}
+
+void TestEnquber::typeEditorKeepsEveryParagraphCentered()
+{
+    TypeEditor editor;
+    const auto allCentered = [&editor] {
+        for (QTextBlock block = editor.document()->begin(); block.isValid(); block = block.next()) {
+            if (block.blockFormat().alignment() != Qt::AlignHCenter) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    // Alignment lives in the block format, which setPlainText() and clear()
+    // reset, so each of these has to be put right again.
+    QVERIFY(allCentered());
+
+    editor.setPlainText(QStringLiteral("one\ntwo"));
+    QVERIFY(allCentered());
+
+    editor.moveCursor(QTextCursor::End);
+    QTest::keyClick(&editor, Qt::Key_Return, Qt::ControlModifier);
+    QTest::keyClicks(&editor, QStringLiteral("three"));
+    QCOMPARE(editor.toPlainText(), QStringLiteral("one\ntwo\nthree"));
+    QVERIFY(allCentered());
+
+    editor.clear();
+    QVERIFY(allCentered());
 }
 
 void TestEnquber::copyPutsImageOnClipboard()
