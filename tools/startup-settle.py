@@ -185,13 +185,21 @@ def percentile(values: list[float], fraction: float) -> float:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--display", default=os.environ.get("DISPLAY"),
-                        help="X display to record (default: $DISPLAY)")
+                        help="X display to record; the whole root window is "
+                             "captured, so use a throwaway Xvfb (default: "
+                             "$DISPLAY; an error if neither is set)")
     parser.add_argument("--command", action="append", default=None,
                         help="a command to measure; repeat to compare (default: "
                              "./build/enquber). Quote it, e.g. --command 'konsole --hold'. "
-                             "Prefix 'label,' to name it, e.g. --command 'kcalc,kcalc'")
+                             "Prefix 'label,' (a single bare word) to name it, e.g. "
+                             "--command 'kcalc,kcalc'. With --baseline/--candidate each "
+                             "--command is measured as an extra 'reference' in the same "
+                             "rounds")
     parser.add_argument("--baseline", default=None,
                         help="the command to compare against, reported as "
                              "'baseline' (or as 'label,command'). Pass with "
@@ -202,7 +210,9 @@ def main(argv: list[str] | None = None) -> int:
                              "(or as 'label,command'); measured with --baseline "
                              "(default: none)")
     parser.add_argument("--runs", type=int, default=3,
-                        help="recordings per command (default: 3)")
+                        help="rounds to record; every command is measured once "
+                             "per round and the launch order rotates each round "
+                             "(default: 3)")
     parser.add_argument("--duration", type=float, default=4.0,
                         help="seconds recorded after launch (default: 4)")
     parser.add_argument("--lead", type=float, default=0.2,
@@ -211,22 +221,28 @@ def main(argv: list[str] | None = None) -> int:
                         help="capture rate; the framebuffer can go far higher "
                              "(default: 50)")
     parser.add_argument("--appear-threshold", type=float, default=2.0,
-                        help="mean pixel change (0-255) that counts as the window "
-                             "appearing (default: 2.0)")
+                        help="mean per-frame pixel change (0-255) that counts as "
+                             "the window appearing (default: 2.0)")
     parser.add_argument("--change-threshold", type=float, default=0.05,
-                        help="mean pixel change that counts as still moving; Xvfb "
-                             "draws exactly identical frames once settled, so the "
-                             "default is deliberately tiny (default: 0.05)")
+                        help="mean per-frame pixel change that counts as still "
+                             "moving; Xvfb draws exactly identical frames once "
+                             "settled, so the default is deliberately tiny "
+                             "(default: 0.05)")
     parser.add_argument("--stable-window", type=float, default=0.3,
-                        help="seconds of no change needed to call it settled "
-                             "(default: 0.3)")
+                        help="quiet seconds required at the end of the clip for a "
+                             "run to be called settled, i.e. tail >= this; it is "
+                             "not a count of equal frames (default: 0.3)")
     parser.add_argument("--video", default=None,
                         help="directory for one .mp4 per measured run, named "
-                             "<label>-<round>.mp4 (half resolution)")
+                             "<label>-<round>.mp4 (half resolution); needs ffmpeg, "
+                             "and a failed write is only a warning")
     parser.add_argument("--json", action="store_true",
-                        help="print the raw runs as JSON instead of a table")
+                        help="print the raw runs as JSON instead of a table; pipe "
+                             "it into tools/startup-stats.py for a summary and "
+                             "verdict")
     parser.add_argument("--verbose", action="store_true",
-                        help="print the biggest changes of every run")
+                        help="print the biggest changes of every run (ignored "
+                             "with --json)")
     args = parser.parse_args(argv)
 
     if args.display is None:

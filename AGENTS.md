@@ -60,6 +60,10 @@ Screenshots go to a date-time stamped directory under `$TMPDIR/enquber-smoke`,
 so every run is easy to tell apart. Wayland is not natively supported by the
 smoke test yet.
 
+## Tools/utility scripts
+
+Everything in `tools/` has a useful `--help` 
+
 ## Gotchas
 
 - Deps: Qt6 >= 6.5 (Core/Gui/Widgets) and `libqrencode` via pkg-config. On

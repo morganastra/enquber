@@ -6,14 +6,20 @@ ImageMagick's `import` takes the screenshots. Both are part of a normal KDE
 install, so this stays dependency free.
 
 Used as a library by tools/smoke.py, and on the command line for poking at a
-running application:
+running application. A window is named by its numeric X11 id (decimal or 0x
+hex): `list` prints every window, `find` looks one up by class, title or pid.
 
     xui.py list
     xui.py find --pid 1234
-    xui.py shot <window> /tmp/shot.png
+    xui.py find Enquber
+    xui.py geom 0x60000b
+    xui.py shot 0x60000b /tmp/shot.png
+    xui.py shot /tmp/screen.png
     xui.py key ctrl+v
     xui.py type "https://example.com"
-    xui.py click-at <window> 280 350
+    xui.py click-at 0x60000b 280 350
+
+--display is a global option and must come before the subcommand.
 """
 
 from __future__ import annotations
@@ -26,8 +32,13 @@ import sys
 import time
 from dataclasses import dataclass
 
-from Xlib import X, XK, display
-from Xlib.ext import xtest
+try:
+    from Xlib import X, XK, display
+    from Xlib.ext import xtest
+except ImportError as error:
+    _XLIB_ERROR: ImportError | None = error
+else:
+    _XLIB_ERROR = None
 
 # X11 atoms we care about.
 _NET_WM_NAME = "UTF8_STRING"
@@ -430,59 +441,117 @@ class X11:
 # -- command line ---------------------------------------------------------
 
 
+WINDOW_HELP = "numeric X11 window id (decimal or 0x-prefixed hex)"
+
+
 def _window_id(value: str) -> int:
     return int(value, 0)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--display", default=os.environ.get("DISPLAY", ":0"))
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--display", default=os.environ.get("DISPLAY", ":0"),
+                        help="X display to connect to (default: $DISPLAY, else "
+                             ":0); global, so it must come before the subcommand")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("list", help="list top level windows")
+    sub.add_parser("list", help="list top level windows",
+                   description="Print every interesting top level window, one "
+                               "per line: id, WxH, +X+Y, WM_CLASS, pid and title. "
+                               "Docks, tooltips, popups and clipboard owners are "
+                               "skipped.")
 
-    p = sub.add_parser("find", help="print the id of the best matching window")
-    p.add_argument("pattern", nargs="?")
-    p.add_argument("--pid", type=int)
+    p = sub.add_parser("find", help="print the id of the best matching window",
+                       description="Print the id (as 0x hex) of the best window "
+                                   "for PATTERN and/or --pid. PATTERN is a case-"
+                                   "insensitive regex matched against WM_CLASS "
+                                   "and the title; an exact class match wins, "
+                                   "otherwise the largest match does. With "
+                                   "neither, the largest window wins. Prints 'no "
+                                   "match' to stderr and exits 1 if nothing fits.")
+    p.add_argument("pattern", nargs="?",
+                   help="case-insensitive regex over WM_CLASS and title")
+    p.add_argument("--pid", type=int,
+                   help="only consider windows owned by this process id")
 
-    p = sub.add_parser("geom", help="print a window's geometry")
-    p.add_argument("window", type=_window_id)
+    p = sub.add_parser("geom", help="print a window's geometry",
+                       description="Print the same one-line description as "
+                                   "`list`, for one window.")
+    p.add_argument("window", type=_window_id, help=WINDOW_HELP)
 
-    p = sub.add_parser("activate", help="raise and focus a window")
-    p.add_argument("window", type=_window_id)
+    p = sub.add_parser("activate", help="raise and focus a window",
+                       description="Ask the window manager to raise and focus "
+                                   "WINDOW, or configure it directly if no WM is "
+                                   "running.")
+    p.add_argument("window", type=_window_id, help=WINDOW_HELP)
 
-    p = sub.add_parser("shot", help="screenshot a window (or the whole screen)")
-    p.add_argument("window", nargs="?", type=_window_id)
-    p.add_argument("path")
+    p = sub.add_parser("shot", help="screenshot a window (or the whole screen)",
+                       description="Save a PNG with ImageMagick `import`. With "
+                                   "WINDOW, capture just that window; without it, "
+                                   "capture the whole screen.")
+    p.add_argument("window", nargs="?", type=_window_id,
+                   help="window id to capture (omit for the whole screen)")
+    p.add_argument("path", help="output PNG path")
 
-    p = sub.add_parser("click", help="click absolute screen coordinates")
-    p.add_argument("x", type=int)
-    p.add_argument("y", type=int)
-    p.add_argument("--button", type=int, default=1)
+    p = sub.add_parser("click", help="click absolute screen coordinates",
+                       description="Move the pointer to absolute screen X,Y and "
+                                   "press and release a mouse button.")
+    p.add_argument("x", type=int, help="absolute screen x pixel")
+    p.add_argument("y", type=int, help="absolute screen y pixel")
+    p.add_argument("--button", type=int, default=1,
+                   help="mouse button: 1=left, 2=middle, 3=right (default: 1)")
 
-    p = sub.add_parser("click-at", help="click window relative coordinates")
-    p.add_argument("window", type=_window_id)
-    p.add_argument("x", type=int)
-    p.add_argument("y", type=int)
+    p = sub.add_parser("click-at", help="click window relative coordinates",
+                       description="Click at X,Y pixels from the window's top-"
+                                   "left corner; always the left button.")
+    p.add_argument("window", type=_window_id, help=WINDOW_HELP)
+    p.add_argument("x", type=int, help="pixels right of the window's left edge")
+    p.add_argument("y", type=int, help="pixels below the window's top edge")
 
-    p = sub.add_parser("move", help="move the pointer")
-    p.add_argument("x", type=int)
-    p.add_argument("y", type=int)
+    p = sub.add_parser("move", help="move the pointer",
+                       description="Move the pointer to absolute screen X,Y "
+                                   "without pressing a button.")
+    p.add_argument("x", type=int, help="absolute screen x pixel")
+    p.add_argument("y", type=int, help="absolute screen y pixel")
 
-    p = sub.add_parser("key", help="press a key or shortcut, e.g. ctrl+v")
-    p.add_argument("combo")
+    p = sub.add_parser("key", help="press a key or shortcut, e.g. ctrl+v",
+                       description="Tap one key. A plain COMBO is a keysym name "
+                                   "(Return, Escape, F5) or a one-character key. "
+                                   "A COMBO with '+' is a chord: the last part is "
+                                   "the key, the earlier parts are held as "
+                                   "modifiers (ctrl/control, shift, alt, meta, "
+                                   "super). Shift is added automatically.")
+    p.add_argument("combo", help="e.g. Return, space, F5, ctrl+v, ctrl+shift+s")
 
-    p = sub.add_parser("type", help="type text")
-    p.add_argument("text")
+    p = sub.add_parser("type", help="type text",
+                       description="Type TEXT one character at a time. Only "
+                                   "printable ASCII is supported; use `key "
+                                   "Return` to press Enter.")
+    p.add_argument("text", help="printable ASCII text to type")
 
-    p = sub.add_parser("clip-get", help="print the clipboard text")
-    p = sub.add_parser("clip-set", help="set the clipboard text")
-    p.add_argument("text")
+    sub.add_parser("clip-get", help="print the clipboard text",
+                   description="Print the CLIPBOARD selection as text, verbatim "
+                               "and with no added newline. Needs xclip.")
+    p = sub.add_parser("clip-set", help="set the clipboard text",
+                       description="Put TEXT on the CLIPBOARD selection as UTF-8 "
+                                   "text. Needs xclip.")
+    p.add_argument("text", help="text to put on the clipboard")
 
-    p = sub.add_parser("clip-image", help="save the clipboard image to a file")
-    p.add_argument("path")
+    p = sub.add_parser("clip-image", help="save the clipboard image to a file",
+                       description="If the CLIPBOARD selection offers image/png, "
+                                   "write it to PATH; otherwise print 'no image "
+                                   "on the clipboard' to stderr and exit 1. Needs "
+                                   "xclip.")
+    p.add_argument("path", help="output PNG path")
 
     args = parser.parse_args(argv)
+    if _XLIB_ERROR is not None:
+        print(f"missing required module: {_XLIB_ERROR.name} "
+              "(pip install python-xlib)", file=sys.stderr)
+        return 2
     x = X11(args.display)
 
     if args.command == "list":

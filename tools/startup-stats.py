@@ -96,15 +96,24 @@ def median_cell(values: list[float]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("source", nargs="?", default="-",
-                        help="JSON file from startup-settle.py (default: stdin)")
+                        help="JSON file from `startup-settle.py --json`; omit or "
+                             "pass '-' to read stdin. Leading build/log lines "
+                             "before the JSON are ignored (default: stdin)")
     parser.add_argument("--reference", default="kcalc",
-                        help="command to compare enquber against (default: kcalc)")
+                        help="label to compare the candidate against; matched by "
+                             "basename then substring, and it must be present in "
+                             "the input or the command exits 2 (default: kcalc)")
     parser.add_argument("--threshold", type=float, default=0.0,
-                        help="allowed enquber-minus-reference median delta in "
-                             "seconds; the target is met when the delta is <= "
-                             "this (default: 0)")
+                        help="allowed candidate-minus-reference median delta in "
+                             "seconds: the target is met when the delta is <= "
+                             "this. The default 0 means the candidate's median "
+                             "must be no slower than the reference's; a negative "
+                             "value requires it to be faster (default: 0)")
     args = parser.parse_args(argv)
 
     try:

@@ -17,7 +17,13 @@ application under test actually sent.
 
 It copies one file and exits, so the smoke test can wait for it; --keep is
 for driving it by hand and dropping onto it repeatedly. It prints the formats
-and URLs it is offered. Exit status is 0 once a file has been saved.
+and URLs it is offered. If nothing usable arrives within --timeout seconds it
+exits 1, so the smoke test never hangs.
+
+Needs a real display (X11; not native Wayland) and the PyQt6 module. Normally
+launched by tools/smoke.py, which finds the window by its "drop-target" title.
+
+Exit status: 0 once a local file has been saved, 1 if --timeout expires first.
 """
 
 from __future__ import annotations
@@ -82,11 +88,21 @@ class DropTarget(QLabel):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--save", required=True, help="directory to copy the received file into")
-    parser.add_argument("--keep", action="store_true", help="stay up for more drops")
-    parser.add_argument("--timeout", type=float, default=30.0,
-                        help="give up after this many seconds with no usable drop")
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--save", required=True, metavar="DIR",
+                        help="directory that receives the dropped file, created "
+                             "if missing; the file keeps its own name and an "
+                             "existing file is overwritten")
+    parser.add_argument("--keep", action="store_true",
+                        help="keep accepting drops instead of exiting after the "
+                             "first local file is saved")
+    parser.add_argument("--timeout", type=float, default=30.0, metavar="SECONDS",
+                        help="total wall-clock seconds from startup after which "
+                             "to exit 1 if no file has been saved; not an idle "
+                             "timeout and not reset per drop (default: 30)")
     args = parser.parse_args(argv)
 
     os.makedirs(args.save, exist_ok=True)
