@@ -14,7 +14,7 @@ The `just` job runner is also highly recommended.
 
 On archlinux-like systems, that would be the following packages:
 
-    base-devel cmake ninja qt6-base qrencode just
+    base-devel cmake ninja qt6-base qt6-tools qrencode just python
 
 On macos, use brew:
 
@@ -62,6 +62,32 @@ We also have a very luxurious smoke test setup which drives automated UI interac
 Extra arguments are passed through to the smoke test driver; see `just smoke-test --help` for details
 
 Smoke test screenshots are written to a date-time stamped directory under `$TMPDIR/enquber-smoke`
+
+### Translations
+
+Enquber uses Qt's ID-based translations: the source code only ever passes text
+IDs (`qtTrId("dropzone.title")`) around, and the English wording lives in a
+`//%` comment above the call. `lupdate` copies that engineering English into
+`i18n/enquber_en.ts` as the message `<source>`, and the compiled catalogs are
+embedded under `:/i18n`, so the UI is never shown a raw ID.
+
+When you add or change a user-facing string:
+
+1. Call `qtTrId("component.element")` and put the English text in a `//%`
+   comment on the line directly above it. Use exactly one `//%` per call, and
+   add a `//:` note when the context is not obvious to a translator.
+2. Run `just i18n-update` to add the ID to every `i18n/enquber_*.ts`.
+3. Translate the new entries in Qt Linguist (`linguist6`).
+4. Run `just test`. The `check_i18n` lint fails on a missing `//%`, a stale or
+   incomplete catalog, a leftover `tr()`, or a translation that drops a
+   placeholder (`%1`), an accelerator (`&`) or required punctuation.
+
+Spanish ships in `i18n/enquber_es.ts`. To try it:
+
+    LANGUAGE=es ./build/enquber "https://example.com"
+
+Localization happens at startup; there is no language switch in the running
+app, and right-to-left mirroring is not implemented yet.
 
 ## Acknowledgements
 

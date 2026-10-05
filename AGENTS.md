@@ -12,6 +12,10 @@ CMake + Ninja and wrapping `libqrencode`.
 - Flow: `MainWindow::setText()` -> `qr::Code::encode()` (libqrencode) ->
   `QrView` rasterises the matrix; exports re-render at ~1024 px via
   `renderForExport()`.
+- `src/i18n.{h,cpp}` installs the embedded Qt translation catalogs. All UI text
+  goes through `qtTrId("some.id")`; the English wording is a `//%` comment above
+  the call (never a string literal passed to a widget). Catalogs live in
+  `i18n/enquber_*.ts`. See README's "Translations" section.
 
 ## Commands
 
@@ -19,7 +23,9 @@ Use `just` (recipes wrap CMake presets, and `just test`/`just smoke-test`
 rebuild first):
 
 - `just build`, `just run`
-- `just test` — build + unit tests
+- `just test` — build + unit tests + the `check_i18n` catalog lint
+- `just i18n-update` — regenerate `i18n/enquber_*.ts` from the source
+- `just check-i18n` — lint text IDs and catalogs without rebuilding
 - `just smoke-test [args]` — build smoke helpers + drive the real GUI
 - `just startup-settle [args]` — record the Xvfb framebuffer and measure when
   the UI stops changing (compare apps with repeated `--command`)
@@ -66,4 +72,8 @@ smoke test yet.
   (Qt internals: `qt.qpa.xdnd.debug=true`).
 - No CI, formatter, or linter config. Match the existing 4-space style and keep
   builds clean under `-Wall -Wextra`.
+- i18n: never pass a user-facing literal to a widget. Use
+  `qtTrId("component.element")` with exactly one `//%` English comment on the
+  line above, then `just i18n-update`. `tools/check-i18n.py` (also a ctest) is
+  the guard; it must stay green.
 - `doc/improvements.txt` is a feature wishlist, not a spec.
