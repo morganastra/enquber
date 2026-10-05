@@ -55,6 +55,9 @@ else:
 DROPPED_URL = "https://example.com/dragged?from=smoke-test"
 PASTED_URL = "https://example.com/pasted?q=1"
 FOREIGN_URL = "https://example.com/from-another-process"
+# Typed by hand through the Ctrl+L field; deliberately plain ASCII and spaces so
+# it can be entered with real key events.
+MANUAL_TEXT = "manual typing example"
 
 
 class Failure(Exception):
@@ -634,6 +637,24 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     again, again_shot = drag_until_dropped(smoke, source, window, DROPPED_URL,
                                            label="after clearing")
     smoke.check_decoded(again, DROPPED_URL, "the drop target works again", again_shot)
+
+    smoke.step("type the text by hand with Ctrl+L")
+    x.focus(window.id)
+    time.sleep(0.3)
+    x.shortcut("ctrl+l")
+    time.sleep(0.8)
+    # The field opens with the current code selected, so typing replaces it.
+    smoke.screenshot(window, "type-open")
+    x.type_text(MANUAL_TEXT)
+    time.sleep(0.8)
+    typed, typed_shot = smoke.decode(window, "typed")
+    smoke.check_decoded(typed, MANUAL_TEXT, "the hand typed text is on screen", typed_shot)
+    x.key("Return")
+    time.sleep(0.8)
+    confirmed, confirmed_shot = smoke.decode(window, "typed-confirmed")
+    smoke.check_decoded(confirmed, MANUAL_TEXT,
+                        "Return keeps the hand typed code", confirmed_shot)
+    smoke.screenshot(window, "typed-done")
 
     smoke.step("quit with Ctrl+Q")
     quitting = smoke.launch([str(smoke.app)], "Enquber")
