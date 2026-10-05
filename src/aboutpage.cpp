@@ -3,6 +3,7 @@
 #include "theme.h"
 
 #include <QApplication>
+#include <QCoreApplication>
 #include <QFont>
 #include <QLabel>
 #include <QPalette>
@@ -84,7 +85,9 @@ AboutPage::AboutPage(QWidget *parent)
     layout->addWidget(m_icon);
     layout->addSpacing(2);
 
-    auto *title = makeLabel(this, tr("Enquber"));
+    //@ App
+    //% "Enquber"
+    auto *title = makeLabel(this, qtTrId("app.name"));
     title->setObjectName(QStringLiteral("aboutTitle"));
     QFont titleFont = scaled(title->font(), 1.5);
     titleFont.setWeight(QFont::Bold);
@@ -93,26 +96,30 @@ AboutPage::AboutPage(QWidget *parent)
 
     const QString version = QApplication::applicationVersion();
     if (!version.isEmpty()) {
-        auto *versionLabel = makeLabel(this, tr("Version %1").arg(version));
+        //@ AboutPage
+        //% "Version %1"
+        auto *versionLabel = makeLabel(this, qtTrId("about.version").arg(version));
         versionLabel->setObjectName(QStringLiteral("aboutVersion"));
         mute(versionLabel);
         layout->addWidget(versionLabel);
     }
 
     layout->addSpacing(4);
-    layout->addWidget(makeLabel(this, tr("A simple QR code maker")));
+    //@ AboutPage
+    //% "A simple QR code maker"
+    layout->addWidget(makeLabel(this, qtTrId("about.tagline")));
     layout->addSpacing(10);
 
-    auto *copyright = makeLabel(this, tr("Copyright © 2026 Morgan Astra"));
+    //@ AboutPage
+    //% "Copyright © 2026 Morgan Astra"
+    auto *copyright = makeLabel(this, qtTrId("about.copyright"));
     copyright->setObjectName(QStringLiteral("aboutCopyright"));
     layout->addWidget(copyright);
 
     layout->addSpacing(4);
-    auto *licence = makeLabel(this,
-                              tr("Enquber is free software: you can redistribute it and/or modify "
-                                 "it under the terms of the GNU General Public License, version 3 "
-                                 "or later. It is distributed in the hope that it will be useful, "
-                                 "but without any warranty."));
+    //@ AboutPage
+    //% "Enquber is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, version 3 or later. It is distributed in the hope that it will be useful, but without any warranty."
+    auto *licence = makeLabel(this, qtTrId("about.licence"));
     licence->setObjectName(QStringLiteral("aboutLicence"));
     licence->setFont(scaled(licence->font(), 0.92));
     licence->setFixedWidth(kContentWidth);
@@ -129,12 +136,9 @@ AboutPage::AboutPage(QWidget *parent)
     links->setOpenExternalLinks(true);
     links->setTextInteractionFlags(Qt::TextBrowserInteraction);
     links->setFixedWidth(kContentWidth);
-    links->setText(tr("Project source: <a href=\"%1\">github.com/morganastra/enquber</a>"
-                      "<br><br>Built with <a href=\"%2\">Qt</a> "
-                      "and <a href=\"%3\">libqrencode</a>."
-                      "<br><br><a href=\"%4\">Feather Icons</a> "
-                      "© 2013–2023 Cole Bemis, <a href=\"%5\">MIT license</a>"
-                      "<br><br><a href=\"%6\">GNU GPL v3 full text</a>")
+    //@ AboutPage
+    //% "Project source: <a href=\"%1\">github.com/morganastra/enquber</a><br><br>Built with <a href=\"%2\">Qt</a> and <a href=\"%3\">libqrencode</a>.<br><br><a href=\"%4\">Feather Icons</a> © 2013–2023 Cole Bemis, <a href=\"%5\">MIT license</a><br><br><a href=\"%6\">GNU GPL v3 full text</a>"
+    links->setText(qtTrId("about.links")
                        .arg(QString::fromLatin1(kRepoUrl), QString::fromLatin1(kQtUrl),
                             QString::fromLatin1(kQrencodeUrl), QString::fromLatin1(kFeatherUrl),
                             QString::fromLatin1(kFeatherLicenseUrl), QString::fromLatin1(kGplUrl)));
@@ -143,7 +147,9 @@ AboutPage::AboutPage(QWidget *parent)
 
     layout->addStretch(1);
 
-    auto *hint = makeLabel(this, tr("Press Esc to go back"));
+    //@ AboutPage
+    //% "Press Esc to go back"
+    auto *hint = makeLabel(this, qtTrId("about.hint"));
     hint->setObjectName(QStringLiteral("aboutHint"));
     hint->setFont(scaled(hint->font(), 0.92));
     mute(hint);

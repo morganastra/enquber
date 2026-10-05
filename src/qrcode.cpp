@@ -29,10 +29,15 @@ QString errorForErrno(int code)
 {
     switch (code) {
     case ERANGE:
-        return QCoreApplication::translate("qr::Code", "Too much data for a single QR code");
+        //@ QrCode
+        //% "Too much data for a single QR code"
+        return qtTrId("qrcode.error.too-much-data");
     case ENOMEM:
-        return QCoreApplication::translate("qr::Code", "Out of memory while encoding");
+        //@ QrCode
+        //% "Out of memory while encoding"
+        return qtTrId("qrcode.error.out-of-memory");
     default:
+        // OS-provided text, deliberately not translated.
         return QString::fromLocal8Bit(std::strerror(code));
     }
 }
@@ -49,7 +54,9 @@ Code Code::encode(const QString &text, ErrorCorrection level)
     Code code;
     code.m_text = text;
     if (text.isEmpty()) {
-        code.m_error = QCoreApplication::translate("qr::Code", "Nothing to encode");
+        //@ QrCode
+        //% "Nothing to encode"
+        code.m_error = qtTrId("qrcode.error.nothing");
         return code;
     }
 

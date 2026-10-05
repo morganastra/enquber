@@ -110,6 +110,12 @@ class Smoke:
     def launch(self, command: list[str], title: str) -> App:
         environment = dict(os.environ, DISPLAY=self.display)
         environment.pop("QT_QPA_PLATFORM", None)
+        # The checks below match English titles and dialog text, so pin the
+        # application to the C locale instead of inheriting a translated
+        # desktop from the developer running the test.
+        environment.pop("LANGUAGE", None)
+        environment["LC_ALL"] = "C"
+        environment["LANG"] = "C"
         try:
             process = subprocess.Popen(command, env=environment, preexec_fn=die_with_parent,
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)

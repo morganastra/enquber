@@ -10,6 +10,7 @@
 #include <QAbstractButton>
 #include <QAction>
 #include <QClipboard>
+#include <QCoreApplication>
 #include <QDir>
 #include <QDrag>
 #include <QDragEnterEvent>
@@ -129,6 +130,7 @@ protected:
             question.setBold(true);
             painter.setFont(question);
             painter.setPen(glyph);
+            // A drawn symbol, deliberately not translated.
             painter.drawText(rect(), Qt::AlignCenter, QStringLiteral("?"));
         }
     }
@@ -227,7 +229,9 @@ ShapedText shapeForLabel(const QString &text, const QFont &font, const QFontMetr
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(tr("Enquber"));
+    //@ App
+    //% "Enquber"
+    setWindowTitle(qtTrId("app.name"));
     setWindowIcon(theme::appIcon());
     setAcceptDrops(true);
     resize(560, 700);
@@ -316,8 +320,14 @@ void MainWindow::buildUi()
     // the mock-ups were drawn against.
     m_helpButton = new HelpButton(central);
     m_helpButton->setObjectName(QStringLiteral("helpButton"));
-    m_helpButton->setToolTip(tr("Show help and info (Ctrl+H or ?)"));
-    m_helpButton->setAccessibleName(tr("Help and info"));
+    //: Tooltip on the floating help button; it also opens the help page with
+    //: the keyboard shortcuts Ctrl+H or the "?" key.
+    //@ MainWindow
+    //% "Show help and info (Ctrl+H or ?)"
+    m_helpButton->setToolTip(qtTrId("mainwindow.help.tooltip"));
+    //@ MainWindow
+    //% "Help and info"
+    m_helpButton->setAccessibleName(qtTrId("mainwindow.help.accessible"));
     connect(m_helpButton, &QAbstractButton::clicked, this, &MainWindow::toggleAbout);
     central->installEventFilter(this);
     positionHelpButton();
@@ -327,21 +337,31 @@ void MainWindow::buildUi()
 
 void MainWindow::buildActions()
 {
-    m_pasteAction = new QAction(tr("&Paste link"), this);
+    //@ MainWindow
+    //% "&Paste link"
+    m_pasteAction = new QAction(qtTrId("mainwindow.action.paste"), this);
     m_pasteAction->setShortcut(QKeySequence::Paste);
     m_pasteAction->setShortcutContext(Qt::WindowShortcut);
     connect(m_pasteAction, &QAction::triggered, this, &MainWindow::pasteFromClipboard);
     addAction(m_pasteAction);
 
-    m_copyAction = new QAction(tr("&Copy image"), this);
+    //@ MainWindow
+    //% "&Copy image"
+    m_copyAction = new QAction(qtTrId("mainwindow.action.copy"), this);
     m_copyAction->setShortcut(QKeySequence::Copy);
-    m_copyAction->setToolTip(tr("Copy the QR code to the clipboard as a PNG image (Ctrl+C)"));
+    //@ MainWindow
+    //% "Copy the QR code to the clipboard as a PNG image (Ctrl+C)"
+    m_copyAction->setToolTip(qtTrId("mainwindow.action.copy.tooltip"));
     connect(m_copyAction, &QAction::triggered, this, &MainWindow::copyToClipboard);
     addAction(m_copyAction);
 
-    m_saveAction = new QAction(tr("&Save…"), this);
+    //@ MainWindow
+    //% "&Save…"
+    m_saveAction = new QAction(qtTrId("mainwindow.action.save"), this);
     m_saveAction->setShortcut(QKeySequence::Save);
-    m_saveAction->setToolTip(tr("Save the QR code as a PNG file (Ctrl+S)"));
+    //@ MainWindow
+    //% "Save the QR code as a PNG file (Ctrl+S)"
+    m_saveAction->setToolTip(qtTrId("mainwindow.action.save.tooltip"));
     connect(m_saveAction, &QAction::triggered, this, &MainWindow::askWhereToSave);
     addAction(m_saveAction);
 
@@ -353,10 +373,14 @@ void MainWindow::buildActions()
     m_saveButton->setToolTip(m_saveAction->toolTip());
     connect(m_saveButton, &QPushButton::clicked, m_saveAction, &QAction::trigger);
 
-    m_clearAction = new QAction(tr("C&lear"), this);
+    //@ MainWindow
+    //% "C&lear"
+    m_clearAction = new QAction(qtTrId("mainwindow.action.clear"), this);
     m_clearAction->setShortcuts({QKeySequence(Qt::Key_Escape), QKeySequence(Qt::Key_Backspace),
                                  QKeySequence(Qt::Key_Delete)});
-    m_clearAction->setToolTip(tr("Go back to the drop target (Esc, Backspace or Delete)"));
+    //@ MainWindow
+    //% "Go back to the drop target (Esc, Backspace or Delete)"
+    m_clearAction->setToolTip(qtTrId("mainwindow.action.clear.tooltip"));
     connect(m_clearAction, &QAction::triggered, this, &MainWindow::showPlaceholder);
     addAction(m_clearAction);
 
@@ -364,9 +388,13 @@ void MainWindow::buildActions()
     m_clearButton->setToolTip(m_clearAction->toolTip());
     connect(m_clearButton, &QPushButton::clicked, m_clearAction, &QAction::trigger);
 
-    m_helpAction = new QAction(tr("&Help and info"), this);
+    //@ MainWindow
+    //% "&Help and info"
+    m_helpAction = new QAction(qtTrId("mainwindow.action.help"), this);
     m_helpAction->setShortcuts({QKeySequence(Qt::CTRL | Qt::Key_H), QKeySequence(Qt::Key_Question)});
-    m_helpAction->setToolTip(tr("Show help and info (Ctrl+H or ?)"));
+    //@ MainWindow
+    //% "Show help and info (Ctrl+H or ?)"
+    m_helpAction->setToolTip(qtTrId("mainwindow.help.tooltip"));
     connect(m_helpAction, &QAction::triggered, this, &MainWindow::toggleAbout);
     addAction(m_helpAction);
 
@@ -379,7 +407,9 @@ void MainWindow::buildActions()
     connect(m_closeAboutAction, &QAction::triggered, this, &MainWindow::closeAbout);
     addAction(m_closeAboutAction);
 
-    m_quitAction = new QAction(tr("&Quit"), this);
+    //@ MainWindow
+    //% "&Quit"
+    m_quitAction = new QAction(qtTrId("mainwindow.action.quit"), this);
     // The platform's standard quit gesture (Ctrl+Q on Linux and Windows, Cmd+Q
     // on macOS) plus Ctrl+Q itself, so the shortcut also works where the theme
     // leaves the standard key unbound. Identical sequences are added once: two
@@ -396,7 +426,9 @@ void MainWindow::buildActions()
     }
     m_quitAction->setShortcuts(quitShortcuts);
     m_quitAction->setShortcutContext(Qt::WindowShortcut);
-    m_quitAction->setToolTip(tr("Quit enquber (Ctrl+Q)"));
+    //@ MainWindow
+    //% "Quit enquber (Ctrl+Q)"
+    m_quitAction->setToolTip(qtTrId("mainwindow.action.quit.tooltip"));
     connect(m_quitAction, &QAction::triggered, this, &QWidget::close);
     addAction(m_quitAction);
 
@@ -450,7 +482,9 @@ void MainWindow::pasteFromClipboard()
 {
     const QString text = mime::textForQr(QGuiApplication::clipboard()->mimeData());
     if (text.isEmpty()) {
-        showStatus(tr("The clipboard holds no text or link"));
+        //@ MainWindow
+        //% "The clipboard holds no text or link"
+        showStatus(qtTrId("mainwindow.status.clipboard-empty"));
         return;
     }
     setText(text);
@@ -509,8 +543,12 @@ void MainWindow::showAbout()
 
     // Leaving is the corner button's job while the page is up.
     static_cast<HelpButton *>(m_helpButton)->setBack(true);
-    m_helpButton->setToolTip(tr("Back to Enquber (Esc or Ctrl+H)"));
-    m_helpButton->setAccessibleName(tr("Back to Enquber"));
+    //@ MainWindow
+    //% "Back to Enquber (Esc or Ctrl+H)"
+    m_helpButton->setToolTip(qtTrId("mainwindow.help.back.tooltip"));
+    //@ MainWindow
+    //% "Back to Enquber"
+    m_helpButton->setAccessibleName(qtTrId("mainwindow.help.back.accessible"));
 
     // The page is read-only, so nothing below it should act on the code.
     m_pasteAction->setEnabled(false);
@@ -531,8 +569,12 @@ void MainWindow::closeAbout()
     m_aboutOpen = false;
 
     static_cast<HelpButton *>(m_helpButton)->setBack(false);
-    m_helpButton->setToolTip(tr("Show help and info (Ctrl+H or ?)"));
-    m_helpButton->setAccessibleName(tr("Help and info"));
+    //@ MainWindow
+    //% "Show help and info (Ctrl+H or ?)"
+    m_helpButton->setToolTip(qtTrId("mainwindow.help.tooltip"));
+    //@ MainWindow
+    //% "Help and info"
+    m_helpButton->setAccessibleName(qtTrId("mainwindow.help.accessible"));
 
     m_closeAboutAction->setEnabled(false);
     m_pasteAction->setEnabled(true);
@@ -601,7 +643,9 @@ void MainWindow::copyToClipboard()
     data->setData(QStringLiteral("image/png"), mime::encodePng(image));
     QGuiApplication::clipboard()->setMimeData(data);
 
-    showStatus(tr("Copied the QR code to the clipboard"));
+    //@ MainWindow
+    //% "Copied the QR code to the clipboard"
+    showStatus(qtTrId("mainwindow.status.copied"));
 }
 
 void MainWindow::startCodeDrag()
@@ -613,7 +657,9 @@ void MainWindow::startCodeDrag()
     const QImage image = renderForExport();
     const QString path = writeDragFile(image);
     if (path.isEmpty()) {
-        showStatus(tr("Could not prepare the image for dragging"));
+        //@ MainWindow
+        //% "Could not prepare the image for dragging"
+        showStatus(qtTrId("mainwindow.status.drag-failed"));
         return;
     }
 
@@ -657,10 +703,19 @@ void MainWindow::askWhereToSave()
         directory = QDir::homePath();
     }
 
+    //: Title of the file chooser that saves the QR code as an image.
+    //@ MainWindow
+    //% "Save QR Code"
+    const QString title = qtTrId("mainwindow.dialog.save.title");
+    //: File-type filter in the save dialog; the star and the extension must
+    //: stay unchanged so Qt can match PNG files.
+    //@ MainWindow
+    //% "PNG image (*.png)"
+    const QString filter = qtTrId("mainwindow.dialog.save.filter");
     const QString path = QFileDialog::getSaveFileName(this,
-                                                      tr("Save QR Code"),
+                                                      title,
                                                       QDir(directory).filePath(suggestedFileName()),
-                                                      tr("PNG image (*.png)"));
+                                                      filter);
     if (path.isEmpty()) {
         return;
     }
@@ -680,11 +735,17 @@ bool MainWindow::saveTo(const QString &path)
 
     const QImage image = renderForExport();
     if (!image.save(target, "PNG")) {
-        showStatus(tr("Could not write %1").arg(QDir::toNativeSeparators(target)));
+        //: %1 is the path the code could not be written to.
+        //@ MainWindow
+        //% "Could not write %1"
+        showStatus(qtTrId("mainwindow.status.write-failed").arg(QDir::toNativeSeparators(target)));
         return false;
     }
 
-    showStatus(tr("Saved to %1").arg(QDir::toNativeSeparators(target)));
+    //: %1 is the path the code was written to.
+    //@ MainWindow
+    //% "Saved to %1"
+    showStatus(qtTrId("mainwindow.status.saved-to").arg(QDir::toNativeSeparators(target)));
     return true;
 }
 
@@ -783,7 +844,9 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
     event->acceptProposedAction();
     setDropHighlight(true);
     if (m_code.isValid()) {
-        showStatus(tr("Drop to replace the current code"));
+        //@ MainWindow
+        //% "Drop to replace the current code"
+        showStatus(qtTrId("mainwindow.status.drop-replace"));
     }
 }
 

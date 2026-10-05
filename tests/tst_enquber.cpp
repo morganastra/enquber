@@ -1,4 +1,5 @@
 #include "dropzone.h"
+#include "i18n.h"
 #include "mainwindow.h"
 #include "mimeimage.h"
 #include "mimetext.h"
@@ -24,6 +25,7 @@
 #include <QFileDialog>
 #include <QIcon>
 #include <QLabel>
+#include <QLocale>
 #include <QPixmap>
 #include <QPushButton>
 #include <QTemporaryDir>
@@ -195,6 +197,7 @@ class TestEnquber : public QObject
     Q_OBJECT
 
 private slots:
+    void init();
     void initTestCase();
     void cleanupTestCase();
 
@@ -252,11 +255,20 @@ private slots:
     void helpButtonMorphsAndToggles();
     void aboutPageShowsLicenceAndLinks();
     void aboutTextSurvivesAShortWindow();
+    void spanishTranslationIsApplied();
 
 private:
     QString m_savedThemeName;
     QString m_savedFallbackThemeName;
 };
+
+void TestEnquber::init()
+{
+    // Every case builds its window after this runs, so the English source
+    // catalog has to be installed here (widgets read translations once, at
+    // construction).
+    QVERIFY(i18n::install(*qApp, QLocale(QLocale::English)));
+}
 
 void TestEnquber::initTestCase()
 {
@@ -1192,6 +1204,42 @@ void TestEnquber::aboutTextSurvivesAShortWindow()
     QVERIFY2(licence->height() >= needed,
              qPrintable(QStringLiteral("licence is %1 px, needs %2")
                             .arg(licence->height()).arg(needed)));
+}
+
+void TestEnquber::spanishTranslationIsApplied()
+{
+    // Proves the ID-based catalogs really localize: a Spanish window must be
+    // built from Spanish strings, not from English falling through.
+    QVERIFY(i18n::install(*qApp, QLocale(QStringLiteral("es"))));
+
+    QCOMPARE(qtTrId("dropzone.title"), QStringLiteral("Suelta un enlace aquí"));
+    QCOMPARE(qtTrId("mainwindow.action.copy"), QStringLiteral("&Copiar imagen"));
+    QCOMPARE(qtTrId("mainwindow.status.saved-to"), QStringLiteral("Guardado en %1"));
+
+    MainWindow window;
+    showAndActivate(&window);
+
+    // The widgets themselves, not only qtTrId(), carry the translation.
+    auto *zone = window.findChild<DropZone *>();
+    QVERIFY(zone);
+    bool sawSpanishTitle = false;
+    for (QLabel *label : zone->findChildren<QLabel *>()) {
+        sawSpanishTitle = sawSpanishTitle || label->text() == QStringLiteral("Suelta un enlace aquí");
+    }
+    QVERIFY(sawSpanishTitle);
+
+    QPushButton *copy = buttonContaining(&window, QStringLiteral("Copiar"));
+    QVERIFY(copy);
+
+    QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
+    auto *hint = window.findChild<QLabel *>(QStringLiteral("aboutHint"));
+    QVERIFY(hint);
+    QCOMPARE(hint->text(), QStringLiteral("Pulsa Esc para volver"));
+
+    // Switching back must restore English; init() relies on the same call for
+    // every other test.
+    QVERIFY(i18n::install(*qApp, QLocale(QLocale::English)));
+    QCOMPARE(qtTrId("dropzone.title"), QStringLiteral("Drop a link here"));
 }
 
 QTEST_MAIN(TestEnquber)

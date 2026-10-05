@@ -17,6 +17,7 @@
 ///
 /// Exit status is 0 when the drop was accepted with the copy action.
 
+#include "i18n.h"
 #include "mainwindow.h"
 
 #include <QApplication>
@@ -110,6 +111,9 @@ private:
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    // The helper can host the real MainWindow, which reads its (translated)
+    // strings at construction, so the catalog has to be installed first.
+    i18n::install(app);
 
     QString payload;
     bool withApp = false;
