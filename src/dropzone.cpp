@@ -3,6 +3,7 @@
 #include "mimetext.h"
 #include "theme.h"
 
+#include <QCoreApplication>
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
@@ -36,11 +37,15 @@ DropZone::DropZone(QWidget *parent)
     m_icon = new QLabel(this);
     m_icon->setAlignment(Qt::AlignCenter);
 
-    m_title = new QLabel(tr("Drop a link here"), this);
+    //@ DropZone
+    //% "Drop a link here"
+    m_title = new QLabel(qtTrId("dropzone.title"), this);
     m_title->setAlignment(Qt::AlignCenter);
     m_title->setFont(titleFont(font()));
 
-    m_hint = new QLabel(tr("or press Ctrl+V to paste one"), this);
+    //@ DropZone
+    //% "or press Ctrl+V to paste one"
+    m_hint = new QLabel(qtTrId("dropzone.hint"), this);
     m_hint->setObjectName(QStringLiteral("dropZoneHint"));
     m_hint->setAlignment(Qt::AlignCenter);
     // Secondary text takes the palette's placeholder color. Asking for the

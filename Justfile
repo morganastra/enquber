@@ -16,9 +16,17 @@ build:
     cmake --preset default
     cmake --build --preset default
 
-# Build, then run the unit tests.
+# Build, then run the unit tests plus the translation-catalog lint.
 test: build
     ctest --preset default
+
+# Regenerate the translation catalogs (i18n/enquber_*.ts) from the source.
+i18n-update: configure
+    cmake --build --preset default --target update_translations
+
+# Check every text ID against the catalogs (also run as part of `just test`).
+check-i18n:
+    python3 tools/check-i18n.py
 
 # Build the smoke test helpers, then run the GUI smoke test.
 #

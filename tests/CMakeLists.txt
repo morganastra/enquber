@@ -1,3 +1,6 @@
+# The tests assert on literal strings, so lupdate must not scan them.
+set_directory_properties(PROPERTIES QT_EXCLUDE_FROM_TRANSLATION ON)
+
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
 qt_add_executable(tst_enquber tst_enquber.cpp)
