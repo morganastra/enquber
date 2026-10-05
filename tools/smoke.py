@@ -9,9 +9,11 @@ what it should.
 
     just smoke-test
 
-Point it at a throwaway display (Xvfb) to keep windows off your desktop; the
-test takes over the mouse and keyboard and overwrites the X clipboard, so do
-not run it on a display you are using. Native Wayland is not supported.
+It starts its own Xvfb display and stops it afterwards, so no display needs
+setting up by hand and the windows never touch your desktop. The test takes
+over the mouse and keyboard and overwrites the X clipboard, so running it on a
+display you are using would be disruptive; pass --no-xvfb --display :N only
+when you want that. Native Wayland is not supported.
 
 Needs the smoke build tree, because the drag helper is only built there:
 
@@ -92,6 +94,95 @@ def install_signal_handlers() -> None:
 
     for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(number, interrupt)
+
+
+def display_is_live(display: str) -> bool:
+    """True when an X server answers on @p display."""
+    try:
+        from Xlib import display as xdisplay
+        xdisplay.Display(display).close()
+        return True
+    except Exception:  # noqa: BLE001 - any failure means "not usable"
+        return False
+
+
+class Xvfb:
+    """A private Xvfb display, started on demand and stopped when done.
+
+    Running against a throwaway server is what the test wants (it takes over
+    the pointer and keyboard and rewrites the clipboard), so it is the default.
+    """
+
+    def __init__(self, geometry: str = "1280x1024x24"):
+        self.geometry = geometry
+        self.process: subprocess.Popen | None = None
+        self.display = ""
+
+    def start(self) -> str:
+        """Starts Xvfb and returns the display it chose, e.g. ":99".
+
+        A specific number is tried first and `-displayfd` confirms readiness;
+        if that number was taken between the check and the start, the next one
+        is tried, so two tests starting at once do not collide.
+        """
+        if not shutil.which("Xvfb"):
+            raise Failure("Xvfb is not on PATH; install it, or pass "
+                          "--no-xvfb --display :N to drive an existing server")
+        last_error = ""
+        for number in self._candidates():
+            try:
+                self.display = f":{number}"
+                self._spawn(number)
+            except Failure as failure:
+                last_error = str(failure)
+                self.stop()
+                continue
+            return self.display
+        raise Failure(f"could not start Xvfb: {last_error or 'no free display'}")
+
+    @staticmethod
+    def _candidates():
+        """Display numbers to try, low enough to be conventional."""
+        for number in range(99, 130):
+            if not Path(f"/tmp/.X{number}-lock").exists() \
+                    and not Path(f"/tmp/.X11-unix/X{number}").exists():
+                yield number
+
+    def _spawn(self, number: int) -> None:
+        read_fd, write_fd = os.pipe()
+        try:
+            self.process = subprocess.Popen(
+                ["Xvfb", f":{number}", "-displayfd", str(write_fd),
+                 "-screen", "0", self.geometry, "-nolisten", "tcp"],
+                pass_fds=(write_fd,),
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        finally:
+            os.close(write_fd)
+
+        # Xvfb writes the display number it bound, then a newline, when ready.
+        import select as _select
+        ready, _, _ = _select.select([read_fd], [], [], 5.0)
+        reported = ""
+        if ready:
+            reported = os.read(read_fd, 16).decode(errors="replace").strip().lstrip(":")
+        os.close(read_fd)
+
+        if not reported or self.process.poll() is not None:
+            raise Failure(f"Xvfb did not come up on :{number}")
+        self.display = f":{reported}"
+        if not display_is_live(self.display):
+            raise Failure(f"Xvfb reported {self.display} but nothing answers there")
+
+    def stop(self) -> None:
+        if self.process is None or self.process.poll() is not None:
+            return
+        self.process.terminate()
+        try:
+            self.process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait(timeout=3)
 
 
 @dataclass
@@ -323,7 +414,14 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--display", default=os.environ.get("DISPLAY", ":0"))
+    parser.add_argument("--display", default=None,
+                        help="X display to drive when --no-xvfb is given, e.g. "
+                             ":9 (default: $DISPLAY, else :0)")
+    parser.add_argument("--xvfb", dest="xvfb", action="store_true", default=None,
+                        help="start a private Xvfb and drive that (the default, "
+                             "so the test never touches your desktop)")
+    parser.add_argument("--no-xvfb", dest="xvfb", action="store_false",
+                        help="never start Xvfb; drive --display as given")
     parser.add_argument("--app", default="build/smoke/enquber",
                         help="the application binary to test "
                              "(default: build/smoke/enquber)")
@@ -362,9 +460,29 @@ def main(argv: list[str] | None = None) -> int:
         shots = (Path(tempfile.gettempdir()) / "enquber-smoke"
                  / time.strftime("%Y-%m-%d_%H-%M-%S"))
 
+    # Xvfb is the default: the test seizes the pointer and keyboard and rewrites
+    # the clipboard, so it must never run on a display the user is using. Only
+    # --no-xvfb opts out, and then --display (or $DISPLAY) is driven as given.
+    xvfb = Xvfb()
+    use_xvfb = args.xvfb is not False
+    display = args.display if args.display is not None \
+        else os.environ.get("DISPLAY", ":0")
+    try:
+        if use_xvfb:
+            display = xvfb.start()
+            print(f"using Xvfb display {display} "
+                  "(pass --no-xvfb to use your own)", flush=True)
+    except Failure as failure:
+        print(f"FAILED: {failure}", file=sys.stderr)
+        return 1
+
     install_signal_handlers()
+    if not display_is_live(display):
+        print(f"FAILED: no X server on {display}", file=sys.stderr)
+        xvfb.stop()
+        return 1
     smoke = Smoke(Path(args.app).resolve(), Path(args.dragsource).resolve(),
-                  args.display, shots)
+                  display, shots)
     try:
         run(smoke)
     except Failure as failure:
@@ -382,6 +500,7 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         for stubborn in smoke.shut_down():
             print(f"warning: could not stop {stubborn}", file=sys.stderr)
+        xvfb.stop()
     print(f"\nall {smoke.steps} steps passed; screenshots in {smoke.shots}")
     return 0
 

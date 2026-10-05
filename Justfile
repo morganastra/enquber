@@ -30,9 +30,10 @@ check-i18n:
 
 # Build the smoke test helpers, then run the GUI smoke test.
 #
-# Any extra arguments are passed straight to tools/smoke.py, for example:
+# Extra arguments are passed to tools/smoke.py. For example to run
+# on the real display:
 #
-#     just smoke-test --display :9
+#     just smoke-test --no-xvfb
 smoke-test *args:
     cmake --preset smoke
     cmake --build --preset smoke
