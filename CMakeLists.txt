@@ -121,6 +121,24 @@ if(ENQUBER_BUILD_TESTS)
         endforeach()
     endif()
 
+    # The fast general-purpose lints, when their tools are installed. The
+    # slower C++ analysis (clazy, clang-tidy) runs only in `just lint-cpp`.
+    find_program(RUFF_EXECUTABLE ruff)
+    if(RUFF_EXECUTABLE)
+        add_test(NAME lint_python
+            COMMAND ${RUFF_EXECUTABLE} check tools tests
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    else()
+        message(STATUS "ruff not found: the lint_python test will not run")
+    endif()
+    find_program(TYPOS_EXECUTABLE typos)
+    if(TYPOS_EXECUTABLE)
+        add_test(NAME lint_spelling
+            COMMAND ${TYPOS_EXECUTABLE}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    else()
+        message(STATUS "typos not found: the lint_spelling test will not run")
+    endif()
 endif()
 
 option(ENQUBER_BUILD_TEST_TOOLS "Build the helpers used by the GUI smoke test" OFF)

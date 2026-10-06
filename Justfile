@@ -24,9 +24,37 @@ test: build
 i18n-update: configure
     cmake --build --preset default --target update_translations
 
-# Check every text ID against the catalogs (also run as part of `just test`).
-check-i18n:
-    python3 tools/check-i18n.py
+# Lint the translations: text IDs, catalog sync, and (Qt 6.11+) catalog
+# fidelity. Also run as part of `just test`.
+lint-i18n:
+    cmake --preset default
+    ctest --preset default -R '^check_i18n'
+
+# Check that the translated catalogs are complete. This is the release gate;
+# `just test` deliberately tolerates unfinished translations so code can land
+# before the Spanish text does.
+check-translations:
+    cmake --preset default
+    ctest --preset release
+
+# Lint everything: C++ static analysis, Python, spelling, translations.
+lint: lint-cpp lint-py lint-spell lint-i18n
+
+# Static analysis for the C++ sources. Configures a clang build tree with a
+# compile database (build/lint); needs clang-tidy, clazy and run-clang-tidy.
+lint-cpp:
+    cmake --preset lint
+    clazy-standalone -p build/lint --only-qt --extra-arg=-Werror src/*.cpp tools/dragsource.cpp
+    run-clang-tidy -p build/lint -quiet '/(src|tools)/[^/]+\.cpp$'
+    python3 tools/qt_review_lint.py src/*.cpp src/*.h tools/dragsource.cpp
+
+# Lint the Python helpers with ruff.
+lint-py:
+    ruff check tools tests
+
+# Flag British spellings; the project uses American English.
+lint-spell:
+    typos
 
 # Build the smoke test helpers, then run the GUI smoke test.
 #
