@@ -11,7 +11,9 @@ QByteArray encodePng(const QImage &image)
 {
     QByteArray png;
     QBuffer buffer(&png);
-    buffer.open(QIODevice::WriteOnly);
+    if (!buffer.open(QIODevice::WriteOnly)) {
+        return {};
+    }
     image.save(&buffer, "PNG");
     return png;
 }

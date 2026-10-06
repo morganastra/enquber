@@ -6,6 +6,8 @@
 #include <QMainWindow>
 #include <QTemporaryDir>
 
+#include <cstdint>
+
 class QDir;
 
 class AboutPage;
@@ -30,8 +32,8 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
 
-    bool hasCode() const { return m_code.isValid(); }
-    QString encodedText() const { return m_code.text(); }
+    [[nodiscard]] bool hasCode() const { return m_code.isValid(); }
+    [[nodiscard]] QString encodedText() const { return m_code.text(); }
 
 public slots:
     /// Encodes @p text (typically a URL) and shows the result. Empty input is
@@ -62,7 +64,7 @@ public slots:
     void closeAbout();
 
 private:
-    enum Page { PlaceholderPage, CodePage, HelpPage };
+    enum Page : std::uint8_t { PlaceholderPage, CodePage, HelpPage };
 
     void buildUi();
     void buildActions();
@@ -94,8 +96,8 @@ private:
     void clearStatus();
     void setDropHighlight(bool active);
     void positionHelpButton();
-    QString suggestedFileName() const;
-    QImage renderForExport() const;
+    [[nodiscard]] QString suggestedFileName() const;
+    [[nodiscard]] QImage renderForExport() const;
     /// Starts dragging the current code out to another application. The payload
     /// and the temporary file it points at are prepared here, because the
     /// window owns export and naming.

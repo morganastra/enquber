@@ -83,7 +83,7 @@ bool Code::isDark(int x, int y) const
     if (!m_code || x < 0 || y < 0 || x >= m_code->width || y >= m_code->width) {
         return false;
     }
-    return (m_code->data[y * m_code->width + x] & 1) != 0;
+    return (m_code->data[y * m_code->width + x] & 1u) != 0u;
 }
 
 QImage Code::toImage(int modulePixels, int quietZone) const

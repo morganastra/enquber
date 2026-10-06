@@ -19,7 +19,7 @@ public:
 
     /// Note that the whole window is actually a drop target
     void setActive(bool active);
-    bool isActive() const { return m_active; }
+    [[nodiscard]] bool isActive() const { return m_active; }
 
 signals:
     void textDropped(const QString &text);
