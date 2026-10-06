@@ -155,6 +155,9 @@ private:
     qr::Code m_code;
 
     mime::Payload m_payload;
+    /// True while the status line shows the "drop to replace" message this
+    /// drag put there, so only that message is cleared when the drag ends.
+    bool m_dropStatusShown = false;
 
     /// Holds the PNGs the code is dragged as; wiped when the window goes away.
     /// Built explicitly so that the directory names itself after the app.

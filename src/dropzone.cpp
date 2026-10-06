@@ -1,12 +1,8 @@
 #include "dropzone.h"
 
-#include "mimetext.h"
 #include "theme.h"
 
 #include <QCoreApplication>
-#include <QDragEnterEvent>
-#include <QDragMoveEvent>
-#include <QDropEvent>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
@@ -31,7 +27,6 @@ QFont titleFont(const QFont &base)
 DropZone::DropZone(QWidget *parent)
     : QWidget(parent)
 {
-    setAcceptDrops(true);
     setFixedSize(440, 240);
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     // The prompt doubles as a "click here to type" affordance; an I-beam over
@@ -119,40 +114,4 @@ void DropZone::mousePressEvent(QMouseEvent *event)
         Q_EMIT clicked();
     }
     QWidget::mousePressEvent(event);
-}
-
-void DropZone::dragEnterEvent(QDragEnterEvent *event)
-{
-    if (m_payload.observe(event->mimeData()).isEmpty()) {
-        return;
-    }
-    event->acceptProposedAction();
-    setActive(true);
-}
-
-void DropZone::dragMoveEvent(QDragMoveEvent *event)
-{
-    if (!m_payload.observe(event->mimeData()).isEmpty()) {
-        event->acceptProposedAction();
-    }
-}
-
-void DropZone::dragLeaveEvent(QDragLeaveEvent *event)
-{
-    QWidget::dragLeaveEvent(event);
-    m_payload.forget();
-    setActive(false);
-}
-
-void DropZone::dropEvent(QDropEvent *event)
-{
-    setActive(false);
-
-    const QString text = m_payload.resolve(event->mimeData());
-    m_payload.forget();
-    if (text.isEmpty()) {
-        return;
-    }
-    event->acceptProposedAction();
-    Q_EMIT textDropped(text);
 }
