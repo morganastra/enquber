@@ -34,6 +34,7 @@ Needs numpy, python-xlib, and (only for --video) ffmpeg.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import shlex
@@ -47,7 +48,9 @@ from pathlib import Path
 
 try:
     import numpy as np
-    from Xlib import X, display as xdisplay, error as xerror
+    from Xlib import X
+    from Xlib import display as xdisplay
+    from Xlib import error as xerror
 except ImportError as error:
     sys.exit(f"startup-settle needs {error.name} (pip install numpy python-xlib)")
 
@@ -124,10 +127,8 @@ def record(command: list[str], display: str, duration: float, lead: float,
             os.killpg(os.getpgid(process.pid), signal.SIGTERM)
             process.wait(timeout=5)
         except (ProcessLookupError, subprocess.TimeoutExpired):
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            except ProcessLookupError:
-                pass
             process.wait(timeout=5)
 
     d.close()
@@ -180,7 +181,7 @@ def write_video(path: Path, frames: list[Frame], fps: float) -> None:
 
 def percentile(values: list[float], fraction: float) -> float:
     ordered = sorted(values)
-    index = min(len(ordered) - 1, int(round(fraction * (len(ordered) - 1))))
+    index = min(len(ordered) - 1, round(fraction * (len(ordered) - 1)))
     return ordered[index]
 
 
@@ -262,7 +263,8 @@ def main(argv: list[str] | None = None) -> int:
         label, separator, body = text.partition(",")
         if separator and not label:
             # A leading comma carries no label: measure the body, not ",command".
-            text, separator, body = body, "", body
+            text = body
+            separator = ""
         if separator and label == label.strip() and " " not in label and "\t" not in label:
             try:
                 command = shlex.split(body)
@@ -304,9 +306,9 @@ def main(argv: list[str] | None = None) -> int:
         specs.append(("./build/enquber", "./build/enquber", ["./build/enquber"]))
 
     roles = {role for role, _, _ in specs}
-    if "baseline" in roles and "candidate" in roles:
-        if len({label for _, label, _ in specs}) != len(specs):
-            parser.error("commands must have distinct labels to be summarised apart")
+    labels = {label for _, label, _ in specs}
+    if "baseline" in roles and "candidate" in roles and len(labels) != len(specs):
+        parser.error("commands must have distinct labels to be summarised apart")
     video_dir = Path(args.video) if args.video else None
     if video_dir:
         video_dir.mkdir(parents=True, exist_ok=True)

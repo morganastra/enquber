@@ -36,7 +36,7 @@ import sys
 def percentile(values: list[float], fraction: float) -> float:
     """Nearest-rank percentile, matching tools/startup-settle.py."""
     ordered = sorted(values)
-    index = min(len(ordered) - 1, int(round(fraction * (len(ordered) - 1))))
+    index = min(len(ordered) - 1, round(fraction * (len(ordered) - 1)))
     return ordered[index]
 
 
@@ -79,7 +79,7 @@ def load_json(text: str):
     """Parses @p text, tolerating leading build/log lines before the JSON."""
     try:
         return json.loads(text)
-    except json.JSONDecodeError as error:
+    except json.JSONDecodeError:
         lines = text.splitlines()
         for index, line in enumerate(lines):
             if line.strip() != "{":
@@ -88,7 +88,7 @@ def load_json(text: str):
                 return json.loads("\n".join(lines[index:]))
             except json.JSONDecodeError:
                 continue
-        raise error
+        raise
 
 
 def median_cell(values: list[float]) -> str:
@@ -171,10 +171,7 @@ def main(argv: list[str] | None = None) -> int:
             reference = "reference"
         elif len(labels) > 2:
             other = [label for label in labels if label not in ("baseline", "candidate")]
-            if len(other) == 1:
-                reference = other[0]
-            else:
-                reference = find_command(other, args.reference)
+            reference = other[0] if len(other) == 1 else find_command(other, args.reference)
         else:
             # With just a pair, compare the candidate against the baseline itself
             # and report the paired delta; the usual kcalc reference is optional.
@@ -260,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"paired {enquber} - baseline delta: median "
                   f"{statistics.median(deltas):+.3f}s ({faster}/{len(deltas)} rounds faster)")
         else:
-            print(f"warning: the paired delta is not a list of numbers",
+            print("warning: the paired delta is not a list of numbers",
                   file=sys.stderr)
     print(f"target ({enquber.split()[0]} <= {reference}, "
           f"threshold {args.threshold:+.3f}s): "

@@ -32,11 +32,11 @@ from __future__ import annotations
 import argparse
 import math
 import os
-import signal
-import tempfile
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,7 +44,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
-    from xui import X11, Window  # noqa: E402
+    from xui import X11, Window
 except ImportError as error:  # xui imports python-xlib
     X11 = None  # type: ignore[assignment]
     Window = None  # type: ignore[assignment]
@@ -77,7 +77,7 @@ def die_with_parent() -> None:
         # works for any libc, unlike hard coding libc.so.6.
         libc = ctypes.CDLL(None, use_errno=True)
         libc.prctl(1, signal.SIGTERM, 0, 0, 0)  # PR_SET_PDEATHSIG
-    except Exception:
+    except (OSError, AttributeError):
         pass  # best effort: the signal handlers are the main path
 
 
@@ -104,9 +104,9 @@ def display_is_live(display: str) -> bool:
     try:
         from Xlib import display as xdisplay
         xdisplay.Display(display).close()
-        return True
     except Exception:  # noqa: BLE001 - any failure means "not usable"
         return False
+    return True
 
 
 class Xvfb:
@@ -231,7 +231,8 @@ class Smoke:
         environment["LC_ALL"] = "C"
         environment["LANG"] = "C"
         try:
-            process = subprocess.Popen(command, env=environment, preexec_fn=die_with_parent,
+            # PDEATHSIG needs preexec_fn; the rule's thread hazard cannot apply here.
+            process = subprocess.Popen(command, env=environment, preexec_fn=die_with_parent,  # noqa: PLW1509
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         except FileNotFoundError as error:
             binary = Path(command[0])
@@ -358,8 +359,10 @@ class Smoke:
 
 
 def decode_png(path: Path) -> str | None:
+    # zbarimg exits nonzero when the image holds no symbol, which some checks
+    # expect, so the exit code is not asserted; stdout carries the result.
     result = subprocess.run(["zbarimg", "--quiet", "--raw", str(path)],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, check=False)
     return result.stdout.strip() or None
 
 
@@ -495,7 +498,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("\ninterrupted", file=sys.stderr)
         return 130
-    except Exception as error:  # noqa: BLE001 - a stack trace is more useful here
+    except Exception as error:  # noqa: BLE001 - top-level handler prints the traceback
         import traceback
         traceback.print_exc()
         print(f"\nERROR: {type(error).__name__}: {error}", file=sys.stderr)
@@ -508,7 +511,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to bottom
+def run(smoke: Smoke):  # one linear scenario, read it top to bottom
     x = smoke.x
 
     smoke.step("the application takes a link on the command line")
@@ -581,7 +584,7 @@ def run(smoke: Smoke):  # noqa: C901 - one linear scenario, read it top to botto
     decoded = decode_png(clipboard_png)
     smoke.check_decoded(decoded, PASTED_URL, "the copied PNG decodes", clipboard_png)
     size = subprocess.run(["identify", "-format", "%wx%h", str(clipboard_png)],
-                          capture_output=True, text=True).stdout.strip()
+                          capture_output=True, text=True, check=True).stdout.strip()
     width, height = (int(part) for part in size.split("x"))
     smoke.check(width == height and width >= 512, f"the copied PNG is {size}")
 

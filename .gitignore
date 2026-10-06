@@ -2,6 +2,7 @@ build/
 *.user
 compile_commands.json
 .cache/
+.ruff_cache/
 
 # makepkg artifacts
 packaging/*/src/
