@@ -60,10 +60,14 @@ qt_add_resources(enquber_core "enquber_icons"
 
 # The catalogs are compiled and embedded in enquber_core so that the app and
 # every test helper that links the library load the same ":/i18n" resources.
+# -no-obsolete keeps the catalog free of messages the source no longer uses,
+# which check-i18n.py treats as an error.
 qt_add_translations(enquber_core
     TS_FILES
         i18n/enquber_en.ts
-        i18n/enquber_es.ts)
+        i18n/enquber_es.ts
+    LUPDATE_OPTIONS
+        -no-obsolete)
 
 qt_add_executable(enquber src/main.cpp)
 target_link_libraries(enquber PRIVATE enquber_core)
@@ -81,19 +85,42 @@ if(ENQUBER_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 
-    # Lint the text IDs and the catalogs. The script needs only Python and
-    # works on the committed catalogs, so a dropped //% or a stale .ts does not
-    # silently ship a raw ID. Registered after enable_testing() so ctest sees it.
+    # Lint the text IDs and the catalogs. The script covers the source-side
+    # conventions (no tr(), a //% per qtTrId, no literal widgets) and catalog
+    # ID sync; it needs only Python and works on the committed catalogs.
+    # Registered after enable_testing() so ctest sees it.
     find_package(Python3 COMPONENTS Interpreter)
     if(Python3_Interpreter_FOUND)
         add_test(NAME check_i18n
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check-i18n.py
                     --source ${CMAKE_CURRENT_SOURCE_DIR}/src
-                    --translations ${CMAKE_CURRENT_SOURCE_DIR}/i18n
-                    --require-translated es)
+                    --translations ${CMAKE_CURRENT_SOURCE_DIR}/i18n)
     else()
         message(WARNING "Python3 not found: the check_i18n translation lint will not run")
     endif()
+
+    # Qt's own Linguist tools cover the catalog side: lcheck validates place
+    # markers, accelerators, whitespace and ending punctuation (Qt 6.11+),
+    # and lrelease -fail-on-unfinished checks completeness (Qt 6.10+). The
+    # completeness test is labeled "release": `just test` tolerates unfinished
+    # translations so code can land before the Spanish text, and
+    # `just check-translations` runs the release gate. All are skipped without
+    # complaint on older Qt, which the app still supports.
+    if(Qt6_VERSION VERSION_GREATER_EQUAL 6.10 AND TARGET Qt6::lrelease)
+        add_test(NAME check_i18n_translated_es
+            COMMAND $<TARGET_FILE:Qt6::lrelease> -fail-on-unfinished
+                    ${CMAKE_CURRENT_SOURCE_DIR}/i18n/enquber_es.ts
+                    -qm ${CMAKE_BINARY_DIR}/lint-es.qm)
+        set_tests_properties(check_i18n_translated_es PROPERTIES LABELS release)
+    endif()
+    if(TARGET Qt6::lcheck)
+        foreach(catalog en es)
+            add_test(NAME check_i18n_lcheck_${catalog}
+                COMMAND $<TARGET_FILE:Qt6::lcheck> --check-finished
+                        ${CMAKE_CURRENT_SOURCE_DIR}/i18n/enquber_${catalog}.ts)
+        endforeach()
+    endif()
+
 endif()
 
 option(ENQUBER_BUILD_TEST_TOOLS "Build the helpers used by the GUI smoke test" OFF)
