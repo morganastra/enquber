@@ -7,7 +7,7 @@ files.extend-exclude = [
   "i18n/*.ts",
   "tools/qt_review_lint.py",
   # The proposal quotes the British variants it found, on purpose.
-  "doc/linting-proposal.md",
+  "doc/done/linting-proposal.md",
 ]
 
 [default]

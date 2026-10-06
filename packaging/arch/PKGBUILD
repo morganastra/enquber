@@ -1,6 +1,6 @@
 # Maintainer: Morgan Astra
 pkgname=enquber-git
-pkgver=0.1.0.r20.g085fe66
+pkgver=0.1.1.r46.g141af06
 pkgrel=1
 pkgdesc="Simple QR code maker with a nice UX and near-instant startup"
 arch=('x86_64')
