@@ -36,7 +36,6 @@ public:
     static Code encode(const QString &text, ErrorCorrection level = ErrorCorrection::Quartile);
 
     [[nodiscard]] bool isValid() const { return static_cast<bool>(m_code); }
-    explicit operator bool() const { return isValid(); }
 
     /// Human readable reason why the code is invalid, or an empty string.
     [[nodiscard]] QString error() const { return m_error; }
