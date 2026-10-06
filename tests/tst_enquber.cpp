@@ -53,6 +53,14 @@ void performDrop(QWidget *target, const QMimeData *mime)
     QCoreApplication::sendEvent(target, &event);
 }
 
+/// Ends a drag that sendDragEnter started, like Qt does when the cursor leaves
+/// the target.
+void sendDragLeave(QWidget *target)
+{
+    QDragLeaveEvent event;
+    QCoreApplication::sendEvent(target, &event);
+}
+
 /// Sends the press and move that begin dragging from @p target. The move
 /// carries the held button explicitly, unlike QTest::mouseMove(), which sends a
 /// move with no button and would not reach an ordinary widget.
@@ -218,6 +226,9 @@ private slots:
     void droppingUrlsPrefersTheUrl();
     void payloadSurvivesASourceThatStopsAnswering();
     void dropWithoutTextIsIgnored();
+    void dragLeaveResetsTheHighlightAndForgetsTheText();
+    void refusedDragsKeepAnUnrelatedStatus();
+    void dropReplaceStatusIsClearedOnLeave();
 
     void pasteEncodesClipboardText();
     void pasteWithoutTextIsIgnored();
@@ -414,10 +425,12 @@ void TestEnquber::dropOnDropZoneShowsCode()
     auto *zone = window.findChild<DropZone *>();
     QVERIFY(zone);
 
+    // The zone is a drop indicator, not a target of its own: a drag over it
+    // is routed to the window, which lights the zone up and encodes the text.
     QScopedPointer<QMimeData> mime(textMime(QStringLiteral("https://zone.example")));
-    sendDragEnter(zone, mime.data());
+    sendDragEnter(&window, mime.data());
     QVERIFY(zone->isActive());
-    performDrop(zone, mime.data());
+    performDrop(&window, mime.data());
 
     QVERIFY(!zone->isActive());
     QVERIFY(window.hasCode());
@@ -470,6 +483,94 @@ void TestEnquber::dropWithoutTextIsIgnored()
 
     QVERIFY(!window.hasCode());
     QCOMPARE(window.findChild<QStackedWidget *>()->currentIndex(), 0);
+}
+
+void TestEnquber::dragLeaveResetsTheHighlightAndForgetsTheText()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *zone = window.findChild<DropZone *>();
+    QVERIFY(zone);
+
+    QScopedPointer<QMimeData> hovering(textMime(QStringLiteral("https://leave.example")));
+    sendDragEnter(&window, hovering.data());
+    QVERIFY(zone->isActive());
+
+    sendDragLeave(&window);
+    QVERIFY(!zone->isActive());
+
+    // The leave forgot what was read while hovering, so a source that stops
+    // answering after it has nothing left to hand over at the drop.
+    auto *mute = new QMimeData;
+    mute->setData(QStringLiteral("text/plain"), QByteArray());
+    performDrop(&window, mute);
+    delete mute;
+
+    QVERIFY(!window.hasCode());
+}
+
+void TestEnquber::refusedDragsKeepAnUnrelatedStatus()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *zone = window.findChild<DropZone *>();
+    QVERIFY(zone);
+
+    // A status from an unrelated action, still on screen.
+    QGuiApplication::clipboard()->clear();
+    window.pasteFromClipboard();
+    auto *status = window.findChild<QLabel *>(QStringLiteral("statusLabel"));
+    QVERIFY(status);
+    QVERIFY(status->isVisible());
+
+    // A drag the window cannot encode is refused without a message of its own,
+    // so it must not light the zone up either.
+    auto *mime = new QMimeData;
+    mime->setData(QStringLiteral("image/png"), QByteArray("not really a png"));
+
+    sendDragEnter(&window, mime);
+    QVERIFY(!zone->isActive());
+    QVERIFY(status->isVisible());
+
+    sendDragLeave(&window);
+    QVERIFY(status->isVisible());
+
+    performDrop(&window, mime);
+    QVERIFY(status->isVisible());
+    QVERIFY(!window.hasCode());
+
+    delete mime;
+}
+
+void TestEnquber::dropReplaceStatusIsClearedOnLeave()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://replace.example"));
+    auto *status = window.findChild<QLabel *>(QStringLiteral("statusLabel"));
+    QVERIFY(status);
+    QVERIFY(!status->isVisible());
+
+    // With a code on screen the drag promises a replacement; leaving takes
+    // that promise back.
+    QScopedPointer<QMimeData> mime(textMime(QStringLiteral("https://new.example")));
+    sendDragEnter(&window, mime.data());
+    QVERIFY(status->isVisible());
+    sendDragLeave(&window);
+    QVERIFY(!status->isVisible());
+
+    // The drag's ownership of the status ended with it: a later refused drag
+    // must not clear a message it did not show.
+    QGuiApplication::clipboard()->clear();
+    window.pasteFromClipboard();
+    QVERIFY(status->isVisible());
+
+    auto *refused = new QMimeData;
+    refused->setData(QStringLiteral("image/png"), QByteArray("not really a png"));
+    sendDragEnter(&window, refused);
+    sendDragLeave(&window);
+    QVERIFY(status->isVisible());
+    delete refused;
 }
 
 void TestEnquber::pasteEncodesClipboardText()
@@ -1242,7 +1343,9 @@ void TestEnquber::windowAcceptsDrops()
 {
     MainWindow window;
     QVERIFY(window.acceptDrops());
-    QVERIFY(window.findChild<DropZone *>()->acceptDrops());
+    // The zone only paints the window's highlight; it must not accept drops
+    // itself, or Qt would route a drag over it away from the one protocol.
+    QVERIFY(!window.findChild<DropZone *>()->acceptDrops());
     QVERIFY(window.minimumSizeHint().isValid());
 }
 

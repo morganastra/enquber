@@ -261,7 +261,6 @@ void MainWindow::buildUi()
     m_dropZone = new DropZone(placeholderPage);
     placeholderLayout->addWidget(m_dropZone, 0, Qt::AlignCenter);
     placeholderLayout->addStretch(1);
-    connect(m_dropZone, &DropZone::textDropped, this, &MainWindow::setText);
     connect(m_dropZone, &DropZone::clicked, this, &MainWindow::typeText);
     m_stack->addWidget(placeholderPage);
 
@@ -1050,7 +1049,8 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
     }
     event->acceptProposedAction();
     setDropHighlight(true);
-    if (m_code.isValid()) {
+    m_dropStatusShown = m_code.isValid();
+    if (m_dropStatusShown) {
         //@ MainWindow
         //% "Drop to replace the current code"
         showStatus(qtTrId("mainwindow.status.drop-replace"));
@@ -1076,7 +1076,12 @@ void MainWindow::dragLeaveEvent(QDragLeaveEvent *event)
     m_payload.forget();
     QMainWindow::dragLeaveEvent(event);
     setDropHighlight(false);
-    clearStatus();
+    // Only a drag that put the "drop to replace" message on screen may take a
+    // status away; a refused drag must leave an unrelated message alone.
+    if (m_dropStatusShown) {
+        clearStatus();
+    }
+    m_dropStatusShown = false;
 }
 
 void MainWindow::dropEvent(QDropEvent *event)
@@ -1086,7 +1091,10 @@ void MainWindow::dropEvent(QDropEvent *event)
     }
     qCDebug(lcDnd) << "drop with" << event->mimeData()->formats() << "at" << event->position();
     setDropHighlight(false);
-    clearStatus();
+    if (m_dropStatusShown) {
+        clearStatus();
+    }
+    m_dropStatusShown = false;
 
     const QString text = m_payload.resolve(event->mimeData());
     m_payload.forget();
