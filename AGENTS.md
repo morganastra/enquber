@@ -32,20 +32,28 @@ rebuild first):
 - `just build`, `just run`
 - `just test` — build + unit tests + the `check_i18n` catalog lint
 - `just i18n-update` — regenerate `i18n/enquber_*.ts` from the source
-- `just check-i18n` — lint text IDs and catalogs without rebuilding
+- `just lint-i18n` — lint text IDs, catalog sync and (Qt 6.11+) catalog fidelity
+- `just check-translations` — release gate: every translated catalog complete
+- `just lint` — every linter: clazy + clang-tidy + Qt's review linter (C++),
+  ruff (Python), typos (American English), plus `lint-i18n`
+- `just lint-cpp`, `just lint-i18n`, `just lint-py`, `just lint-spell` — one
+  part at a time
 - `just smoke-test [args]` — build smoke helpers + drive the real GUI
 - `just startup-settle [args]` — record the Xvfb framebuffer and measure when
   the UI stops changing (compare apps with repeated `--command`)
 - `just package-arch`
 
-There are two build trees from `CMakePresets.json`; use the presets rather than
-hand-written cmake flags:
+There are three build trees from `CMakePresets.json`; use the presets rather
+than hand-written cmake flags:
 
 - `build/` (preset `default`): app at `build/enquber`, tests at
   `build/tests/tst_enquber`.
+- `build/lint/` (preset `lint`): `ENQUBER_BUILD_TESTS=OFF`,
+  `ENQUBER_BUILD_TEST_TOOLS=ON`, clang plus `compile_commands.json`, used by
+  `just lint-cpp`.
 - `build/smoke/` (preset `smoke`): `ENQUBER_BUILD_TESTS=OFF`,
   `ENQUBER_BUILD_TEST_TOOLS=ON`; produces `build/smoke/tools/dragsource`, which
-  the smoke test needs. `just clean` deletes both (`rm -rf build`).
+  the smoke test needs. `just clean` deletes all three (`rm -rf build`).
 
 ## Testing
 
@@ -58,6 +66,11 @@ requires it yourself:
 `./build/tests/tst_enquber -functions` lists every case (data-driven cases run
 all their rows when named).
 
+`just test` also runs the translation checks: `tools/check-i18n.py`, plus
+Qt's `lcheck` (Qt 6.11+) when installed. Completeness is checked by
+`lrelease -fail-on-unfinished` (Qt 6.10+) only via `just check-translations`,
+so unfinished translations do not block development.
+
 The smoke test (`tools/smoke.py`) drives the real app on a real X11 display
 with real input and decodes every produced QR with `zbarimg`. It needs
 `import`, `xclip`, `zbarimg`, and `identify` on `PATH`, Python `Xlib`, and
@@ -69,7 +82,8 @@ smoke test yet.
 
 ## Tools/utility scripts
 
-Everything in `tools/` has a useful `--help` 
+Everything in `tools/` has a useful `--help` (the vendored
+`qt_review_lint.py` prints its usage when run without arguments).
 
 ## Gotchas
 
@@ -81,10 +95,21 @@ Everything in `tools/` has a useful `--help`
   `pkgver()` derives the version from `git describe` / commit count.
 - Drag-and-drop debugging: `QT_LOGGING_RULES="enquber.dnd.debug=true"`
   (Qt internals: `qt.qpa.xdnd.debug=true`).
-- No CI, formatter, or linter config. Match the existing 4-space style and keep
-  builds clean under `-Wall -Wextra`.
+- Linting: `just lint` must stay green. C++ uses `.clang-tidy` (warnings are
+  errors), clazy level1, and `tools/qt_review_lint.py` (vendored verbatim from
+  Qt's agent-skills under BSD-3-Clause); Python uses `ruff.toml`; spelling uses
+  `typos.toml` with `locale = "en-us"`, so write American English and run
+  `typos --write-changes` to fix strays. There is no formatter yet; match the
+  existing 4-space style and keep builds clean under `-Wall -Wextra`.
+- `just lint-cpp` needs the clang build tree (`cmake --preset lint`): a GCC
+  compile database carries `-mno-direct-extern-access`, which clazy and
+  clang-tidy reject.
 - i18n: never pass a user-facing literal to a widget. Use
   `qtTrId("component.element")` with exactly one `//%` English comment on the
-  line above, then `just i18n-update`. `tools/check-i18n.py` (also a ctest) is
-  the guard; it must stay green.
+  line above, then `just i18n-update` (it passes `-no-obsolete`, so renamed
+  IDs disappear cleanly). `tools/check-i18n.py` and Qt's `lcheck` (Qt 6.11+)
+  are the guards; they must stay green.
+  `just check-translations` is the release gate for complete translations
+  (Qt 6.10+). Catalog fidelity checks live in Qt's `lcheck` from Qt 6.11;
+  don't re-add that logic to the script.
 - `doc/improvements.txt` is a feature wishlist, not a spec.
