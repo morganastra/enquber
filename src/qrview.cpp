@@ -3,7 +3,6 @@
 #include <QApplication>
 #include <QMouseEvent>
 #include <QPainter>
-#include <QPainterPath>
 
 #include <cmath>
 

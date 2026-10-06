@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QIcon>
-#include <QString>
 
 #include <initializer_list>
 
