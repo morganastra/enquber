@@ -3,6 +3,7 @@
 #include <QKeyEvent>
 #include <QPainter>
 #include <QPalette>
+#include <QSignalBlocker>
 #include <QTextBlock>
 #include <QTextBlockFormat>
 #include <QTextCursor>
@@ -39,10 +40,6 @@ void TypeEditor::setCenteredPlaceholder(const QString &text)
 
 void TypeEditor::ensureCenteredAlignment()
 {
-    if (m_aligning) {
-        return; // the merge below re-emits textChanged
-    }
-
     bool centered = true;
     for (QTextBlock block = document()->begin(); block.isValid(); block = block.next()) {
         if (block.blockFormat().alignment() != Qt::AlignHCenter) {
@@ -54,7 +51,9 @@ void TypeEditor::ensureCenteredAlignment()
         return;
     }
 
-    m_aligning = true;
+    // The merge is a format change, not a text change; block the textChanged
+    // it would re-emit so callers do not scan the document a second time.
+    const QSignalBlocker blocker(this);
     QTextCursor cursor = textCursor();
     const int position = cursor.position();
     cursor.select(QTextCursor::Document);
@@ -63,7 +62,6 @@ void TypeEditor::ensureCenteredAlignment()
     cursor.mergeBlockFormat(format);
     cursor.setPosition(position);
     setTextCursor(cursor);
-    m_aligning = false;
 }
 
 void TypeEditor::keyPressEvent(QKeyEvent *event)

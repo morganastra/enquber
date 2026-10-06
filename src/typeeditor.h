@@ -35,6 +35,5 @@ private:
     /// textChanged and does nothing once the blocks already match.
     void ensureCenteredAlignment();
 
-    bool m_aligning = false;
     QString m_placeholder;
 };
