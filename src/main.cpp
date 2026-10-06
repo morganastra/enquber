@@ -8,7 +8,10 @@
 
 namespace {
 
-/// Use Breeze theme even when not on KDE
+/// KDE ships the Breeze widget style, but without its platform theme Qt would
+/// fall back to Fusion, and the application would look foreign on the desktop
+/// it was started from. Prefer Breeze there, unless the user asked for a
+/// specific style or Qt already picked Breeze.
 void preferDesktopStyle()
 {
     if (qEnvironmentVariableIsSet("QT_STYLE_OVERRIDE")) {
