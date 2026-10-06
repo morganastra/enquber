@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(enquber
-    VERSION 0.1.0
+    VERSION 0.1.1
     DESCRIPTION "A minimal Qt 6 front end for libqrencode"
     LANGUAGES CXX)
 
@@ -71,6 +71,7 @@ qt_add_translations(enquber_core
 
 qt_add_executable(enquber src/main.cpp)
 target_link_libraries(enquber PRIVATE enquber_core)
+target_compile_definitions(enquber PRIVATE ENQUBER_VERSION="${PROJECT_VERSION}")
 
 include(GNUInstallDirs)
 install(TARGETS enquber RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

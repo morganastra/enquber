@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("enquber"));
-    QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+    QApplication::setApplicationVersion(QStringLiteral(ENQUBER_VERSION));
     QApplication::setOrganizationName(QStringLiteral("enquber"));
     QApplication::setDesktopFileName(QStringLiteral("enquber"));
     QApplication::setWindowIcon(theme::appIcon());
