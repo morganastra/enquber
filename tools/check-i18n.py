@@ -3,8 +3,8 @@
 
 The app passes only text IDs around: the C++ calls ``qtTrId("some.id")`` and
 the English wording lives in a ``//%`` comment directly above the call, which
-``lupdate`` copies into the catalogs as ``<source>``.  This script is the
-safety net for that convention.  It fails when:
+``lupdate`` copies into the catalogs as ``<source>``.  This script covers the
+project conventions that no off-the-shelf tool does.  It fails when:
 
 * source code still uses a text-based translation call (``tr()``,
   ``QCoreApplication::translate()``, the ``QT_TR*_NOOP`` family, ...);
@@ -13,14 +13,16 @@ safety net for that convention.  It fails when:
   longer uses;
 * a catalog message has an empty ``<source>`` (so the app would show the raw
   ID at runtime);
-* a widget is handed a user-facing string literal instead of a text ID;
-* a catalog named via ``--require-translated`` is incomplete or breaks the
-  source string's placeholders, accelerator, surrounding whitespace, or final
-  punctuation.
+* a widget is handed a user-facing string literal instead of a text ID.
 
-The repository root is derived from this script's location, so it runs from
-anywhere (for example as a ctest from the build directory).  It is a lint, not
-a proof: the "no literal strings" checks are heuristics with a small allowlist.
+Catalog fidelity (place markers, accelerators, surrounding whitespace, final
+punctuation) is checked by Qt's own ``lcheck``, and completeness of the
+translated catalogs by ``lrelease -fail-on-unfinished``; both run as separate
+tests when the installed Qt provides the tools (Qt 6.11 and 6.10
+respectively).  The ``//%``-comment and literal-string checks are heuristics
+with a small allowlist.  The repository root is derived from this script's
+location, so it runs from anywhere (for example as a ctest from the build
+directory).
 """
 
 from __future__ import annotations
@@ -130,7 +132,7 @@ def mask(text: str, labels: list[str], *visible: str) -> str:
     """
     return "".join(
         c if c == "\n" or label in visible else " "
-        for c, label in zip(text, labels)
+        for c, label in zip(text, labels, strict=True)
     )
 
 
@@ -202,23 +204,16 @@ def scan_sources(src_dir: Path) -> SourceReport:
 
 
 # ---------------------------------------------------------------------------
-# Catalog parsing and validation
+# Catalog reading and ID sync
 # ---------------------------------------------------------------------------
-
-PLACEHOLDER = re.compile(r"%(?:\d+|n|L\d+)")  # QString::arg() markers: %1, %n, %L1
-DIGIT_PERCENT = re.compile(r"%\d+")
-PUNCTUATION = ".,;:!?…"  # sentence-final characters a translation must keep
 
 
 @dataclass
 class Message:
-    """One catalog entry: an ID, its English source, and one translation."""
+    """One catalog entry: an ID and its English source, if any."""
 
     mid: str
     source: str
-    translation: str
-    unfinished: bool
-    vanished: bool
 
 
 def read_catalog(path: Path) -> list[Message]:
@@ -229,61 +224,13 @@ def read_catalog(path: Path) -> list[Message]:
         if not mid:
             continue
         source = element.find("source")
-        translation = element.find("translation")
-        translation_type = translation.get("type", "") if translation is not None else ""
         messages.append(
             Message(
                 mid=mid,
                 source=(source.text or "") if source is not None else "",
-                translation="".join(translation.itertext()) if translation is not None else "",
-                unfinished=translation_type == "unfinished",
-                vanished=translation_type == "vanished",
             )
         )
     return messages
-
-
-def accelerator_count(text: str) -> int:
-    """Count accelerator markers, ignoring escaped ``&&``."""
-    return text.replace("&&", "").count("&")
-
-
-def leading_whitespace(text: str) -> str:
-    return text[: len(text) - len(text.lstrip())]
-
-
-def trailing_whitespace(text: str) -> str:
-    return text[len(text.rstrip()) :]
-
-
-def compare_strings(source: str, translation: str) -> list[str]:
-    """Return the ways ``translation`` breaks its English ``source`` string."""
-    problems: list[str] = []
-
-    expected = sorted(PLACEHOLDER.findall(source))
-    found = sorted(PLACEHOLDER.findall(translation))
-    if expected != found:
-        problems.append(f"placeholders differ: source {expected}, translation {found}")
-
-    # A "%" + digit that matches no source placeholder would be eaten by arg().
-    for marker in DIGIT_PERCENT.findall(translation):
-        if marker not in expected:
-            problems.append(f"literal {marker!r} would be consumed by QString::arg()")
-            break
-
-    if accelerator_count(source) != accelerator_count(translation):
-        problems.append("accelerator (&) count differs from the source")
-
-    for side, wanted, got in (
-        ("leading", leading_whitespace(source), leading_whitespace(translation)),
-        ("trailing", trailing_whitespace(source), trailing_whitespace(translation)),
-    ):
-        if wanted != got:
-            problems.append(f"{side} whitespace differs (source {wanted!r})")
-
-    if source and translation and source[-1] in PUNCTUATION and translation[-1] != source[-1]:
-        problems.append(f"final punctuation {translation[-1]!r} != source {source[-1]!r}")
-    return problems
 
 
 def diff_ids(catalog_name: str, catalog_ids: set[str], source_ids: set[str], errors: list[str]) -> None:
@@ -314,44 +261,12 @@ def check_english_catalog(path: Path, source_ids: set[str], errors: list[str]) -
     return messages
 
 
-def catalog_path(value: str) -> Path:
-    """Resolve a --require-translated argument to a path.
-
-    Accepts a language code (``es``) or an explicit .ts path
-    (``i18n/enquber_es.ts``).
-    """
-    if value.endswith(".ts"):
-        return Path(value)
-    return Path(f"enquber_{value}.ts")
-
-
-def check_required_catalog(
-    value: str,
-    translations_dir: Path,
-    source_ids: set[str],
-    english_sources: dict[str, str],
-    errors: list[str],
-) -> None:
-    """Check one --require-translated catalog for completeness and fidelity."""
-    path = catalog_path(value)
-    if not path.is_absolute():
-        path = translations_dir / path.name  # resolve by file name in the catalog dir
+def check_sync(path: Path, source_ids: set[str], errors: list[str]) -> None:
+    """Check that one non-English catalog matches the source's IDs."""
     if not path.is_file():
-        errors.append(f"required catalog {path} not found")
+        errors.append(f"missing catalog {path}")
         return
-    messages = read_catalog(path)
-    diff_ids(path.name, {m.mid for m in messages}, source_ids, errors)
-    for message in messages:
-        if message.vanished:
-            continue
-        if message.unfinished or not message.translation:
-            errors.append(f"{path.name}: {message.mid!r} is not translated")
-            continue
-        reference = english_sources.get(message.mid)
-        if reference is None:
-            continue
-        for problem in compare_strings(reference, message.translation):
-            errors.append(f"{path.name}: {message.mid!r}: {problem}")
+    diff_ids(path.name, {m.mid for m in read_catalog(path)}, source_ids, errors)
 
 
 HELP_EPILOG = """\
@@ -362,9 +277,9 @@ checks:
   * source IDs and catalog IDs are in sync, in both directions
   * no catalog message has an empty <source> (the //% comment is missing)
   * no user-facing string literal is handed straight to a widget
-  * catalogs named via --require-translated are fully translated and keep the
-    source string's placeholders, accelerator, whitespace, and final
-    punctuation
+
+catalog fidelity and completeness are checked by Qt's lcheck and lrelease
+(see the check_i18n_lcheck_* and check_i18n_translated_* ctests).
 
 exit status is 1 when any check fails.
 """
@@ -374,19 +289,12 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(
         description="Lint enquber's Qt ID-based translation setup (qtTrId IDs, "
-        "//% comments, .ts catalogs).",
+        "//% comments, .ts catalog sync).",
         epilog=HELP_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--source", type=Path, default=repo_root / "src", help="directory holding the C++ sources")
     parser.add_argument("--translations", type=Path, default=repo_root / "i18n", help="directory holding the .ts catalogs")
-    parser.add_argument(
-        "--require-translated",
-        action="append",
-        default=[],
-        metavar="LANG",
-        help="catalog that must be fully translated (language code or .ts path); repeatable",
-    )
     parser.add_argument("--quiet", action="store_true", help="only print failures")
     return parser.parse_args(argv)
 
@@ -401,10 +309,9 @@ def main(argv: list[str] | None = None) -> int:
         errors.append(f"no qtTrId() calls found under {args.source}")
 
     english = check_english_catalog(args.translations / "enquber_en.ts", report.id_set, errors)
-    english_sources = {m.mid: m.source for m in english}
-
-    for value in args.require_translated:
-        check_required_catalog(value, args.translations, report.id_set, english_sources, errors)
+    for catalog in sorted(args.translations.glob("enquber_*.ts")):
+        if catalog.name != "enquber_en.ts":
+            check_sync(catalog, report.id_set, errors)
 
     if errors:
         print("i18n check failed:", file=sys.stderr)
