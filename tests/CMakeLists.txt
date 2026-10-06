@@ -11,3 +11,9 @@ add_test(NAME tst_enquber COMMAND tst_enquber)
 # The tests cover widgets and the clipboard, so they need a QApplication but no
 # display server.
 set_tests_properties(tst_enquber PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# Run the same binary at a fractional device pixel ratio to exercise the static
+# DPR arithmetic (it does not cover a ratio that changes while a widget lives).
+add_test(NAME tst_enquber_scaled COMMAND tst_enquber)
+set_tests_properties(tst_enquber_scaled PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_SCALE_FACTOR=1.5")
