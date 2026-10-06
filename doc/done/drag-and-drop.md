@@ -157,7 +157,7 @@ process (the smoke test's `dragsource --with-app`) has a source widget that is
 
 - **Plain text is the file URL, not the encoded link.** The user already has the
   link in front of them before dragging; Qt's default keeps the code simple.
-- **File name comes from `suggestedFileName()`.** It already sanitises to
+- **File name comes from `suggestedFileName()`.** It already sanitizes to
   `[A-Za-z0-9._-]`, drops the query and caps the stem at 60 characters, so names
   are usable. *Known follow-up:* opaque path segments and long IDs still survive
   into the name (e.g. `.../d/AbC123…/view`); see `doc/improvements.txt`.

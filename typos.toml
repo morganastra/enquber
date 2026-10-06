@@ -1,0 +1,18 @@
+# Spell checking. The project uses American English, so this flags British
+# variants in comments, string literals, and identifiers. Run with:
+#
+#     just lint-spell       # typos
+#     typos --write-changes # apply the mechanical fixes
+files.extend-exclude = [
+  "i18n/*.ts",
+  "tools/qt_review_lint.py",
+  # The proposal quotes the British variants it found, on purpose.
+  "doc/linting-proposal.md",
+]
+
+[default]
+locale = "en-us"
+
+[default.extend-words]
+# "PNGs" is tokenised as PN + Gs; PN is not a typo for ON.
+PN = "PN"

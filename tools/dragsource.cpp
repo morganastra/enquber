@@ -4,7 +4,7 @@
 /// starts a real Qt (XDND) drag carrying text/plain and text/uri-list, which is
 /// exactly what a browser does when a link is dragged onto another window.
 /// That makes the drop in the application under test a genuine one instead of a
-/// synthesised event.
+/// synthesized event.
 ///
 ///     dragsource --text https://example.com
 ///

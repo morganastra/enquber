@@ -277,7 +277,7 @@ private slots:
     void questionMarkOpensAndClosesHelp();
     void helpReturnsToTheDropTarget();
     void helpButtonMorphsAndToggles();
-    void aboutPageShowsLicenceAndLinks();
+    void aboutPageShowsLicenseAndLinks();
     void aboutTextSurvivesAShortWindow();
     void spanishTranslationIsApplied();
     void englishCatalogResolvesEveryId();
@@ -1576,7 +1576,7 @@ void TestEnquber::helpButtonMorphsAndToggles()
     QCOMPARE(button->accessibleName(), QStringLiteral("Help and info"));
 }
 
-void TestEnquber::aboutPageShowsLicenceAndLinks()
+void TestEnquber::aboutPageShowsLicenseAndLinks()
 {
     MainWindow window;
     showAndActivate(&window);
@@ -1585,9 +1585,9 @@ void TestEnquber::aboutPageShowsLicenceAndLinks()
     QVERIFY(copyright);
     QVERIFY(copyright->text().contains(QStringLiteral("Morgan Astra")));
 
-    auto *licence = window.findChild<QLabel *>(QStringLiteral("aboutLicence"));
-    QVERIFY(licence);
-    QVERIFY(licence->text().contains(QStringLiteral("GNU General Public License")));
+    auto *license = window.findChild<QLabel *>(QStringLiteral("aboutLicense"));
+    QVERIFY(license);
+    QVERIFY(license->text().contains(QStringLiteral("GNU General Public License")));
 
     auto *links = window.findChild<QLabel *>(QStringLiteral("aboutLinks"));
     QVERIFY(links);
@@ -1608,17 +1608,17 @@ void TestEnquber::aboutTextSurvivesAShortWindow()
     showAndActivate(&window);
     QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
 
-    auto *licence = window.findChild<QLabel *>(QStringLiteral("aboutLicence"));
-    QVERIFY(licence);
-    QVERIFY(licence->isVisible());
+    auto *license = window.findChild<QLabel *>(QStringLiteral("aboutLicense"));
+    QVERIFY(license);
+    QVERIFY(license->isVisible());
 
-    // A short window used to squash the wrapped licence to a single clipped
+    // A short window used to squash the wrapped license to a single clipped
     // line; it now keeps the height its text needs at its fixed width.
-    const int needed = licence->heightForWidth(licence->width());
+    const int needed = license->heightForWidth(license->width());
     QVERIFY(needed > 0);
-    QVERIFY2(licence->height() >= needed,
-             qPrintable(QStringLiteral("licence is %1 px, needs %2")
-                            .arg(licence->height()).arg(needed)));
+    QVERIFY2(license->height() >= needed,
+             qPrintable(QStringLiteral("license is %1 px, needs %2")
+                            .arg(license->height()).arg(needed)));
 }
 
 void TestEnquber::spanishTranslationIsApplied()
@@ -1667,7 +1667,7 @@ void TestEnquber::englishCatalogResolvesEveryId()
         QStringLiteral("about.version"),
         QStringLiteral("about.tagline"),
         QStringLiteral("about.copyright"),
-        QStringLiteral("about.licence"),
+        QStringLiteral("about.license"),
         QStringLiteral("about.links"),
         QStringLiteral("about.hint"),
         QStringLiteral("dropzone.title"),
