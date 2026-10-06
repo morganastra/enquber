@@ -22,7 +22,7 @@ On macos, use brew:
 
 Building the embedded translations also needs Qt's Linguist tools (`lupdate`,
 `lrelease`), which Homebrew ships with the full `qt` formula rather than
-`qtbase` alone.
+`qtbase`.
 
 To run the smoke tests you also need
 
@@ -47,19 +47,32 @@ Basic flow when a link is dropped or pasted:
    rasterises the matrix once per size; `QrView::paintEvent()` just blits it.
 3. The exports re-render at ~1024 px with `MainWindow::renderForExport()`.
 
-Typing is the other way in. Ctrl+L swaps the caption under the code for a
+For manual text entry, ctrl+L swaps the caption under the code for a
 `TypeEditor`, and every change to its text runs `MainWindow::liveEncode()`,
-which feeds the same `qr::Code::encode()` and `QrView` as above, so the symbol
-follows the text. Return keeps what is shown; Escape puts back the code that
-was there before. While the field is open the window's Paste, Copy, Save and
-Clear shortcuts are disabled, so the editor gets those keys. Clicking the drop
-zone starts the same session.
+which feeds the same `qr::Code::encode()` and `QrView` as above.
 
 ### Debug Logging
 
 You can log drag and drop events from the window's perspective with 
 `QT_LOGGING_RULES="enquber.dnd.debug=true"`, or `qt.qpa.xdnd.debug=true`
 to see Qt's xdnd messages directly.
+
+### Linting
+
+`just lint` runs all the linters. There are also linter-specific recipes
+
+    just lint
+    just lint-cpp
+    just lint-i18n
+    just lint-py
+    just lint-spell
+
+On archlinux-like systems the extra tools are:
+
+    clang clazy ruff typos
+
+On macOS, `brew install llvm clazy ruff typos-cli` provides the same tools
+(clang-tidy and run-clang-tidy come with `llvm`).
 
 ### Testing
 
@@ -77,29 +90,7 @@ Smoke test screenshots are written to a date-time stamped directory under `$TMPD
 
 ### Translations
 
-Enquber uses Qt's ID-based translations: the source code only ever passes text
-IDs (`qtTrId("dropzone.title")`) around, and the English wording lives in a
-`//%` comment above the call. `lupdate` copies that engineering English into
-`i18n/enquber_en.ts` as the message `<source>`, and the compiled catalogs are
-embedded under `:/i18n`, so the UI is never shown a raw ID.
-
-When you add or change a user-facing string:
-
-1. Call `qtTrId("component.element")` and put the English text in a `//%`
-   comment on the line directly above it. Use exactly one `//%` per call, and
-   add a `//:` note when the context is not obvious to a translator.
-2. Run `just i18n-update` to add the ID to every `i18n/enquber_*.ts`.
-3. Translate the new entries in Qt Linguist (`linguist6`).
-4. Run `just test`. The `check_i18n` lint fails on a missing `//%`, a stale or
-   incomplete catalog, a leftover `tr()`, or a translation that drops a
-   placeholder (`%1`), an accelerator (`&`) or required punctuation.
-
-Spanish ships in `i18n/enquber_es.ts`. To try it:
-
-    LANGUAGE=es ./build/enquber "https://example.com"
-
-Localization happens at startup; there is no language switch in the running
-app, and right-to-left mirroring is not implemented yet.
+Enquber uses Qt's ID-based translations. See [translations.md](doc/translations.md) for more information.
 
 ## Acknowledgements
 
