@@ -33,7 +33,8 @@ import time
 from dataclasses import dataclass
 
 try:
-    from Xlib import X, XK, display
+    from Xlib import XK, X, display
+    from Xlib import error as xerror
     from Xlib.ext import xtest
 except ImportError as error:
     _XLIB_ERROR: ImportError | None = error
@@ -102,7 +103,7 @@ class X11:
         kind = self._atom(_UTF8) if utf8 else X.AnyPropertyType
         try:
             prop = window.get_full_property(atom, kind)
-        except Exception:
+        except xerror.XError:
             return None
         return prop.value if prop else None
 
@@ -114,7 +115,7 @@ class X11:
             geom = window.get_geometry()
             if geom.width <= 1 or geom.height <= 1:
                 return None
-        except Exception:
+        except xerror.XError:
             return None
 
         title = self._property(window, "_NET_WM_NAME", utf8=True)
@@ -128,7 +129,7 @@ class X11:
             klass = window.get_wm_class()
             if klass:
                 wm_class = klass[1] if len(klass) > 1 else klass[0]
-        except Exception:
+        except xerror.XError:
             pass
 
         pid = self._property(window, "_NET_WM_PID")
@@ -152,7 +153,7 @@ class X11:
             # window's origin is the way round that yields absolute coords.
             coords = self.root.translate_coords(window, 0, 0)
             x, y = coords.x + geom.border_width, coords.y + geom.border_width
-        except Exception:
+        except xerror.XError:
             return None
 
         return Window(
@@ -182,8 +183,7 @@ class X11:
             for window_id in clients:
                 yield self.d.create_resource_object("window", window_id)
             return
-        for child in self.root.query_tree().children:
-            yield child
+        yield from self.root.query_tree().children
 
     def windows(self) -> list[Window]:
         result = []
@@ -249,7 +249,7 @@ class X11:
         try:
             window.configure(stack_mode=X.Above)
             window.set_input_focus(X.RevertToParent, X.CurrentTime)
-        except Exception:
+        except xerror.XError:
             pass
         self.d.sync()
 
@@ -412,12 +412,14 @@ class X11:
                capture: bool = True) -> subprocess.CompletedProcess:
         environment = dict(os.environ, DISPLAY=self.display_name)
         if capture:
+            # Callers inspect returncode/stdout; xclip exits nonzero when the
+            # selection is empty, which is a normal outcome.
             return subprocess.run(["xclip", *args], input=data,
-                                  capture_output=True, env=environment)
+                                  capture_output=True, env=environment, check=False)
         # xclip forks a daemon that owns the selection and inherits our pipes,
         # so anything that keeps one alive would hang waiting for EOF.
         return subprocess.run(["xclip", *args], input=data, env=environment,
-                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
 
     def clipboard_targets(self) -> list[str]:
         result = self._xclip(["-selection", "clipboard", "-o", "-t", "TARGETS"])
@@ -587,10 +589,9 @@ def main(argv: list[str] | None = None) -> int:
         print(x.clipboard_text(), end="")
     elif args.command == "clip-set":
         x.set_clipboard_text(args.text)
-    elif args.command == "clip-image":
-        if not x.clipboard_image(args.path):
-            print("no image on the clipboard", file=sys.stderr)
-            return 1
+    elif args.command == "clip-image" and not x.clipboard_image(args.path):
+        print("no image on the clipboard", file=sys.stderr)
+        return 1
     return 0
 
 

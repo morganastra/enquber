@@ -41,8 +41,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
-    from Xlib import X, Xatom, display  # noqa: E402
-    from Xlib.protocol import request  # noqa: E402
+    from Xlib import X, Xatom, display
+    from Xlib import error as xerror
+    from Xlib.protocol import request
 except ImportError as error:
     _XLIB_ERROR: ImportError | None = error
 else:
@@ -91,7 +92,7 @@ class XdndSource:
             return "none"
         try:
             return self.d.get_atom_name(atom)
-        except Exception:
+        except xerror.XError:
             return str(atom)
 
     def note(self, message: str):
@@ -118,7 +119,7 @@ class XdndSource:
         reply_property = request.property if request.property != X.NONE else target_atom
         if name == "TARGETS":
             _, atoms = self._types()
-            data = atoms + [self.d.intern_atom("TARGETS")]
+            data = [*atoms, self.d.intern_atom("TARGETS")]
             kind = Xatom.ATOM
             data_format = 32  # a list of atoms, not bytes
         elif name == "text/uri-list":
