@@ -119,13 +119,13 @@ AboutPage::AboutPage(QWidget *parent)
     layout->addSpacing(4);
     //@ AboutPage
     //% "Enquber is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, version 3 or later. It is distributed in the hope that it will be useful, but without any warranty."
-    auto *licence = makeLabel(this, qtTrId("about.licence"));
-    licence->setObjectName(QStringLiteral("aboutLicence"));
-    licence->setFont(scaled(licence->font(), 0.92));
-    licence->setFixedWidth(kContentWidth);
-    mute(licence);
-    pinHeight(licence, kContentWidth);
-    layout->addWidget(licence, 0, Qt::AlignHCenter);
+    auto *license = makeLabel(this, qtTrId("about.license"));
+    license->setObjectName(QStringLiteral("aboutLicense"));
+    license->setFont(scaled(license->font(), 0.92));
+    license->setFixedWidth(kContentWidth);
+    mute(license);
+    pinHeight(license, kContentWidth);
+    layout->addWidget(license, 0, Qt::AlignHCenter);
 
     layout->addSpacing(12);
     auto *links = new QLabel(this);

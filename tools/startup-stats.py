@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarise startup-settle.py --json output.
+"""Summarize startup-settle.py --json output.
 
 Reads the JSON from a file or stdin and prints, per command, the median, min,
 p90 and max of the "stable" time (launch -> last frame change), plus the

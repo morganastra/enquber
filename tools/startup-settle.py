@@ -308,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     roles = {role for role, _, _ in specs}
     labels = {label for _, label, _ in specs}
     if "baseline" in roles and "candidate" in roles and len(labels) != len(specs):
-        parser.error("commands must have distinct labels to be summarised apart")
+        parser.error("commands must have distinct labels to be summarized apart")
     video_dir = Path(args.video) if args.video else None
     if video_dir:
         video_dir.mkdir(parents=True, exist_ok=True)
