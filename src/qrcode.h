@@ -3,6 +3,7 @@
 #include <QImage>
 #include <QString>
 
+#include <cstdint>
 #include <memory>
 
 #include <qrencode.h>
@@ -10,7 +11,7 @@
 namespace qr {
 
 /// How much of the symbol may be damaged and still decode.
-enum class ErrorCorrection {
+enum class ErrorCorrection : std::uint8_t {
     Low,       ///< 7%
     Medium,    ///< 15%
     Quartile,  ///< 25% -- a good default for URLs
@@ -34,25 +35,25 @@ public:
     /// fit into a single symbol, in which case error() explains why.
     static Code encode(const QString &text, ErrorCorrection level = ErrorCorrection::Quartile);
 
-    bool isValid() const { return static_cast<bool>(m_code); }
+    [[nodiscard]] bool isValid() const { return static_cast<bool>(m_code); }
     explicit operator bool() const { return isValid(); }
 
     /// Human readable reason why the code is invalid, or an empty string.
-    QString error() const { return m_error; }
+    [[nodiscard]] QString error() const { return m_error; }
 
     /// The text that was encoded; may be empty for an invalid Code.
-    QString text() const { return m_text; }
+    [[nodiscard]] QString text() const { return m_text; }
 
     /// Width and height of the symbol in modules, quiet zone excluded.
-    int modules() const;
+    [[nodiscard]] int modules() const;
 
     /// True for modules that are drawn black.
-    bool isDark(int x, int y) const;
+    [[nodiscard]] bool isDark(int x, int y) const;
 
     /// Renders the symbol at @p modulePixels device pixels per module,
     /// including a @p quietZone module wide border. Returns a null image for
     /// an invalid Code.
-    QImage toImage(int modulePixels, int quietZone = QuietZone) const;
+    [[nodiscard]] QImage toImage(int modulePixels, int quietZone = QuietZone) const;
 
 private:
     struct Deleter {

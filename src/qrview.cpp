@@ -48,12 +48,12 @@ void QrView::setHighlighted(bool highlighted)
 
 QSize QrView::minimumSizeHint() const
 {
-    return QSize(200, 200);
+    return {200, 200};
 }
 
 QSize QrView::sizeHint() const
 {
-    return QSize(360, 360);
+    return {360, 360};
 }
 
 int QrView::codeSide() const
@@ -72,8 +72,8 @@ int QrView::codeSide() const
 int QrView::fittedModulePixels() const
 {
     const int modules = m_code.modules() + 2 * qr::Code::QuietZone;
-    const qreal available = std::max<qreal>(1.0, std::min(width(), height()) - 2 * kPadding);
-    return std::max(1, static_cast<int>(std::floor(available * devicePixelRatioF() / modules)));
+    const qreal available = (std::max<qreal>)(1.0, (std::min)(width(), height()) - 2 * kPadding);
+    return (std::max)(1, static_cast<int>(std::floor(available * devicePixelRatioF() / modules)));
 }
 
 void QrView::dropCache()

@@ -12,7 +12,8 @@ QString textForQr(const QMimeData *data)
     }
 
     if (data->hasUrls()) {
-        for (const QUrl &url : data->urls()) {
+        const QList<QUrl> urls = data->urls();
+        for (const QUrl &url : urls) {
             if (!url.isEmpty()) {
                 return url.toString();
             }

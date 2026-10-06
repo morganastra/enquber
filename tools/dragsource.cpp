@@ -31,6 +31,8 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include <chrono>
+
 namespace {
 
 void report(const char *format, ...)
@@ -93,7 +95,7 @@ protected:
             // report. The drop event travels through the event loop, so let it
             // arrive before asking what was encoded.
             MainWindow *application = m_app;
-            QTimer::singleShot(250, [application] {
+            QTimer::singleShot(std::chrono::milliseconds(250), application, [application] {
                 report("app text: %s\n", qPrintable(application->encodedText()));
             });
         } else if (!m_keepRunning) {
@@ -120,7 +122,7 @@ int main(int argc, char *argv[])
     bool keepRunning = false;
     const QStringList arguments = QApplication::arguments();
     for (int i = 1; i < arguments.size(); ++i) {
-        const QString argument = arguments.at(i);
+        const QString &argument = arguments.at(i);
         if (argument == QLatin1String("--text") && i + 1 < arguments.size()) {
             payload = arguments.at(++i);
         } else if (argument == QLatin1String("--with-app")) {

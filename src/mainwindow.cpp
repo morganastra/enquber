@@ -41,6 +41,8 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include <chrono>
+
 /// Set QT_LOGGING_RULES="enquber.dnd.debug=true" to watch what the window is
 /// offered while something is dragged onto it.
 Q_LOGGING_CATEGORY(lcDnd, "enquber.dnd")
@@ -59,9 +61,9 @@ constexpr int kDragPixmapPixels = 120;
 
 /// How long the finished drag is kept alive so a target can still fetch the
 /// payload over the X11 selection after the drop. See startCodeDrag().
-constexpr int kDragLingerMs = 1000;
+constexpr std::chrono::milliseconds kDragLingerMs{1000};
 
-constexpr int kStatusTimeoutMs = 4000;
+constexpr std::chrono::milliseconds kStatusTimeoutMs{4000};
 
 constexpr int kMaxTextLines = 3;
 
@@ -70,7 +72,7 @@ constexpr int kWindowMargin = 24;
 /// The symbol shown under an empty inline field, so the code page never looks
 /// blank at the moment the user is about to type. It is data, not UI text, so
 /// it is deliberately not translated.
-const QString kPlaceholderText = QStringLiteral("enquber");
+constexpr QLatin1StringView kPlaceholderText("enquber");
 
 /// Distance of the help button from the top-right corner of the window.
 constexpr int kHelpButtonMargin = 10;
@@ -518,7 +520,7 @@ void MainWindow::setText(const QString &text)
         return;
     }
 
-    m_code = code;
+    m_code = std::move(code);
     showCode(m_code);
 }
 
@@ -628,7 +630,7 @@ void MainWindow::commitLiveInput()
         return;
     }
 
-    m_code = code;
+    m_code = std::move(code);
     finishTypeInput();
     updateTextLabel();
     setCodeActionsEnabled(true);
@@ -955,7 +957,7 @@ bool MainWindow::saveTo(const QString &path)
 QImage MainWindow::renderForExport() const
 {
     const int modules = m_code.modules() + 2 * qr::Code::QuietZone;
-    const int modulePixels = std::max(4, kExportPixels / modules);
+    const int modulePixels = (std::max)(4, kExportPixels / modules);
     QImage image = m_code.toImage(modulePixels);
     image.setDotsPerMeterX(kDotsPerMeter);
     image.setDotsPerMeterY(kDotsPerMeter);
@@ -977,7 +979,7 @@ QString MainWindow::writeDragFile(const QImage &image)
     if (!QDir().mkpath(directory)) {
         return {};
     }
-    const QString path = QDir(directory).filePath(suggestedFileName());
+    QString path = QDir(directory).filePath(suggestedFileName());
     if (!image.save(path, "PNG")) {
         return {};
     }
@@ -992,8 +994,10 @@ QString MainWindow::suggestedFileName() const
         stem = url.host() + url.path();
     }
     stem = stem.section(QLatin1Char('?'), 0, 0);
-    stem.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9._-]+")), QStringLiteral("-"));
-    stem.remove(QRegularExpression(QStringLiteral("^[.-]+|[.-]+$")));
+    static const QRegularExpression unsafeFileNameChars(QStringLiteral("[^A-Za-z0-9._-]+"));
+    static const QRegularExpression leadingTrailingDots(QStringLiteral("^[.-]+|[.-]+$"));
+    stem.replace(unsafeFileNameChars, QStringLiteral("-"));
+    stem.remove(leadingTrailingDots);
     if (stem.isEmpty()) {
         stem = QStringLiteral("qrcode");
     }
