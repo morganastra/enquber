@@ -23,7 +23,8 @@ tests when the installed Qt provides the tools (Qt 6.11 and 6.10
 respectively).  The ``//%``-comment and literal-string checks are heuristics.
 The repository root is derived from this script's location, so it runs from
 anywhere (for example as a ctest from the build directory).  The exit status
-is 1 when any check fails.
+is 1 when any check fails, and 2 when the ``--source`` path is not a
+directory.
 """
 
 from __future__ import annotations
@@ -224,6 +225,9 @@ def read_catalog(path: Path, errors: list[str]) -> list[Message] | None:
         root = ET.parse(path).getroot()
     except ET.ParseError as err:
         errors.append(f"{path.name}: invalid XML: {err}")
+        return None
+    except OSError as err:
+        errors.append(f"{path.name}: cannot read: {err.strerror or err}")
         return None
     messages: list[Message] = []
     for element in root.iter("message"):
