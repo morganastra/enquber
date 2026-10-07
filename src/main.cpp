@@ -48,7 +48,8 @@ int main(int argc, char *argv[])
 
     MainWindow window;
 
-    // Interpret command line arguments as text to encode (and create QR code directly)
+    // `enquber https://example.com` shows the code right away: every argument
+    // that does not start with '-' is text to encode.
     const QStringList arguments = QApplication::arguments().mid(1);
     QStringList text;
     for (const QString &argument : arguments) {
