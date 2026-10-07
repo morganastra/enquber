@@ -435,11 +435,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--display", default=None,
                         help="X display to drive when --no-xvfb is given, e.g. "
                              ":9 (default: $DISPLAY, else :0)")
-    parser.add_argument("--xvfb", dest="xvfb", action="store_true", default=None,
-                        help="start a private Xvfb and drive that (the default, "
-                             "so the test never touches your desktop)")
-    parser.add_argument("--no-xvfb", dest="xvfb", action="store_false",
-                        help="never start Xvfb; drive --display as given")
+    parser.add_argument("--no-xvfb", action="store_true",
+                        help="never start Xvfb; drive --display instead")
     parser.add_argument("--app", default="build/smoke/enquber",
                         help="the application binary to test "
                              "(default: build/smoke/enquber)")
@@ -451,6 +448,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="where to write screenshots (default: a date-time "
                              "stamped directory under $TMPDIR/enquber-smoke)")
     args = parser.parse_args(argv)
+    if args.display is not None and not args.no_xvfb:
+        parser.error("--display only applies with --no-xvfb")
 
     for tool in ("import", "xclip", "zbarimg", "identify"):
         if not shutil.which(tool):
@@ -482,7 +481,7 @@ def main(argv: list[str] | None = None) -> int:
     # the clipboard, so it must never run on a display the user is using. Only
     # --no-xvfb opts out, and then --display (or $DISPLAY) is driven as given.
     xvfb = Xvfb()
-    use_xvfb = args.xvfb is not False
+    use_xvfb = not args.no_xvfb
     display = args.display if args.display is not None \
         else os.environ.get("DISPLAY", ":0")
     try:

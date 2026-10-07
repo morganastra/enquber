@@ -75,7 +75,7 @@ The smoke test (`tools/smoke.py`) drives the real app on a real X11 display
 with real input and decodes every produced QR with `zbarimg`. It needs
 `import`, `xclip`, `zbarimg`, and `identify` on `PATH`, Python `Xlib`, and
 PyQt6 (the drag-out step's `tools/droptarget.py` target is built on it).
-Prefer a throwaway `Xvfb` display (`--display :9`).
+It starts its own throwaway `Xvfb`; `--no-xvfb --display :N` drives an existing server instead.
 Screenshots go to a date-time stamped directory under `$TMPDIR/enquber-smoke`,
 so every run is easy to tell apart. Wayland is not natively supported by the
 smoke test yet.
