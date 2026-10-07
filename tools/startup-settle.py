@@ -24,9 +24,10 @@ A command can carry a label with 'label,command', e.g.
 --command 'kcalc,kcalc', so the summary and JSON name it usefully.
 
 Pass --json to print every run (with the paired delta when a baseline is given);
-tools/startup-stats.py turns that into a summary table and target verdict. Pass
---video DIR to also write one clip per run (ffmpeg, half resolution) so a result
-can be watched back.
+tools/startup-stats.py turns that into a summary table and target verdict, so the
+input needs a `kcalc` label or a `--reference <label>` naming a label it holds.
+Pass --video DIR to also write one clip per run (ffmpeg, half resolution) so a
+result can be watched back.
 
 Needs numpy, python-xlib, and (only for --video) ffmpeg.
 """
@@ -263,7 +264,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true",
                         help="print the raw runs as JSON instead of a table; pipe "
                              "it into tools/startup-stats.py for a summary and "
-                             "verdict")
+                             "verdict, which needs a kcalc label in the input or "
+                             "--reference")
     parser.add_argument("--verbose", action="store_true",
                         help="print the biggest changes of every run (ignored "
                              "with --json)")

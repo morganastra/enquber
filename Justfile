@@ -84,8 +84,9 @@ package-arch:
 #
 # startup-settle rotates the launch order every round, so its medians are
 # drift-resistant; pass --json and pipe through tools/startup-stats.py for a
-# table and verdict. startup-bench compares a candidate binary against a
-# baseline with the paired per-round delta:
+# table and verdict (it needs a `kcalc` label or --reference). startup-bench
+# compares a candidate binary against a baseline with the paired per-round
+# delta:
 #
 #     DISPLAY=:9 just startup-settle --runs 5 --command ./build/enquber --command kcalc
 #     DISPLAY=:9 just startup-bench /tmp/enq-main/build/enquber ./build/enquber --runs 15
