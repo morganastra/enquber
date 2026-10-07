@@ -83,8 +83,9 @@ smoke test yet.
 
 ## Tools/utility scripts
 
-Everything in `tools/` has a useful `--help` (the vendored
-`qt_review_lint.py` prints its usage when run without arguments).
+Everything in `tools/` has a useful `--help` except the vendored
+`qt_review_lint.py`: it ignores `--help`, unknown flags and unreadable files
+(exit 0) and prints usage only when run without arguments.
 
 ## Gotchas
 
@@ -98,10 +99,12 @@ Everything in `tools/` has a useful `--help` (the vendored
   (Qt internals: `qt.qpa.xdnd.debug=true`).
 - Linting: `just lint` must stay green. C++ uses `.clang-tidy` (warnings are
   errors), clazy level1, and `tools/qt_review_lint.py` (vendored verbatim from
-  Qt's agent-skills under BSD-3-Clause); Python uses `ruff.toml`; spelling uses
-  `typos.toml` with `locale = "en-us"`, so write American English and run
-  `typos --write-changes` to fix strays. There is no formatter yet; match the
-  existing 4-space style and keep builds clean under `-Wall -Wextra`.
+  Qt's agent-skills under BSD-3-Clause, pinned at `1cbbef560d2b`, sha256
+  `838ec72e…`; send fixes upstream, never patch locally). Python uses
+  `ruff.toml`; spelling uses `typos.toml` with `locale = "en-us"`, so write
+  American English and run `typos --write-changes` to fix strays. There is no
+  formatter yet; match the existing 4-space style and keep builds clean under
+  `-Wall -Wextra`.
 - `just lint-cpp` needs the clang build tree (`cmake --preset lint`): a GCC
   compile database carries `-mno-direct-extern-access`, which clazy and
   clang-tidy reject.
