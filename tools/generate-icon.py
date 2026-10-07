@@ -117,9 +117,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--size", type=int, default=512, metavar="PX",
                         help="edge length of the raster PNG in pixels "
                              "(default: 512)")
-    parser.add_argument("--text", default="enquber",
-                        help="string to encode into the source QR code "
-                             "(default: enquber)")
     parser.add_argument("--quiet", action="store_true",
                         help="do not print the paths that were written")
     args = parser.parse_args(argv)
@@ -132,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.size < 1:
         parser.error("--size must be at least 1")
 
-    modules = read_modules(args.text, SIZE)
+    modules = read_modules("enquber", SIZE)
     if not modules:
         print("error: qrencode produced no usable modules (unexpected SVG format)",
               file=sys.stderr)
