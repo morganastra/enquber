@@ -535,14 +535,14 @@ void MainWindow::pasteFromClipboard()
 
 void MainWindow::typeText()
 {
-    if (m_aboutOpen) {
-        return;
-    }
     beginLiveInput();
 }
 
 void MainWindow::beginLiveInput()
 {
+    if (m_aboutOpen) {
+        return;
+    }
     if (m_typeInputActive) {
         return;
     }
