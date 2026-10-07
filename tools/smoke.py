@@ -551,18 +551,8 @@ def run(smoke: Smoke):  # one linear scenario, read it top to bottom
     smoke.step("drag a link onto the rectangle with the mouse")
     source = smoke.place(x.find("dragsource", pid=app.process.pid, title_only=True).id,
                          700, 700, 320, 160)
-    dropped: str | None = None
-    dropped_shot = Path()
-    for attempt in range(1, 4):
-        source_now = smoke.geometry(source)
-        window = smoke.geometry(window)
-        center = (window.x + window.width // 2, window.y + window.height // 2)
-        drag_with_mouse(smoke, source_now, center)
-        time.sleep(0.8)
-        dropped, dropped_shot = smoke.decode(window, f"dropped-{attempt}")
-        smoke.log(f"in-process drag: attempt {attempt} shows {dropped!r}")
-        if dropped == DROPPED_URL:
-            break
+    dropped, dropped_shot = drag_until_dropped(smoke, source, window, DROPPED_URL,
+                                               label="dropped")
     smoke.check_decoded(dropped, DROPPED_URL, "the dropped link is on screen", dropped_shot)
     smoke.screenshot_screen("dropped")
     output = smoke.output_so_far(app.process, timeout=4.0,
