@@ -47,13 +47,22 @@ public:
     /// Width and height of the symbol in modules, quiet zone excluded.
     [[nodiscard]] int modules() const;
 
+    /// Width and height of the symbol in modules, quiet zone included; 0 for
+    /// an invalid Code.
+    [[nodiscard]] int totalModules() const;
+
+    /// The largest whole number of device pixels per module whose total side
+    /// fits @p budgetPixels, but never fewer than @p minimumPixels; 0 for an
+    /// invalid Code.
+    [[nodiscard]] int modulePixelsFor(qreal budgetPixels, int minimumPixels = 1) const;
+
     /// True for modules that are drawn black.
     [[nodiscard]] bool isDark(int x, int y) const;
 
     /// Renders the symbol at @p modulePixels device pixels per module,
-    /// including a @p quietZone module wide border. Returns a null image for
-    /// an invalid Code.
-    [[nodiscard]] QImage toImage(int modulePixels, int quietZone = QuietZone) const;
+    /// including a QuietZone module wide border. Returns a null image for an
+    /// invalid Code or when @p modulePixels is less than 1.
+    [[nodiscard]] QImage toImage(int modulePixels) const;
 
 private:
     struct Deleter {

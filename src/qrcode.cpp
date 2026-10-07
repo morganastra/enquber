@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cmath>
 #include <cstring>
 
 namespace qr {
@@ -78,6 +79,20 @@ int Code::modules() const
     return m_code ? m_code->width : 0;
 }
 
+int Code::totalModules() const
+{
+    return m_code ? m_code->width + 2 * QuietZone : 0;
+}
+
+int Code::modulePixelsFor(qreal budgetPixels, int minimumPixels) const
+{
+    const int total = totalModules();
+    if (total == 0) {
+        return 0;
+    }
+    return (std::max)(minimumPixels, static_cast<int>(std::floor(budgetPixels / total)));
+}
+
 bool Code::isDark(int x, int y) const
 {
     if (!m_code || x < 0 || y < 0 || x >= m_code->width || y >= m_code->width) {
@@ -86,14 +101,14 @@ bool Code::isDark(int x, int y) const
     return (m_code->data[y * m_code->width + x] & 1u) != 0u;
 }
 
-QImage Code::toImage(int modulePixels, int quietZone) const
+QImage Code::toImage(int modulePixels) const
 {
-    if (!isValid() || modulePixels < 1 || quietZone < 0) {
+    if (!isValid() || modulePixels < 1) {
         return {};
     }
 
     const int width = modules();
-    const int side = (width + 2 * quietZone) * modulePixels;
+    const int side = totalModules() * modulePixels;
     QImage image(side, side, QImage::Format_RGB32);
     image.fill(Qt::white);
 
@@ -101,12 +116,12 @@ QImage Code::toImage(int modulePixels, int quietZone) const
     // scaling a smaller image, so the edges stay crisp at any scale.
     const QRgb black = qRgb(0, 0, 0);
     for (int y = 0; y < width; ++y) {
-        const int firstRow = (y + quietZone) * modulePixels;
+        const int firstRow = (y + QuietZone) * modulePixels;
         for (int x = 0; x < width; ++x) {
             if (!isDark(x, y)) {
                 continue;
             }
-            const int firstColumn = (x + quietZone) * modulePixels;
+            const int firstColumn = (x + QuietZone) * modulePixels;
             for (int dy = 0; dy < modulePixels; ++dy) {
                 QRgb *line = reinterpret_cast<QRgb *>(image.scanLine(firstRow + dy));
                 std::fill_n(line + firstColumn, modulePixels, black);
