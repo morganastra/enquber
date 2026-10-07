@@ -161,7 +161,7 @@ private:
 
     qr::Code m_code;
 
-    mime::Payload m_payload;
+    mime::ObservedText m_dropText;
     /// True while the status line shows the "drop to replace" message this
     /// drag put there, so only that message is cleared when the drag ends.
     bool m_dropStatusShown = false;
