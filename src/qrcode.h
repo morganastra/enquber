@@ -21,8 +21,9 @@ enum class ErrorCorrection : std::uint8_t {
 /// An encoded QR symbol: the module matrix from libqrencode plus the text it
 /// stands for.
 ///
-/// The class is implicitly shared and cheap to copy. An invalid (default
-/// constructed) Code reports the reason through error().
+/// The class is implicitly shared and cheap to copy. When encode() fails it
+/// returns an invalid Code whose error() explains why; a default-constructed
+/// Code is invalid but carries no reason.
 class Code
 {
 public:
@@ -31,8 +32,8 @@ public:
 
     Code() = default;
 
-    /// Encodes @p text as UTF-8. Returns an invalid Code if the text does not
-    /// fit into a single symbol, in which case error() explains why.
+    /// Encodes @p text as UTF-8. Returns an invalid Code when the text is
+    /// empty or does not fit into a single symbol; error() explains why.
     static Code encode(const QString &text, ErrorCorrection level = ErrorCorrection::Quartile);
 
     [[nodiscard]] bool isValid() const { return static_cast<bool>(m_code); }
