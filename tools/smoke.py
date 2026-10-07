@@ -365,10 +365,16 @@ class Smoke:
 
 
 def decode_png(path: Path) -> str | None:
-    # zbarimg exits nonzero when the image holds no symbol, which some checks
-    # expect, so the exit code is not asserted; stdout carries the result.
+    # zbarimg exits 4 when the image holds no symbol, which some checks expect.
+    # Any other nonzero exit means zbarimg could not read the file at all, so
+    # reporting "no symbol" would blame the window for a broken screenshot.
     result = subprocess.run(["zbarimg", "--quiet", "--raw", str(path)],
                             capture_output=True, text=True, check=False)
+    if result.returncode == 4:
+        return None
+    if result.returncode != 0:
+        raise Failure(f"zbarimg failed on {path} (exit {result.returncode}): "
+                      f"{result.stderr.strip()}")
     return result.stdout.strip() or None
 
 
