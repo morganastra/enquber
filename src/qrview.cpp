@@ -79,6 +79,7 @@ void QrView::dropCache()
 {
     m_cache = QImage();
     m_cacheModulePixels = 0;
+    m_cacheDpr = 1.0;
 }
 
 void QrView::paintEvent(QPaintEvent *)
@@ -90,10 +91,14 @@ void QrView::paintEvent(QPaintEvent *)
     const qreal dpr = devicePixelRatioF();
     const int modulePixels = fittedModulePixels();
 
-    if (modulePixels != m_cacheModulePixels || m_cache.isNull()) {
+    // The DPR is baked into the cached image's logical size, so it is part of
+    // the key: a DPR change can leave the module size unchanged.
+    if (modulePixels != m_cacheModulePixels || !qFuzzyCompare(dpr, m_cacheDpr)
+        || m_cache.isNull()) {
         m_cache = m_code.toImage(modulePixels);
         m_cache.setDevicePixelRatio(dpr);
         m_cacheModulePixels = modulePixels;
+        m_cacheDpr = dpr;
     }
 
     const QSizeF target = m_cache.deviceIndependentSize();
