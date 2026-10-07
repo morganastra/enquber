@@ -19,10 +19,9 @@ Catalog fidelity (place markers, accelerators, surrounding whitespace, final
 punctuation) is checked by Qt's own ``lcheck``, and completeness of the
 translated catalogs by ``lrelease -fail-on-unfinished``; both run as separate
 tests when the installed Qt provides the tools (Qt 6.11 and 6.10
-respectively).  The ``//%``-comment and literal-string checks are heuristics
-with a small allowlist.  The repository root is derived from this script's
-location, so it runs from anywhere (for example as a ctest from the build
-directory).
+respectively).  The ``//%``-comment and literal-string checks are heuristics.
+The repository root is derived from this script's location, so it runs from
+anywhere (for example as a ctest from the build directory).
 """
 
 from __future__ import annotations
@@ -61,12 +60,6 @@ WIDGET_WITH_TEXT = re.compile(
     r"\bnew\s+(?:QLabel|QPushButton|QAction|QCheckBox|QRadioButton|QToolButton)\s*\(\s*"
     + STRING_LITERAL
 )
-
-# Known, reviewed literals that are deliberately not translated.  Keep this
-# list tiny and justified.
-ALLOWED_LITERALS = {
-    "?",  # the painted help/back glyph, a symbol rather than a word
-}
 
 # Region labels produced by label_regions().
 CODE, COMMENT, LITERAL = "code", "comment", "literal"
@@ -200,11 +193,10 @@ def scan_sources(src_dir: Path) -> SourceReport:
             for match in pattern.finditer(uncommented):
                 lineno = uncommented.count("\n", 0, match.start()) + 1
                 text = match.group("text")
-                if text not in ALLOWED_LITERALS:
-                    report.errors.append(
-                        f"{rel}:{lineno}: user-facing string literal {text!r} "
-                        f"passed to a widget; use a text ID"
-                    )
+                report.errors.append(
+                    f"{rel}:{lineno}: user-facing string literal {text!r} "
+                    f"passed to a widget; use a text ID"
+                )
     return report
 
 
