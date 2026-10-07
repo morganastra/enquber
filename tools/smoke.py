@@ -159,6 +159,8 @@ class Xvfb:
     def _spawn(self, number: int) -> None:
         read_fd, write_fd = os.pipe()
         try:
+            # Without -noreset the server resets when the last client
+            # disconnects, which races the next connection the test opens.
             self.process = subprocess.Popen(
                 ["Xvfb", f":{number}", "-displayfd", str(write_fd),
                  "-screen", "0", self.geometry, "-nolisten", "tcp",
