@@ -52,7 +52,9 @@ try:
     from Xlib import display as xdisplay
     from Xlib import error as xerror
 except ImportError as error:
-    sys.exit(f"startup-settle needs {error.name} (pip install numpy python-xlib)")
+    print(f"missing required module: {error.name} "
+          "(pip install numpy python-xlib)", file=sys.stderr)
+    sys.exit(2)
 
 
 class Failure(Exception):
@@ -79,6 +81,15 @@ class Run:
     curve: list[tuple[float, float]] = field(default_factory=list)
 
 
+def install_signal_handlers() -> None:
+    """Turns termination signals into KeyboardInterrupt so cleanup runs."""
+    def interrupt(signum, _frame):
+        raise KeyboardInterrupt(f"signal {signum}")
+
+    for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(number, interrupt)
+
+
 def record(command: list[str], display: str, duration: float, lead: float,
            fps: float, want_video: bool) -> list[Frame]:
     """Records @p duration seconds from just before launching @p command."""
@@ -97,41 +108,42 @@ def record(command: list[str], display: str, duration: float, lead: float,
     next_at = started
     frames: list[Frame] = []
 
-    while True:
-        now = time.monotonic()
-        if process is None and now - started >= lead:
-            launch = time.monotonic()
-            process = subprocess.Popen(command, env=environment,
-                                       stdout=subprocess.DEVNULL,
-                                       stderr=subprocess.DEVNULL,
-                                       start_new_session=True)
-        if process is not None and now - launch >= duration:
-            break
+    try:
+        while True:
+            now = time.monotonic()
+            if process is None and now - started >= lead:
+                launch = time.monotonic()
+                process = subprocess.Popen(command, env=environment,
+                                           stdout=subprocess.DEVNULL,
+                                           stderr=subprocess.DEVNULL,
+                                           start_new_session=True)
+            if process is not None and now - launch >= duration:
+                break
 
-        raw = root.get_image(0, 0, width, height, X.ZPixmap, 0xffffffff).data
-        stamp = time.monotonic()
-        small = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)[::2, ::2, :3]
-        gray = small.astype(np.float32).mean(axis=2)
-        frames.append(Frame(stamp - launch if launch else stamp - started, gray,
-                            small.copy() if want_video else None))
+            raw = root.get_image(0, 0, width, height, X.ZPixmap, 0xffffffff).data
+            stamp = time.monotonic()
+            small = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)[::2, ::2, :3]
+            gray = small.astype(np.float32).mean(axis=2)
+            frames.append(Frame(stamp - launch if launch else stamp - started, gray,
+                                small.copy() if want_video else None))
 
-        next_at += interval
-        delay = next_at - time.monotonic()
-        if delay > 0:
-            time.sleep(delay)
-        else:
-            next_at = time.monotonic()
+            next_at += interval
+            delay = next_at - time.monotonic()
+            if delay > 0:
+                time.sleep(delay)
+            else:
+                next_at = time.monotonic()
+    finally:
+        if process is not None:
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                process.wait(timeout=5)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                process.wait(timeout=5)
+        d.close()
 
-    if process is not None:
-        try:
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-            process.wait(timeout=5)
-        except (ProcessLookupError, subprocess.TimeoutExpired):
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            process.wait(timeout=5)
-
-    d.close()
     return frames
 
 
@@ -315,6 +327,7 @@ def main(argv: list[str] | None = None) -> int:
 
     results: dict[str, list[Run]] = {label: [] for _, label, _ in specs}
     paired: list[float] = []
+    install_signal_handlers()
     try:
         for round_index in range(args.runs):
             offset = round_index % len(specs)
@@ -346,7 +359,10 @@ def main(argv: list[str] | None = None) -> int:
                       file=sys.stderr)
             if "baseline" in stable_this_round and "candidate" in stable_this_round:
                 paired.append(stable_this_round["candidate"] - stable_this_round["baseline"])
-    except (xerror.DisplayConnectionError, OSError) as error:
+    except KeyboardInterrupt:
+        print("interrupted", file=sys.stderr)
+        return 130
+    except (xerror.DisplayConnectionError, xerror.ConnectionClosedError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
 
