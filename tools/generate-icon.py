@@ -133,6 +133,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--size must be at least 1")
 
     modules = read_modules(args.text, SIZE)
+    if not modules:
+        print("error: qrencode produced no usable modules (unexpected SVG format)",
+              file=sys.stderr)
+        return 1
     grid = module_grid()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
