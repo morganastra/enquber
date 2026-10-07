@@ -4,6 +4,7 @@
 #include "qrcode.h"
 
 #include <QMainWindow>
+#include <QPoint>
 #include <QTemporaryDir>
 
 #include <cstdint>
@@ -16,6 +17,7 @@ class QrView;
 class TypeEditor;
 class QAbstractButton;
 class QAction;
+class QContextMenuEvent;
 class QLabel;
 class QPushButton;
 class QStackedWidget;
@@ -92,6 +94,14 @@ private:
     void finishTypeInput();
     /// Matches the field's width to the symbol above it.
     void positionCaptionEditor();
+    /// Builds and runs the window's context menu at @p globalPos. Every item is
+    /// one of the window's own actions, so icons, shortcut hints, enabled
+    /// states and translations all follow the one action. The set follows the
+    /// page: Paste and Type everywhere except the help page, Copy/Save/Clear on
+    /// the code page, Back to Enquber on the help page, plus Help and Quit. An
+    /// open inline field is committed first, the way Return does, so the menu
+    /// describes the finished code with every action live.
+    void showContextMenu(const QPoint &globalPos);
     /// Brings every action in line with the current state: Paste and the code
     /// actions follow the code, the inline field and the help page; Type stays
     /// on unless the help page is up; Escape belongs to the help page only
@@ -126,6 +136,7 @@ private:
 
     void changeEvent(QEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
+    void contextMenuEvent(QContextMenuEvent *event) override;
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dragMoveEvent(QDragMoveEvent *event) override;
     void dragLeaveEvent(QDragLeaveEvent *event) override;

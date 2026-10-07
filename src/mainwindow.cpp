@@ -11,6 +11,7 @@
 #include <QAbstractButton>
 #include <QAction>
 #include <QClipboard>
+#include <QContextMenuEvent>
 #include <QCoreApplication>
 #include <QDir>
 #include <QDrag>
@@ -27,6 +28,7 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QLoggingCategory>
+#include <QMenu>
 #include <QMimeData>
 #include <QPainter>
 #include <QPixmap>
@@ -290,6 +292,14 @@ void MainWindow::buildUi()
     // positionCaptionEditor().
     m_captionEditor = new TypeEditor(codePage);
     m_captionEditor->setObjectName(QStringLiteral("captionEditor"));
+    // The editor would answer a right click with its own cut/copy/paste menu;
+    // the window intercepts it in eventFilter() so the window's own context
+    // menu opens on every page instead. Mouse context menu events target the
+    // scroll area's viewport rather than the editor itself, while
+    // keyboard-invoked ones (the Menu key) go to the editor, so both are
+    // filtered.
+    m_captionEditor->installEventFilter(this);
+    m_captionEditor->viewport()->installEventFilter(this);
     // About three lines tall: enough to show a small multi-line payload without
     // the field dominating the window. Anything longer scrolls.
     const QFontMetrics editorMetrics(m_captionEditor->fontMetrics());
@@ -444,8 +454,13 @@ void MainWindow::buildActions()
     addAction(m_helpAction);
 
     // Escape leaves the help page when it is up. It is enabled only then, so it
-    // never competes with the clear action's own Escape shortcut.
+    // never competes with the clear action's own Escape shortcut. Its text is
+    // never painted on a widget; the context menu on the help page uses it to
+    // name the way back.
     m_closeAboutAction = new QAction(this);
+    //@ MainWindow
+    //% "&Back to Enquber"
+    m_closeAboutAction->setText(qtTrId("mainwindow.action.back"));
     m_closeAboutAction->setShortcut(QKeySequence(Qt::Key_Escape));
     m_closeAboutAction->setShortcutContext(Qt::WindowShortcut);
     connect(m_closeAboutAction, &QAction::triggered, this, &MainWindow::closeAbout);
@@ -487,9 +502,14 @@ void MainWindow::refreshActionIcons()
     // theme::icon() tints a bundled fallback with the current palette when it
     // builds it, so a palette change means the glyphs have to be built again.
     // System theme icons are drawn by the theme and simply ignore this.
+    m_pasteAction->setIcon(theme::icon({"edit-paste", "insert-link"}));
+    m_typeAction->setIcon(theme::icon({"document-edit", "insert-text", "edit"}));
     m_copyAction->setIcon(theme::icon({"edit-copy"}));
     m_saveAction->setIcon(theme::icon({"document-save", "document-save-as"}));
     m_clearAction->setIcon(theme::icon({"edit-clear", "edit-clear-all", "window-close"}));
+    m_helpAction->setIcon(theme::icon({"help-about", "dialog-information"}));
+    m_closeAboutAction->setIcon(theme::icon({"go-previous", "arrow-left"}));
+    m_quitAction->setIcon(theme::icon({"application-exit", "system-shutdown"}));
 
     m_copyButton->setIcon(m_copyAction->icon());
     m_saveButton->setIcon(m_saveAction->icon());
@@ -800,6 +820,18 @@ void MainWindow::positionHelpButton()
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
+    if ((watched == m_captionEditor || watched == m_captionEditor->viewport())
+        && event->type() == QEvent::ContextMenu) {
+        // QTextEdit answers a right click with its own cut/copy/paste menu; the
+        // window's menu has to open instead (showContextMenu() commits the
+        // field first). Take the event before the editor can show its own: the
+        // mouse path arrives at the viewport and the keyboard path at the
+        // editor, so both are watched.
+        auto *context = static_cast<QContextMenuEvent *>(event);
+        context->accept();
+        showContextMenu(context->globalPos());
+        return true;
+    }
     if (event->type() == QEvent::Resize) {
         if (watched == m_central) {
             positionHelpButton();
@@ -813,6 +845,54 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         }
     }
     return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::contextMenuEvent(QContextMenuEvent *event)
+{
+    // A context menu event that arrives here was passed on by the widget under
+    // the cursor (the QR view, a label, a button, the drop target), so this one
+    // handler covers the whole window. The inline field handles its own events
+    // in eventFilter(), because QTextEdit would never pass them on.
+    event->accept();
+    showContextMenu(event->globalPos());
+}
+
+void MainWindow::showContextMenu(const QPoint &globalPos)
+{
+    // A right click while the field is up means "I am done typing": commit it
+    // first, exactly like Return, so the menu describes the finished code and
+    // every action is live. Text that does not encode keeps the field up and
+    // reports the problem in the status line; there is no menu to show then.
+    if (m_typeInputActive) {
+        commitLiveInput();
+        if (m_typeInputActive) {
+            return;
+        }
+    }
+
+    // The menu reuses the window's actions rather than building its own items,
+    // so icons (with the bundled-glyph fallback), shortcut hints, enabled
+    // states and translations all come from the same one source the buttons
+    // and the keyboard shortcuts use.
+    QMenu menu(this);
+    if (m_aboutOpen) {
+        // Back returns to whichever page opened the help page.
+        menu.addAction(m_closeAboutAction);
+    } else {
+        menu.addAction(m_pasteAction);
+        menu.addAction(m_typeAction);
+        if (m_stack->currentIndex() == CodePage) {
+            menu.addSeparator();
+            menu.addAction(m_copyAction);
+            menu.addAction(m_saveAction);
+            menu.addAction(m_clearAction);
+        }
+        menu.addSeparator();
+        menu.addAction(m_helpAction);
+    }
+    menu.addSeparator();
+    menu.addAction(m_quitAction);
+    menu.exec(globalPos);
 }
 
 void MainWindow::updateTextLabel()

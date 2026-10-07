@@ -30,6 +30,14 @@ QString bundledGlyphName(const QString &themeName)
     if (themeName == QLatin1String("edit-paste") || themeName == QLatin1String("document-open")) {
         return QStringLiteral("insert-link");
     }
+    if (themeName == QLatin1String("document-edit") || themeName == QLatin1String("insert-text")
+        || themeName == QLatin1String("accessories-text-editor") || themeName == QLatin1String("edit")) {
+        return QStringLiteral("edit-3");
+    }
+    if (themeName == QLatin1String("application-exit") || themeName == QLatin1String("system-shutdown")
+        || themeName == QLatin1String("system-log-out")) {
+        return QStringLiteral("log-out");
+    }
     if (themeName == QLatin1String("go-previous") || themeName == QLatin1String("go-previous-symbolic")) {
         return QStringLiteral("arrow-left");
     }
@@ -66,9 +74,9 @@ QImage tinted(const QImage &source, const QColor &color)
     return result;
 }
 
-/// Upper bound on the bundled-glyph cache: seven glyphs times a few palette
+/// Upper bound on the bundled-glyph cache: nine glyphs times a few palette
 /// tints (a light and a dark foreground in practice), with headroom for the odd
-/// intermediate color. 
+/// intermediate color.
 constexpr int kMaxCachedGlyphs = 64;
 
 /// Loads the bundled glyph for @p themeName and tints it, or a null QIcon when

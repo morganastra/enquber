@@ -51,11 +51,13 @@ qt_add_resources(enquber_core "enquber_icons"
         data/icon/enquber.png
         data/icon/actions/arrow-left.png
         data/icon/actions/document-save.png
+        data/icon/actions/edit-3.png
         data/icon/actions/edit-clear.png
         data/icon/actions/edit-copy.png
         data/icon/actions/help-circle.png
         data/icon/actions/info.png
         data/icon/actions/insert-link.png
+        data/icon/actions/log-out.png
 )
 
 # The catalogs are compiled and embedded in enquber_core so that the app and
