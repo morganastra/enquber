@@ -16,7 +16,7 @@ build:
     cmake --preset default
     cmake --build --preset default
 
-# Build, then run the unit tests plus the translation-catalog lint.
+# Build, then run the unit tests and the fast lints (i18n, ruff, typos).
 test: build
     ctest --preset default
 
