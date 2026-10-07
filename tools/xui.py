@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Drive X11 windows from a script: the test rig for the GUI.
 
-python-xlib supplies both the window queries and XTEST for synthetic input, and
-ImageMagick's `import` takes the screenshots. Both are part of a normal KDE
-install, so this stays dependency free.
+python-xlib supplies the window queries and XTEST for synthetic input,
+ImageMagick's `import` takes the screenshots, and `xclip` moves the clipboard.
 
 Used as a library by tools/smoke.py, and on the command line for poking at a
 running application. A window is named by its numeric X11 id (decimal or 0x
@@ -120,6 +119,11 @@ class X11:
         return prop.value if prop else None
 
     def _describe(self, window) -> Window | None:
+        """Describes a window, or returns None for helper windows.
+
+        Substructure redirect guards and other helper windows (docks, tooltips,
+        popups, clipboard owners) are skipped, as are unmapped and tiny windows.
+        """
         try:
             attrs = window.get_attributes()
             if attrs.map_state != X.IsViewable:
@@ -189,8 +193,6 @@ class X11:
         clients are not the direct children of the root. _NET_CLIENT_LIST is the
         reliable answer; without a window manager the root's children are the
         clients themselves.
-
-        Excludes substructure redirect guards and other helper windows.
         """
         clients = self._property(self.root, "_NET_CLIENT_LIST")
         if clients:
@@ -410,8 +412,8 @@ class X11:
                capture: bool = True) -> subprocess.CompletedProcess:
         environment = dict(os.environ, DISPLAY=self.display_name)
         if capture:
-            # Callers inspect returncode/stdout; xclip exits nonzero when the
-            # selection is empty, which is a normal outcome.
+            # xclip exits nonzero when the selection is empty, which is a
+            # normal outcome.
             return subprocess.run(["xclip", *args], input=data,
                                   capture_output=True, env=environment, check=False)
         # xclip forks a daemon that owns the selection and inherits our pipes,
@@ -501,8 +503,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("list", help="list top level windows",
                    description="Print every interesting top level window, one "
                                "per line: id, WxH, +X+Y, WM_CLASS, pid and title. "
-                               "Docks, tooltips, popups and clipboard owners are "
-                               "skipped.")
+                               "Docks, tooltips, popups, clipboard owners, "
+                               "windows with neither class nor title, and windows "
+                               "no bigger than a pixel are skipped.")
 
     p = sub.add_parser("find", help="print the id of the best matching window",
                        description="Print the id (as 0x hex) of the best window "
@@ -530,8 +533,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("shot", help="screenshot a window (or the whole screen)",
                        description="Save a PNG with ImageMagick `import`. With "
-                                   "WINDOW, capture just that window; without it, "
-                                   "capture the whole screen.")
+                                   "WINDOW, capture the screen region the window "
+                                   "occupies (a covering window shows instead); "
+                                   "without it, capture the whole screen.")
     p.add_argument("window", nargs="?", type=_window_id,
                    help="window id to capture (omit for the whole screen)")
     p.add_argument("path", help="output PNG path")
