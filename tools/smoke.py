@@ -19,9 +19,9 @@ Needs the smoke build tree, because the drag helper is only built there:
 
     cmake --preset smoke && cmake --build --preset smoke
 
-and these on PATH: import and identify (ImageMagick), xclip, zbarimg (zbar).
-The Python modules python-xlib and PyQt6 (for tools/droptarget.py) are also
-required.
+and these on PATH: import and identify (ImageMagick), xclip, zbarimg (zbar),
+and Xvfb unless --no-xvfb is given. The Python modules python-xlib and PyQt6
+(for tools/droptarget.py) are also required.
 
 Exit status: 0 all steps passed, 1 a check failed or an error occurred,
 2 a required tool or module is missing, 130 interrupted.

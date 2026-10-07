@@ -230,9 +230,12 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         source = XdndSource(args.display, args.text)
-    except xerror.DisplayConnectionError:
-        name = args.display or os.environ.get("DISPLAY", "")
-        print(f"error: can't connect to display {name}", file=sys.stderr)
+    except (xerror.DisplayConnectionError, xerror.DisplayNameError):
+        name = args.display if args.display is not None else os.environ.get("DISPLAY")
+        if name:
+            print(f"error: can't connect to display {name}", file=sys.stderr)
+        else:
+            print("error: no display: set DISPLAY", file=sys.stderr)
         return 2
     if args.x is None or args.y is None:
         geometry = source.d.create_resource_object("window", args.target).get_geometry()
