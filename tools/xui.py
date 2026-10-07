@@ -215,7 +215,10 @@ class X11:
             candidates.append(window)
         if not candidates:
             return None
-        candidates.sort(key=lambda w: (w.wm_class.lower() != (pattern or "").lower(), -w.width * w.height))
+        candidates.sort(key=lambda w: (
+            pattern is not None and re.fullmatch(pattern, w.wm_class, re.IGNORECASE) is None,
+            -w.width * w.height,
+        ))
         return candidates[0]
 
     def wait_for(self, pattern: str | None = None, pid: int | None = None,
