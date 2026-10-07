@@ -287,7 +287,8 @@ def main(argv: list[str] | None = None) -> int:
         *args back into a shell line and a semicolon would end the command. The
         text before the comma is only treated as a label when it is a single
         bare word (no spaces, no quotes), so a command that happens to contain a
-        comma — `--command 'python3 -c "print(1,2)"'` — keeps working.
+        comma — `--command 'python3 -c "print(1,2)"'` — keeps working. A spec
+        that is an existing path stays one argument even when it has spaces.
         """
         label, separator, body = text.partition(",")
         if separator and not label:
@@ -299,12 +300,16 @@ def main(argv: list[str] | None = None) -> int:
                 command = shlex.split(body)
             except ValueError:
                 command = []
+            if len(command) > 1 and os.path.exists(body):
+                command = [body]
             if command:
                 return (label, command)
         try:
             command = shlex.split(text)
         except ValueError as error:
             parser.error(f"could not parse command '{text}': {error}")
+        if len(command) > 1 and os.path.exists(text):
+            command = [text]
         if not command:
             parser.error(f"empty command in '{text}'")
         return ((default_label or " ".join(command)), command)
