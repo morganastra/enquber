@@ -320,6 +320,9 @@ private slots:
     void clickingSaveButtonWritesFile();
     void saveWritesPngFile();
     void saveAppendsPngSuffix();
+    void saveReportsAWriteFailure();
+    void exportGeometry_data();
+    void exportGeometry();
     void quitShortcutClosesWindow();
 
     void windowAcceptsDrops();
@@ -428,6 +431,10 @@ void TestEnquber::rendersQuietZoneAndModules()
 
     QCOMPARE(image.size(), QSize((modules + 8) * modulePixels, (modules + 8) * modulePixels));
     QCOMPARE(image.format(), QImage::Format_RGB32);
+
+    // A module size below one pixel has nothing to render.
+    QVERIFY(code.toImage(0).isNull());
+    QVERIFY(code.toImage(-1).isNull());
 
     // The quiet zone is white all around...
     QCOMPARE(image.pixelColor(0, 0), QColor(Qt::white));
@@ -1404,6 +1411,66 @@ void TestEnquber::saveAppendsPngSuffix()
     QVERIFY(window.saveTo(path));
 
     QVERIFY(QFileInfo::exists(path + QStringLiteral(".png")));
+}
+
+void TestEnquber::saveReportsAWriteFailure()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://save.example"));
+
+    // The target's directory does not exist, so the write has to fail...
+    const QString path = directory.filePath(QStringLiteral("missing/code.png"));
+    QVERIFY(!window.saveTo(path));
+    QVERIFY(!QFileInfo::exists(path));
+
+    // ...and the failure has to reach the status line.
+    auto *status = window.findChild<QLabel *>(QStringLiteral("statusLabel"));
+    QVERIFY(status);
+    QVERIFY(status->isVisible());
+    QVERIFY(!status->text().isEmpty());
+}
+
+void TestEnquber::exportGeometry_data()
+{
+    QTest::addColumn<QString>("text");
+
+    QTest::newRow("small symbol") << QStringLiteral("https://save.example");
+    QTest::newRow("mid-sized symbol") << QString(100, QLatin1Char('y'));
+    QTest::newRow("largest symbol") << QString(1600, QLatin1Char('a'));
+}
+
+void TestEnquber::exportGeometry()
+{
+    QFETCH(QString, text);
+
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(text);
+    QVERIFY(window.hasCode());
+
+    const QString path = directory.filePath(QStringLiteral("code.png"));
+    QVERIFY(window.saveTo(path));
+
+    const QImage image(path);
+    QVERIFY(!image.isNull());
+
+    // The expected side is computed from the module count directly, not through
+    // modulePixelsFor(), which would only prove the helper agrees with itself.
+    const int total = qr::Code::encode(text).totalModules();
+    const int expected = total * (1024 / total);
+    QCOMPARE(image.width(), expected);
+    QCOMPARE(image.height(), expected);
+
+    // The exported PNG carries the 300 dpi promise, and it survives the file.
+    QCOMPARE(image.dotsPerMeterX(), 11811);
+    QCOMPARE(image.dotsPerMeterY(), 11811);
 }
 
 void TestEnquber::quitShortcutClosesWindow()
