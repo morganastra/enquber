@@ -5,7 +5,7 @@
     <name></name>
     <message id="app.name">
         <location filename="../src/aboutpage.cpp" line="83"/>
-        <location filename="../src/mainwindow.cpp" line="243"/>
+        <location filename="../src/mainwindow.cpp" line="245"/>
         <source>Enquber</source>
         <label>App</label>
         <translation>Enquber</translation>
@@ -60,159 +60,165 @@
         <translation>o pulsa Ctrl+V para pegar, Ctrl+L para escribir</translation>
     </message>
     <message id="typeeditor.placeholder">
-        <location filename="../src/mainwindow.cpp" line="304"/>
+        <location filename="../src/mainwindow.cpp" line="310"/>
         <source>Type or paste text</source>
         <label>TypeEditor</label>
         <translation>Escribe o pega el texto</translation>
     </message>
     <message id="mainwindow.help.tooltip">
-        <location filename="../src/mainwindow.cpp" line="361"/>
-        <location filename="../src/mainwindow.cpp" line="442"/>
-        <location filename="../src/mainwindow.cpp" line="784"/>
+        <location filename="../src/mainwindow.cpp" line="367"/>
+        <location filename="../src/mainwindow.cpp" line="448"/>
+        <location filename="../src/mainwindow.cpp" line="800"/>
         <source>Show help and info (Ctrl+H or ?)</source>
         <extracomment>Tooltip on the floating help button; it also opens the help page with the keyboard shortcuts Ctrl+H or the &quot;?&quot; key.</extracomment>
         <label>MainWindow</label>
         <translation>Muestra la ayuda y la información (Ctrl+H o ?)</translation>
     </message>
     <message id="mainwindow.help.accessible">
-        <location filename="../src/mainwindow.cpp" line="364"/>
-        <location filename="../src/mainwindow.cpp" line="787"/>
+        <location filename="../src/mainwindow.cpp" line="370"/>
+        <location filename="../src/mainwindow.cpp" line="803"/>
         <source>Help and info</source>
         <label>MainWindow</label>
         <translation>Ayuda e información</translation>
     </message>
     <message id="mainwindow.action.paste">
-        <location filename="../src/mainwindow.cpp" line="376"/>
+        <location filename="../src/mainwindow.cpp" line="382"/>
         <source>&amp;Paste link</source>
         <label>MainWindow</label>
         <translation>&amp;Pegar enlace</translation>
     </message>
     <message id="mainwindow.action.type">
-        <location filename="../src/mainwindow.cpp" line="384"/>
+        <location filename="../src/mainwindow.cpp" line="390"/>
         <source>&amp;Type text…</source>
         <label>MainWindow</label>
         <translation>&amp;Escribir texto…</translation>
     </message>
     <message id="mainwindow.action.type.tooltip">
-        <location filename="../src/mainwindow.cpp" line="389"/>
+        <location filename="../src/mainwindow.cpp" line="395"/>
         <source>Type the text to encode (Ctrl+L)</source>
         <label>MainWindow</label>
         <translation>Escribe el texto que se va a codificar (Ctrl+L)</translation>
     </message>
     <message id="mainwindow.action.copy">
-        <location filename="../src/mainwindow.cpp" line="395"/>
+        <location filename="../src/mainwindow.cpp" line="401"/>
         <source>&amp;Copy image</source>
         <label>MainWindow</label>
         <translation>&amp;Copiar imagen</translation>
     </message>
     <message id="mainwindow.action.copy.tooltip">
-        <location filename="../src/mainwindow.cpp" line="399"/>
+        <location filename="../src/mainwindow.cpp" line="405"/>
         <source>Copy the QR code to the clipboard as a PNG image (Ctrl+C)</source>
         <label>MainWindow</label>
         <translation>Copia el código QR al portapapeles como imagen PNG (Ctrl+C)</translation>
     </message>
     <message id="mainwindow.action.save">
-        <location filename="../src/mainwindow.cpp" line="405"/>
+        <location filename="../src/mainwindow.cpp" line="411"/>
         <source>&amp;Save…</source>
         <label>MainWindow</label>
         <translation>&amp;Guardar…</translation>
     </message>
     <message id="mainwindow.action.save.tooltip">
-        <location filename="../src/mainwindow.cpp" line="409"/>
+        <location filename="../src/mainwindow.cpp" line="415"/>
         <source>Save the QR code as a PNG file (Ctrl+S)</source>
         <label>MainWindow</label>
         <translation>Guarda el código QR como archivo PNG (Ctrl+S)</translation>
     </message>
     <message id="mainwindow.action.clear">
-        <location filename="../src/mainwindow.cpp" line="423"/>
+        <location filename="../src/mainwindow.cpp" line="429"/>
         <source>C&amp;lear</source>
         <label>MainWindow</label>
         <translation>&amp;Limpiar</translation>
     </message>
     <message id="mainwindow.action.clear.tooltip">
-        <location filename="../src/mainwindow.cpp" line="428"/>
+        <location filename="../src/mainwindow.cpp" line="434"/>
         <source>Go back to the drop target (Esc, Backspace or Delete)</source>
         <label>MainWindow</label>
         <translation>Vuelve a la zona para soltar (Esc, Backspace o Delete)</translation>
     </message>
     <message id="mainwindow.action.help">
-        <location filename="../src/mainwindow.cpp" line="438"/>
+        <location filename="../src/mainwindow.cpp" line="444"/>
         <source>&amp;Help and info</source>
         <label>MainWindow</label>
         <translation>A&amp;yuda e información</translation>
     </message>
+    <message id="mainwindow.action.back">
+        <location filename="../src/mainwindow.cpp" line="459"/>
+        <source>&amp;Back to Enquber</source>
+        <label>MainWindow</label>
+        <translation>&amp;Volver a Enquber</translation>
+    </message>
     <message id="mainwindow.action.quit">
-        <location filename="../src/mainwindow.cpp" line="456"/>
+        <location filename="../src/mainwindow.cpp" line="467"/>
         <source>&amp;Quit</source>
         <label>MainWindow</label>
         <translation>&amp;Salir</translation>
     </message>
     <message id="mainwindow.action.quit.tooltip">
-        <location filename="../src/mainwindow.cpp" line="475"/>
+        <location filename="../src/mainwindow.cpp" line="486"/>
         <source>Quit enquber (Ctrl+Q)</source>
         <label>MainWindow</label>
         <translation>Sale de Enquber (Ctrl+Q)</translation>
     </message>
     <message id="mainwindow.status.clipboard-empty">
-        <location filename="../src/mainwindow.cpp" line="530"/>
+        <location filename="../src/mainwindow.cpp" line="546"/>
         <source>The clipboard holds no text or link</source>
         <label>MainWindow</label>
         <translation>El portapapeles no contiene ningún texto ni enlace</translation>
     </message>
     <message id="mainwindow.help.back.tooltip">
-        <location filename="../src/mainwindow.cpp" line="777"/>
+        <location filename="../src/mainwindow.cpp" line="793"/>
         <source>Back to Enquber (Esc or Ctrl+H)</source>
         <label>MainWindow</label>
         <translation>Volver a Enquber (Esc o Ctrl+H)</translation>
     </message>
     <message id="mainwindow.help.back.accessible">
-        <location filename="../src/mainwindow.cpp" line="780"/>
+        <location filename="../src/mainwindow.cpp" line="796"/>
         <source>Back to Enquber</source>
         <label>MainWindow</label>
         <translation>Volver a Enquber</translation>
     </message>
     <message id="mainwindow.status.copied">
-        <location filename="../src/mainwindow.cpp" line="844"/>
+        <location filename="../src/mainwindow.cpp" line="917"/>
         <source>Copied the QR code to the clipboard</source>
         <label>MainWindow</label>
         <translation>Código QR copiado al portapapeles</translation>
     </message>
     <message id="mainwindow.status.drag-failed">
-        <location filename="../src/mainwindow.cpp" line="858"/>
+        <location filename="../src/mainwindow.cpp" line="931"/>
         <source>Could not prepare the image for dragging</source>
         <label>MainWindow</label>
         <translation>No se pudo preparar la imagen para arrastrarla</translation>
     </message>
     <message id="mainwindow.dialog.save.title">
-        <location filename="../src/mainwindow.cpp" line="905"/>
+        <location filename="../src/mainwindow.cpp" line="978"/>
         <source>Save QR Code</source>
         <extracomment>Title of the file chooser that saves the QR code as an image.</extracomment>
         <label>MainWindow</label>
         <translation>Guardar código QR</translation>
     </message>
     <message id="mainwindow.dialog.save.filter">
-        <location filename="../src/mainwindow.cpp" line="910"/>
+        <location filename="../src/mainwindow.cpp" line="983"/>
         <source>PNG image (*.png)</source>
         <extracomment>File-type filter in the save dialog; the star and the extension must stay unchanged so Qt can match PNG files.</extracomment>
         <label>MainWindow</label>
         <translation>Imagen PNG (*.png)</translation>
     </message>
     <message id="mainwindow.status.write-failed">
-        <location filename="../src/mainwindow.cpp" line="937"/>
+        <location filename="../src/mainwindow.cpp" line="1010"/>
         <source>Could not write %1</source>
         <extracomment>%1 is the path the code could not be written to.</extracomment>
         <label>MainWindow</label>
         <translation>No se pudo escribir en %1</translation>
     </message>
     <message id="mainwindow.status.saved-to">
-        <location filename="../src/mainwindow.cpp" line="944"/>
+        <location filename="../src/mainwindow.cpp" line="1017"/>
         <source>Saved to %1</source>
         <extracomment>%1 is the path the code was written to.</extracomment>
         <label>MainWindow</label>
         <translation>Guardado en %1</translation>
     </message>
     <message id="mainwindow.status.drop-replace">
-        <location filename="../src/mainwindow.cpp" line="1058"/>
+        <location filename="../src/mainwindow.cpp" line="1131"/>
         <source>Drop to replace the current code</source>
         <label>MainWindow</label>
         <translation>Suelta para reemplazar el código actual</translation>

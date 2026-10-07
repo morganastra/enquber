@@ -14,8 +14,10 @@
 #include <QByteArray>
 #include <QClipboard>
 #include <QColor>
+#include <QContextMenuEvent>
 #include <QFileInfo>
 #include <QKeySequence>
+#include <QMenu>
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPalette>
@@ -108,6 +110,72 @@ QPushButton *buttonContaining(QWidget *window, const QString &needle)
         }
     }
     return nullptr;
+}
+
+/// What a popped-up context menu offered, snapshotted from inside the nested
+/// event loop QMenu::exec() runs.
+struct MenuSnapshot
+{
+    bool appeared = false;
+    QStringList texts;
+    QList<bool> enabled;
+    QList<QKeySequence> shortcuts;
+    QList<bool> hasIcon;
+    /// The window's own QActions the menu held; they outlive the popup.
+    QList<QAction *> actions;
+
+    /// Index of the item whose label contains @p needle. Mnemonic ampersands
+    /// are ignored, so "C&lear" still answers "Clear".
+    [[nodiscard]] int indexOf(const QString &needle) const
+    {
+        const QString wanted = QString(needle).remove(QLatin1Char('&'));
+        for (int i = 0; i < texts.size(); ++i) {
+            QString label = texts.at(i);
+            label.remove(QLatin1Char('&'));
+            if (label.contains(wanted, Qt::CaseInsensitive)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+};
+
+/// Right-clicks @p target and snapshots the context menu it opens. The menu
+/// blocks in exec(), so a timer takes the snapshot and closes the popup from
+/// inside the nested event loop; it is stopped first when no menu opened.
+MenuSnapshot captureContextMenu(QWidget *target)
+{
+    MenuSnapshot snapshot;
+    QTimer closer;
+    closer.setSingleShot(true);
+    QObject::connect(&closer, &QTimer::timeout, &closer, [&snapshot] {
+        auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
+        if (!menu) {
+            return;
+        }
+        snapshot.appeared = true;
+        const QList<QAction *> items = menu->actions();
+        for (QAction *action : items) {
+            if (action->isSeparator()) {
+                continue;
+            }
+            snapshot.texts.append(action->text());
+            snapshot.enabled.append(action->isEnabled());
+            snapshot.shortcuts.append(action->shortcut());
+            snapshot.hasIcon.append(!action->icon().isNull());
+            snapshot.actions.append(action);
+        }
+        menu->close();
+    });
+    closer.start(0);
+
+    const QPoint pos = target->rect().center();
+    QContextMenuEvent event(QContextMenuEvent::Mouse, pos, target->mapToGlobal(pos));
+    QCoreApplication::sendEvent(target, &event);
+    // No menu ran when the event never reached the window; the pending timer
+    // must not fire against the snapshot after it is gone.
+    closer.stop();
+    return snapshot;
 }
 
 /// Opens the caption editor the way Ctrl+L does and returns it. Callers keep
@@ -348,6 +416,15 @@ private slots:
     void exportGeometry_data();
     void exportGeometry();
     void quitShortcutClosesWindow();
+
+    void contextMenuOnTheDropPageOffersTheWindowActions();
+    void contextMenuOnTheCodePageOffersTheExportActions();
+    void contextMenuOnTheHelpPageOffersTheWayBack();
+    void contextMenuOnTheTextFieldCommitsItFirst();
+    void contextMenuElsewhereWhileTypingCommitsFirst();
+    void contextMenuOnAnEmptyTextFieldOpensOnTheDropPage();
+    void contextMenuKeepsTheFieldWhenTheTextCannotEncode();
+    void contextMenuItemsCarryShortcutsAndBundledGlyphs();
 
     void windowAcceptsDrops();
 
@@ -1528,6 +1605,202 @@ void TestEnquber::quitShortcutClosesWindow()
     QVERIFY(!window.isVisible());
 }
 
+void TestEnquber::contextMenuOnTheDropPageOffersTheWindowActions()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *zone = window.findChild<DropZone *>();
+    QVERIFY(zone);
+
+    // The request goes to the drop target, not the window: a context menu
+    // event that the widget under the cursor ignores has to bubble up.
+    const MenuSnapshot menu = captureContextMenu(zone);
+
+    QVERIFY(menu.appeared);
+    QCOMPARE(menu.texts,
+             (QStringList{QStringLiteral("&Paste link"), QStringLiteral("&Type text…"),
+                          QStringLiteral("&Help and info"), QStringLiteral("&Quit")}));
+    // Nothing is on screen to export yet.
+    QCOMPARE(menu.indexOf(QStringLiteral("Copy")), -1);
+    QCOMPARE(menu.indexOf(QStringLiteral("Save")), -1);
+    QCOMPARE(menu.indexOf(QStringLiteral("Clear")), -1);
+    QVERIFY(menu.enabled.at(menu.indexOf(QStringLiteral("Paste"))));
+}
+
+void TestEnquber::contextMenuOnTheCodePageOffersTheExportActions()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://menu.example"));
+    auto *view = window.findChild<QrView *>();
+    QVERIFY(view);
+
+    const MenuSnapshot menu = captureContextMenu(view);
+
+    QVERIFY(menu.appeared);
+    QCOMPARE(menu.texts,
+             (QStringList{QStringLiteral("&Paste link"), QStringLiteral("&Type text…"),
+                          QStringLiteral("&Copy image"), QStringLiteral("&Save…"),
+                          QStringLiteral("C&lear"), QStringLiteral("&Help and info"),
+                          QStringLiteral("&Quit")}));
+    for (const QString &needle : {QStringLiteral("Paste"), QStringLiteral("Copy"),
+                                  QStringLiteral("Save"), QStringLiteral("Clear")}) {
+        QVERIFY2(menu.enabled.at(menu.indexOf(needle)), qPrintable(needle));
+    }
+}
+
+void TestEnquber::contextMenuOnTheHelpPageOffersTheWayBack()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://help-menu.example"));
+    QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
+    auto *stack = window.findChild<QStackedWidget *>();
+    QCOMPARE(stack->currentIndex(), 2);
+    auto *title = window.findChild<QLabel *>(QStringLiteral("aboutTitle"));
+    QVERIFY(title);
+
+    const MenuSnapshot menu = captureContextMenu(title);
+
+    QVERIFY(menu.appeared);
+    QCOMPARE(menu.texts,
+             (QStringList{QStringLiteral("&Back to Enquber"), QStringLiteral("&Quit")}));
+
+    // The item is the window's own back action, so triggering it returns to
+    // the page help was opened from.
+    const int back = menu.indexOf(QStringLiteral("Back"));
+    QVERIFY(back >= 0);
+    menu.actions.at(back)->trigger();
+    QCOMPARE(stack->currentIndex(), 1);
+    QCOMPARE(window.encodedText(), QStringLiteral("https://help-menu.example"));
+}
+
+void TestEnquber::contextMenuOnTheTextFieldCommitsItFirst()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *editor = openCaptionEditor(window);
+    QVERIFY(editor);
+    QTest::keyClicks(editor, QStringLiteral("https://confirmed.example"));
+    QVERIFY(editor->isVisible());
+
+    // The request goes to the field's viewport, where a native mouse context
+    // menu event is delivered; the editor itself never sees that path.
+    const MenuSnapshot menu = captureContextMenu(editor->viewport());
+
+    QVERIFY(menu.appeared);
+    QCOMPARE(menu.indexOf(QStringLiteral("Undo")), -1);
+    QCOMPARE(menu.indexOf(QStringLiteral("Select All")), -1);
+    // The commit happened the way Return does it, so the menu describes a
+    // finished code and its actions are live.
+    QVERIFY(!editor->isVisible());
+    QCOMPARE(window.encodedText(), QStringLiteral("https://confirmed.example"));
+    for (const QString &needle : {QStringLiteral("Paste"), QStringLiteral("Copy"),
+                                  QStringLiteral("Save"), QStringLiteral("Clear")}) {
+        QVERIFY2(menu.enabled.at(menu.indexOf(needle)), qPrintable(needle));
+    }
+}
+
+void TestEnquber::contextMenuElsewhereWhileTypingCommitsFirst()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *editor = openCaptionEditor(window);
+    QVERIFY(editor);
+    QTest::keyClicks(editor, QStringLiteral("https://elsewhere.example"));
+    QVERIFY(editor->isVisible());
+
+    // The commit belongs to the open field, not to the widget the right click
+    // landed on, so a request anywhere else finishes the edit too.
+    auto *view = window.findChild<QrView *>();
+    QVERIFY(view);
+    const MenuSnapshot menu = captureContextMenu(view);
+
+    QVERIFY(menu.appeared);
+    QVERIFY(!editor->isVisible());
+    QCOMPARE(window.encodedText(), QStringLiteral("https://elsewhere.example"));
+}
+
+void TestEnquber::contextMenuOnAnEmptyTextFieldOpensOnTheDropPage()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://before.example"));
+
+    auto *editor = openCaptionEditor(window);
+    QVERIFY(editor);
+    editor->clear();
+
+    // A keyboard-invoked menu (the Menu key) is delivered to the editor itself
+    // rather than its viewport, so this also pins the editor-side filter.
+    const MenuSnapshot menu = captureContextMenu(editor);
+
+    // Committing an empty field means "no code", so the menu opens on the drop
+    // page set and the old code is gone, exactly as Return would leave it.
+    QVERIFY(menu.appeared);
+    QVERIFY(!editor->isVisible());
+    QVERIFY(!window.hasCode());
+    QVERIFY(window.findChild<DropZone *>()->isVisible());
+    QCOMPARE(menu.indexOf(QStringLiteral("Copy")), -1);
+}
+
+void TestEnquber::contextMenuKeepsTheFieldWhenTheTextCannotEncode()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    auto *editor = openCaptionEditor(window);
+    QVERIFY(editor);
+    editor->setPlainText(QString(5000, QLatin1Char('a')));
+
+    const MenuSnapshot menu = captureContextMenu(editor->viewport());
+
+    // Nothing could be committed, so there is no menu to show; the field stays
+    // up with the text intact and the status line explains why.
+    QVERIFY(!menu.appeared);
+    QVERIFY(editor->isVisible());
+    auto *status = window.findChild<QLabel *>(QStringLiteral("statusLabel"));
+    QVERIFY(status);
+    QVERIFY(status->isVisible());
+    QVERIFY(!status->text().isEmpty());
+}
+
+void TestEnquber::contextMenuItemsCarryShortcutsAndBundledGlyphs()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://shortcuts.example"));
+    auto *view = window.findChild<QrView *>();
+    QVERIFY(view);
+
+    const MenuSnapshot menu = captureContextMenu(view);
+    QVERIFY(menu.appeared);
+
+    const auto shortcutOf = [&menu](const QString &needle) {
+        return menu.shortcuts.at(menu.indexOf(needle));
+    };
+    // The hints the menu paints are the shortcuts that actually fire.
+    QCOMPARE(shortcutOf(QStringLiteral("Paste")), QKeySequence(QKeySequence::Paste));
+    QCOMPARE(shortcutOf(QStringLiteral("Type")), QKeySequence(Qt::CTRL | Qt::Key_L));
+    QCOMPARE(shortcutOf(QStringLiteral("Copy")), QKeySequence(QKeySequence::Copy));
+    QCOMPARE(shortcutOf(QStringLiteral("Save")), QKeySequence(QKeySequence::Save));
+    QCOMPARE(shortcutOf(QStringLiteral("Clear")), QKeySequence(Qt::Key_Escape));
+    QCOMPARE(shortcutOf(QStringLiteral("Help")), QKeySequence(Qt::CTRL | Qt::Key_H));
+    // The platform's standard quit gesture (Ctrl+Q on Linux, Cmd+Q on macOS)
+    // comes first, with Ctrl+Q itself added where the standard one does not use
+    // it, so either may be the one the menu shows.
+    const QKeySequence quit = shortcutOf(QStringLiteral("Quit"));
+    QVERIFY2(quit == QKeySequence(QKeySequence::Quit)
+                 || quit == QKeySequence(QStringLiteral("Ctrl+Q")),
+             qPrintable(quit.toString()));
+
+    // The offscreen platform's dead icon theme forces every item onto the
+    // bundled fallback glyphs, which is exactly the plain-XDG session the
+    // fallbacks exist for.
+    for (int i = 0; i < menu.texts.size(); ++i) {
+        QVERIFY2(menu.hasIcon.at(i), qPrintable(menu.texts.at(i)));
+    }
+}
+
 void TestEnquber::windowAcceptsDrops()
 {
     MainWindow window;
@@ -1614,9 +1887,11 @@ void TestEnquber::bundledFallbacksCoverNavigationAndHelp()
 {
     // The offscreen platform never answers from the icon theme, so a non-null
     // icon here can only be a bundled glyph. Both the freedesktop names a
-    // toolbar would use and the Feather names themselves have to resolve.
+    // toolbar or context menu would use and the Feather names themselves have
+    // to resolve.
     for (const char *name : {"go-previous", "help-contents", "help-about", "dialog-information",
-                             "arrow-left", "help-circle", "info"}) {
+                             "arrow-left", "help-circle", "info", "edit-paste", "insert-link",
+                             "document-edit", "edit-3", "application-exit", "log-out"}) {
         QVERIFY2(!theme::icon({name}).isNull(), name);
     }
 
@@ -1945,6 +2220,7 @@ void TestEnquber::spanishTranslationIsApplied()
 
     QCOMPARE(qtTrId("dropzone.title"), QStringLiteral("Suelta un enlace aquí"));
     QCOMPARE(qtTrId("mainwindow.action.copy"), QStringLiteral("&Copiar imagen"));
+    QCOMPARE(qtTrId("mainwindow.action.back"), QStringLiteral("&Volver a Enquber"));
     QCOMPARE(qtTrId("mainwindow.status.saved-to"), QStringLiteral("Guardado en %1"));
 
     MainWindow window;
@@ -1983,6 +2259,7 @@ void TestEnquber::englishCatalogResolvesEveryId()
         QStringLiteral("dropzone.title"),
         QStringLiteral("typeeditor.placeholder"),
         QStringLiteral("qrcode.error.too-much-data"),
+        QStringLiteral("mainwindow.action.back"),
         QStringLiteral("about.links"),
     };
 
