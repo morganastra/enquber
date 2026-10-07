@@ -90,6 +90,15 @@ class Window:
         return self.x + self.width // 2, self.y + self.height // 2
 
 
+def display_is_live(display_name: str) -> bool:
+    """True when an X server answers on @p display_name."""
+    try:
+        display.Display(display_name).close()
+    except Exception:  # noqa: BLE001 - any failure means "not usable"
+        return False
+    return True
+
+
 class X11:
     def __init__(self, display_name: str | None = None):
         self.display_name = display_name or os.environ.get("DISPLAY", ":0")

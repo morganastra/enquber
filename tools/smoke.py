@@ -44,7 +44,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
-    from xui import X11, Window
+    from xui import X11, Window, display_is_live
 except ImportError as error:  # xui imports python-xlib
     X11 = None  # type: ignore[assignment]
     Window = None  # type: ignore[assignment]
@@ -97,16 +97,6 @@ def install_signal_handlers() -> None:
 
     for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(number, interrupt)
-
-
-def display_is_live(display: str) -> bool:
-    """True when an X server answers on @p display."""
-    try:
-        from Xlib import display as xdisplay
-        xdisplay.Display(display).close()
-    except Exception:  # noqa: BLE001 - any failure means "not usable"
-        return False
-    return True
 
 
 class Xvfb:
