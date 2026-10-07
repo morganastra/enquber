@@ -275,6 +275,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("no display: set DISPLAY or pass --display")
     if args.runs < 1:
         parser.error("--runs must be at least 1")
+    if args.duration <= 0:
+        parser.error("--duration must be positive")
+    if args.fps <= 0:
+        parser.error("--fps must be positive")
 
     def parse_spec(text: str, default_label: str = "") -> tuple[str, list[str]]:
         """Splits an optional 'label,command' spec; shlex then tokenises it.
