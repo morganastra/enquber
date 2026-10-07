@@ -320,10 +320,7 @@ class Smoke:
         A tiling window manager rearranges windows whenever a new one appears,
         so a geometry captured earlier is not worth trusting.
         """
-        try:
-            return self.x.window(window.id)
-        except RuntimeError:
-            return window
+        return self.x.try_window(window.id) or window
 
     def screenshot(self, window: Window, name: str) -> Path:
         path = self.shots / f"{self.steps:02d}-{name}.png"

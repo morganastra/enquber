@@ -84,6 +84,11 @@ class Window:
             f"{self.wm_class or '-':<20} pid={(self.pid if self.pid else '-'):<7} {self.title!r}"
         )
 
+    @property
+    def center(self) -> tuple[int, int]:
+        """Screen coordinates of the window's center."""
+        return self.x + self.width // 2, self.y + self.height // 2
+
 
 class X11:
     def __init__(self, display_name: str | None = None):
@@ -228,8 +233,12 @@ class X11:
             time.sleep(0.1)
         return None
 
+    def try_window(self, window_id: int) -> Window | None:
+        """The window's description, or None when it is gone or not viewable."""
+        return self._describe(self.d.create_resource_object("window", window_id))
+
     def window(self, window_id: int) -> Window:
-        described = self._describe(self.d.create_resource_object("window", window_id))
+        described = self.try_window(window_id)
         if not described:
             raise RuntimeError(f"window 0x{window_id:x} is gone or not viewable")
         return described
