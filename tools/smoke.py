@@ -598,6 +598,8 @@ def run(smoke: Smoke):  # one linear scenario, read it top to bottom
             break
     smoke.check(copied, "Space activated the focused button and copied the code "
                         f"(clipboard offers {x.clipboard_targets()[:3]})")
+    smoke.check_decoded(decode_png(button_png), PASTED_URL,
+                        "Space copied the current code", button_png)
 
     smoke.step("save the code through the file dialog")
     target_png = smoke.shots / "saved-by-dialog.png"
@@ -632,7 +634,8 @@ def run(smoke: Smoke):  # one linear scenario, read it top to bottom
     time.sleep(0.8)
     cleared, cleared_shot = smoke.decode(window, "cleared")
     smoke.check_decoded(cleared, None, "the window went back to the drop target", cleared_shot)
-    smoke.check(smoke.geometry(window).width > 0, "the window is still there")
+    smoke.check(x.find("Enquber", pid=app.process.pid, title_only=True) is not None,
+                "the window is still there")
 
     again, again_shot = drag_until_dropped(smoke, source, window, DROPPED_URL,
                                            label="after clearing")
@@ -704,10 +707,9 @@ def drag_out(smoke: Smoke, source: Window, expected: str) -> None:
                       f"(screenshots in {smoke.shots})")
 
     saved = sorted(received.glob("*.png"))
-    smoke.check(bool(saved), "the target saved a PNG file")
     # The name itself is suggestedFileName()'s business and may change; what
     # the drag guarantees is that the file arrives named after the link.
-    smoke.check(saved[0].suffix == ".png" and "example.com" in saved[0].name,
+    smoke.check("example.com" in saved[0].name,
                 f"the dropped file is named after the link ({saved[0].name})")
     decoded = decode_png(saved[0])
     smoke.check_decoded(decoded, expected, f"the dragged file {saved[0].name} decodes", saved[0])
