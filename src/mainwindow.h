@@ -130,7 +130,6 @@ private:
     void dragMoveEvent(QDragMoveEvent *event) override;
     void dragLeaveEvent(QDragLeaveEvent *event) override;
     void dropEvent(QDropEvent *event) override;
-    void resizeEvent(QResizeEvent *event) override;
 
     QStackedWidget *m_stack = nullptr;
     AboutPage *m_aboutPage = nullptr;

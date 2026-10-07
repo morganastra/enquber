@@ -343,6 +343,7 @@ private slots:
     void helpButtonMorphsAndToggles();
     void aboutPageShowsLicenseAndLinks();
     void aboutTextSurvivesAShortWindow();
+    void resizeWhileHelpIsUpReshapesTheCaption();
     void spanishTranslationIsApplied();
     void englishCatalogResolvesEveryId();
 
@@ -1883,6 +1884,33 @@ void TestEnquber::aboutTextSurvivesAShortWindow()
     QVERIFY2(license->height() >= needed,
              qPrintable(QStringLiteral("license is %1 px, needs %2")
                             .arg(license->height()).arg(needed)));
+}
+
+void TestEnquber::resizeWhileHelpIsUpReshapesTheCaption()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    const QString words = QStringLiteral("word ").repeated(30);
+    window.setText(words);
+
+    auto *label = window.findChild<QLabel *>(QStringLiteral("encodedText"));
+    QVERIFY(label);
+    const int wide = label->width();
+    // Two lines at the initial width.
+    QCOMPARE(label->text().count(QLatin1Char('\n')), 1);
+
+    // The caption is on the hidden code page while help is up; the window
+    // resize must still leave the label shaped for the width it will have
+    // when the page comes back.
+    QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
+    window.resize(360, 500);
+    QCoreApplication::processEvents();
+    QTest::keyClick(&window, Qt::Key_Escape);
+    QCoreApplication::processEvents();
+
+    QVERIFY(label->width() < wide);
+    // Three lines now: the label's own Resize filter re-shaped it.
+    QCOMPARE(label->text().count(QLatin1Char('\n')), 2);
 }
 
 void TestEnquber::spanishTranslationIsApplied()

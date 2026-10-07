@@ -1108,9 +1108,3 @@ void MainWindow::dropEvent(QDropEvent *event)
     event->acceptProposedAction();
     setText(text);
 }
-
-void MainWindow::resizeEvent(QResizeEvent *event)
-{
-    QMainWindow::resizeEvent(event);
-    updateTextLabel();
-}
