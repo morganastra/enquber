@@ -16,6 +16,11 @@ class AboutPage : public QWidget
 public:
     explicit AboutPage(QWidget *parent = nullptr);
 
+protected:
+    bool event(QEvent *event) override;
+
 private:
+    void refreshIcon();
+
     QLabel *m_icon = nullptr;
 };

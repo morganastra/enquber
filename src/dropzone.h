@@ -23,6 +23,7 @@ signals:
     void clicked();
 
 protected:
+    bool event(QEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
     void changeEvent(QEvent *event) override;
 
