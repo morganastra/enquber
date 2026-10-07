@@ -27,7 +27,6 @@
 #include <QIcon>
 #include <QLabel>
 #include <QLocale>
-#include <QPixmap>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <QTextBlock>
@@ -109,6 +108,14 @@ QPushButton *buttonContaining(QWidget *window, const QString &needle)
         }
     }
     return nullptr;
+}
+
+/// Opens the caption editor the way Ctrl+L does and returns it. Callers keep
+/// their own check, since a failed shortcut leaves this null.
+TypeEditor *openCaptionEditor(MainWindow &window)
+{
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    return window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
 }
 
 /// The color of a strongly opaque pixel of a tinted glyph; the source is
@@ -775,9 +782,7 @@ void TestEnquber::liveTypeOpensTheFieldWithPlaceholder()
     MainWindow window;
     showAndActivate(&window);
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     QVERIFY(editor->isVisible());
     // Typing has to land in the field, not be swallowed by a shortcut.
@@ -798,8 +803,7 @@ void TestEnquber::liveTypeEncodesAsYouGo()
     MainWindow window;
     showAndActivate(&window);
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
 
     QTest::keyClicks(editor, QStringLiteral("live"));
@@ -813,8 +817,7 @@ void TestEnquber::liveClearingRestoresThePlaceholder()
     MainWindow window;
     showAndActivate(&window);
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     QTest::keyClicks(editor, QStringLiteral("gone"));
     QVERIFY(window.hasCode());
@@ -834,8 +837,7 @@ void TestEnquber::livePrefillsTheCurrentCode()
     showAndActivate(&window);
     window.setText(QStringLiteral("https://before.example"));
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     // Reopening the field starts from what is currently encoded.
     QCOMPARE(editor->toPlainText(), QStringLiteral("https://before.example"));
@@ -853,8 +855,7 @@ void TestEnquber::liveCtrlEnterInsertsANewline()
     MainWindow window;
     showAndActivate(&window);
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
 
     QTest::keyClicks(editor, QStringLiteral("one"));
@@ -871,8 +872,7 @@ void TestEnquber::liveEditorAcceptsPaste()
     showAndActivate(&window);
     QGuiApplication::clipboard()->setText(QStringLiteral("pasted\nvalue"));
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
 
     // Paste has to land in the field (multi-line included), not trigger the
@@ -887,8 +887,7 @@ void TestEnquber::liveReturnClosesTheField()
     MainWindow window;
     showAndActivate(&window);
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     QTest::keyClicks(editor, QStringLiteral("hello"));
     QVERIFY(editor->isVisible());
@@ -915,8 +914,7 @@ void TestEnquber::liveEscapeRestoresThePreviousCode()
     showAndActivate(&window);
     window.setText(QStringLiteral("https://keep.example"));
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     QVERIFY(editor->isVisible());
     editor->setPlainText(QStringLiteral("https://discard.example"));
@@ -954,10 +952,9 @@ void TestEnquber::captionEditorMatchesTheSymbolWidth()
     showAndActivate(&window);
     window.setText(QStringLiteral("https://width.example"));
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = openCaptionEditor(window);
     QCoreApplication::processEvents();
 
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
     auto *view = window.findChild<QrView *>();
     QVERIFY(editor);
     QVERIFY(view);
@@ -975,8 +972,7 @@ void TestEnquber::captionEditorTextIsCentered()
     MainWindow window;
     showAndActivate(&window);
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     QCOMPARE(int(editor->document()->firstBlock().blockFormat().alignment()),
              int(Qt::AlignHCenter));
@@ -2006,8 +2002,7 @@ void TestEnquber::dropWhileTypingReplacesTheEdit()
     showAndActivate(&window);
     window.setText(QStringLiteral("https://before.example"));
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     QTest::keyClicks(editor, QStringLiteral("https://typed.example"));
     QCOMPARE(window.encodedText(), QStringLiteral("https://typed.example"));
@@ -2028,8 +2023,7 @@ void TestEnquber::helpWhileTypingCancelsTheEditAndComesBack()
     showAndActivate(&window);
     window.setText(QStringLiteral("https://keep.example"));
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     QTest::keyClicks(editor, QStringLiteral("https://discard.example"));
 
@@ -2053,8 +2047,7 @@ void TestEnquber::committingAnEmptyEditGoesBackToTheDropTarget()
     showAndActivate(&window);
     window.setText(QStringLiteral("https://before.example"));
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     editor->clear();
     QTest::keyClick(editor, Qt::Key_Return);
@@ -2072,8 +2065,7 @@ void TestEnquber::escapeWithNoPreviousCodeReturnsToTheDropTarget()
     MainWindow window;
     showAndActivate(&window);
 
-    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
-    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
     QTest::keyClicks(editor, QStringLiteral("typed"));
     QVERIFY(window.hasCode());
