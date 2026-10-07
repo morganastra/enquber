@@ -189,8 +189,12 @@ def main(argv: list[str] | None = None) -> int:
     appear: dict[str, list[float]] = {}
     settle: dict[str, list[float]] = {}
     counts: dict[str, int] = {}
+    unsettled: dict[str, int] = {}
     for label, runs in runs_by_label.items():
         counts[label] = len(runs) if isinstance(runs, list) else 0
+        unsettled[label] = (sum(1 for run in runs if isinstance(run, dict)
+                                and run.get("settled") is False)
+                            if isinstance(runs, list) else 0)
         stable[label] = numbers(runs, "stable")
         appear[label] = numbers(runs, "appear")
         settle[label] = numbers(runs, "settle")
@@ -205,6 +209,16 @@ def main(argv: list[str] | None = None) -> int:
     if reference is not None and not stable.get(reference):
         print(f"error: no usable stable values for '{reference}'", file=sys.stderr)
         return 2
+
+    candidate_unsettled = unsettled.get(enquber, 0)
+    if candidate_unsettled:
+        print(f"warning: {enquber} still moving at clip end in "
+              f"{candidate_unsettled}/{counts[enquber]} runs; "
+              "stable is a lower bound", file=sys.stderr)
+    if reference is not None and unsettled.get(reference):
+        print(f"warning: {reference} still moving at clip end in "
+              f"{unsettled[reference]}/{counts[reference]} runs; "
+              "stable is a lower bound", file=sys.stderr)
 
     has_appear = any(appear.values())
     has_settle = any(settle.values())
@@ -249,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
     enquber_median = statistics.median(stable[enquber])
     reference_median = statistics.median(stable[reference])
     delta = enquber_median - reference_median
-    met = delta <= args.threshold
+    met = delta <= args.threshold and not candidate_unsettled
     print(f"{enquber} stable median {enquber_median:.3f}s vs {reference} "
           f"{reference_median:.3f}s: delta {delta:+.3f}s")
     if paired_delta:
@@ -263,7 +277,8 @@ def main(argv: list[str] | None = None) -> int:
                   file=sys.stderr)
     print(f"target ({enquber.split()[0]} <= {reference}, "
           f"threshold {args.threshold:+.3f}s): "
-          f"{'MET' if met else 'NOT MET'}")
+          f"{'MET' if met else 'NOT MET'}"
+          + (" (candidate still moving at clip end)" if candidate_unsettled else ""))
     return 0 if met else 1
 
 
