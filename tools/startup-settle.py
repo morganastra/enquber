@@ -379,6 +379,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {error}", file=sys.stderr)
         return 2
 
+    missing = [label for _, label, _ in specs if not results[label]]
+    if missing:
+        print(f"error: no successful runs for {', '.join(missing)}", file=sys.stderr)
+
     if args.json:
         # Runs live under "runs" so metadata keys (paired_delta, pair) can never
         # collide with a command label, no matter what the user calls it.
@@ -394,7 +398,7 @@ def main(argv: list[str] | None = None) -> int:
                 "candidate": next(label for role, label, _ in specs if role == "candidate"),
             }
         print(json.dumps(payload, indent=2, default=str))
-        return 0
+        return 2 if missing else 0
 
     if args.verbose:
         for name, runs in results.items():
@@ -430,7 +434,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\npaired candidate - baseline delta: median {statistics.median(paired):+.3f}s "
               f"min {min(paired):+.3f}s max {max(paired):+.3f}s "
               f"({faster}/{len(paired)} rounds faster)")
-    return 0
+    return 2 if missing else 0
 
 
 if __name__ == "__main__":
