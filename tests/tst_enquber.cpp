@@ -201,6 +201,55 @@ private:
     QString m_fallback;
 };
 
+/// A QrView whose device pixel ratio can be changed while it lives, to prove
+/// the cache notices a DPR change even when the module size stays the same.
+/// QPaintDevice::devicePixelRatio() reads the scaled metric on Qt 6.5-6.7, and
+/// on 6.8+ for exactly 1x or 2x, so overriding it covers the 1<->2 regression
+/// on every supported Qt. The encoded pair (Qt 6.8+) keeps the probe correct
+/// for fractional ratios too.
+class DprProbeView : public QrView
+{
+public:
+    qreal probeDpr = 1.0;
+
+    int metric(QPaintDevice::PaintDeviceMetric m) const override
+    {
+        switch (m) {
+        case QPaintDevice::PdmDevicePixelRatioScaled:
+            return static_cast<int>(probeDpr * QPaintDevice::devicePixelRatioFScale());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+        case QPaintDevice::PdmDevicePixelRatioF_EncodedA:
+        case QPaintDevice::PdmDevicePixelRatioF_EncodedB:
+            return QPaintDevice::encodeMetricF(m, probeDpr);
+#endif
+        default:
+            return QrView::metric(m);
+        }
+    }
+};
+
+/// Bounding box, in device pixels, of the pure-white pixels of @p painted: on a
+/// gray ground the symbol's quiet zone is the only pure white, so the box is
+/// the painted symbol.
+QRect whiteBounds(const QImage &painted)
+{
+    int left = painted.width();
+    int top = painted.height();
+    int right = -1;
+    int bottom = -1;
+    for (int y = 0; y < painted.height(); ++y) {
+        for (int x = 0; x < painted.width(); ++x) {
+            if (painted.pixel(x, y) == qRgb(255, 255, 255)) {
+                left = qMin(left, x);
+                top = qMin(top, y);
+                right = qMax(right, x);
+                bottom = qMax(bottom, y);
+            }
+        }
+    }
+    return right >= 0 ? QRect(QPoint(left, top), QPoint(right, bottom)) : QRect();
+}
+
 } // namespace
 
 class TestEnquber : public QObject
@@ -259,6 +308,7 @@ private slots:
     void codeSideIsZeroWithoutACode();
     void codeSideIsTheSizeOfThePaintedSymbol_data();
     void codeSideIsTheSizeOfThePaintedSymbol();
+    void dprChangeRebuildsTheCache();
     void longTextIsShapedForTheLabel();
     void repeatingAStatusMessageRestartsItsTimeout();
     void clearingReturnsToTheDropTarget_data();
@@ -1093,6 +1143,46 @@ void TestEnquber::codeSideIsTheSizeOfThePaintedSymbol()
     const qreal ratio = painted.devicePixelRatio();
     QCOMPARE(qRound((right - left + 1) / ratio), view.codeSide());
     QCOMPARE(qRound((bottom - top + 1) / ratio), view.codeSide());
+}
+
+void TestEnquber::dprChangeRebuildsTheCache()
+{
+    DprProbeView view;
+    // On a known gray ground the symbol's quiet zone is the only pure white, so
+    // its bounding box is the painted symbol.
+    QPalette palette = view.palette();
+    palette.setColor(QPalette::Window, QColor(200, 200, 200));
+    palette.setColor(QPalette::WindowText, Qt::white);
+    view.setPalette(palette);
+    view.setAutoFillBackground(true);
+    view.resize(200, 200);
+
+    // A version-40 symbol (padded to 185 modules) in the smallest window: the
+    // module size is clamped to 1 at DPR 1 and 2 alike, so only the ratio can
+    // invalidate the cache. The module count pins that premise.
+    const qr::Code code = qr::Code::encode(QString(1600, QLatin1Char('a')));
+    QVERIFY(code.isValid());
+    QCOMPARE(code.modules(), 177);
+    view.setCode(code);
+
+    const QImage atOne = view.grab().toImage();
+    const QRect one = whiteBounds(atOne);
+    QVERIFY2(one.isValid(), "nothing white was painted");
+    const qreal oneRatio = atOne.devicePixelRatio();
+    const int sideAtOne = view.codeSide();
+    QCOMPARE(qRound(one.width() / oneRatio), sideAtOne);
+
+    view.probeDpr = 2.0;
+    const QImage atTwo = view.grab().toImage();
+    const QRect two = whiteBounds(atTwo);
+    QVERIFY2(two.isValid(), "nothing white was painted");
+    const qreal twoRatio = atTwo.devicePixelRatio();
+    const int sideAtTwo = view.codeSide();
+
+    // With the DPR in the cache key the symbol is rebuilt at the new ratio and
+    // the painted side follows codeSide(); without it the stale DPR-1 image is
+    // reused and the painted side stays ~185 logical px.
+    QCOMPARE(qRound(two.width() / twoRatio), sideAtTwo);
 }
 
 void TestEnquber::longTextIsShapedForTheLabel()

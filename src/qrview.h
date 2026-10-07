@@ -57,6 +57,7 @@ private:
     qr::Code m_code;
     QImage m_cache;
     int m_cacheModulePixels = 0;
+    qreal m_cacheDpr = 1.0;
     bool m_highlighted = false;
 
     QPoint m_pressPos;
