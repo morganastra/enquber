@@ -97,6 +97,11 @@ def median_cell(values: list[float]) -> str:
     return f"{statistics.median(values):.3f}" if values else "-"
 
 
+def label_cell(label: str) -> str:
+    """A label escaped for a Markdown table cell."""
+    return label.replace("|", "\\|").replace("\n", " ")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -148,13 +153,18 @@ def main(argv: list[str] | None = None) -> int:
         pair = None
     baseline_label = pair.get("baseline") if pair else None
     candidate_label = pair.get("candidate") if pair else None
+    if not isinstance(baseline_label, str) or not isinstance(candidate_label, str):
+        baseline_label, candidate_label = "baseline", "candidate"
 
-    # Explicitly-named baseline/candidate come first; otherwise fall back to the
+    # A named pair comes first; otherwise fall back to the
     # enquber-versus-reference convention used by the startup-settle recipe.
     labels = list(runs_by_label)
-    if paired_delta and baseline_label in labels and candidate_label in labels:
+    if baseline_label in labels and candidate_label in labels:
+        # The candidate is the enquber side; the reference is an explicit
+        # label, the extra label, or the baseline itself.
         enquber = candidate_label
-        other = [label for label in labels if label not in (baseline_label, candidate_label)]
+        other = [label for label in labels
+                 if label not in (baseline_label, candidate_label)]
         if args.reference in labels:
             reference = args.reference
         elif "reference" in labels:
@@ -165,19 +175,6 @@ def main(argv: list[str] | None = None) -> int:
             reference = find_command(other, args.reference)
         else:
             reference = baseline_label
-    elif "baseline" in labels and "candidate" in labels:
-        enquber = "candidate"
-        if args.reference in labels:
-            reference = args.reference
-        elif "reference" in labels:
-            reference = "reference"
-        elif len(labels) > 2:
-            other = [label for label in labels if label not in ("baseline", "candidate")]
-            reference = other[0] if len(other) == 1 else find_command(other, args.reference)
-        else:
-            # With just a pair, compare the candidate against the baseline itself
-            # and report the paired delta; the usual kcalc reference is optional.
-            reference = "baseline"
     else:
         enquber = find_command(labels, "enquber")
         reference = find_command(labels, args.reference)
@@ -238,14 +235,14 @@ def main(argv: list[str] | None = None) -> int:
     for label in labels:
         values = stable[label]
         if not values:
-            row = f"| {label} | {counts[label]} | - | - | - | - |"
+            row = f"| {label_cell(label)} | {counts[label]} | - | - | - | - |"
             if has_appear:
                 row += " - |"
             if has_settle:
                 row += " - |"
             print(row)
             continue
-        row = (f"| {label} | {counts[label]} | {statistics.median(values):.3f} | "
+        row = (f"| {label_cell(label)} | {counts[label]} | {statistics.median(values):.3f} | "
                f"{min(values):.3f} | {percentile(values, 0.9):.3f} | "
                f"{max(values):.3f} |")
         if has_appear:

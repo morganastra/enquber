@@ -341,7 +341,7 @@ def main(argv: list[str] | None = None) -> int:
 
     roles = {role for role, _, _ in specs}
     labels = {label for _, label, _ in specs}
-    if "baseline" in roles and "candidate" in roles and len(labels) != len(specs):
+    if len(labels) != len(specs):
         parser.error("commands must have distinct labels to be summarized apart")
     video_dir = Path(args.video) if args.video else None
     if video_dir:
@@ -402,6 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         }
         if paired:
             payload["paired_delta"] = paired
+        if "baseline" in roles and "candidate" in roles:
             payload["pair"] = {
                 "baseline": next(label for role, label, _ in specs if role == "baseline"),
                 "candidate": next(label for role, label, _ in specs if role == "candidate"),
