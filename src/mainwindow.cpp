@@ -945,8 +945,8 @@ bool MainWindow::saveTo(const QString &path)
 
 QImage MainWindow::renderForExport() const
 {
-    const int modules = m_code.modules() + 2 * qr::Code::QuietZone;
-    const int modulePixels = (std::max)(4, kExportPixels / modules);
+    // The floor of 4 is unreachable: the largest symbol pads to 185 modules, so 1024 / 185 is 5.
+    const int modulePixels = m_code.modulePixelsFor(kExportPixels, 4);
     QImage image = m_code.toImage(modulePixels);
     image.setDotsPerMeterX(kDotsPerMeter);
     image.setDotsPerMeterY(kDotsPerMeter);

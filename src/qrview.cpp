@@ -64,15 +64,14 @@ int QrView::codeSide() const
     // the field matched to this lines up with the painted image rather than the
     // raw available box (which can be a few pixels wider once the module size
     // is rounded down).
-    const int modules = m_code.modules() + 2 * qr::Code::QuietZone;
+    const int modules = m_code.totalModules();
     return static_cast<int>(std::lround(fittedModulePixels() * modules / devicePixelRatioF()));
 }
 
 int QrView::fittedModulePixels() const
 {
-    const int modules = m_code.modules() + 2 * qr::Code::QuietZone;
     const qreal available = (std::max<qreal>)(1.0, (std::min)(width(), height()) - 2 * kPadding);
-    return (std::max)(1, static_cast<int>(std::floor(available * devicePixelRatioF() / modules)));
+    return m_code.modulePixelsFor(available * devicePixelRatioF());
 }
 
 void QrView::dropCache()
