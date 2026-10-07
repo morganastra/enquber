@@ -443,7 +443,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.display is not None and not args.no_xvfb:
         parser.error("--display only applies with --no-xvfb")
 
-    for tool in ("import", "xclip", "zbarimg", "identify"):
+    use_xvfb = not args.no_xvfb
+    tools = ["import", "xclip", "zbarimg", "identify"]
+    if use_xvfb:
+        tools.append("Xvfb")
+    for tool in tools:
         if not shutil.which(tool):
             print(f"missing required tool: {tool}", file=sys.stderr)
             return 2
@@ -473,7 +477,6 @@ def main(argv: list[str] | None = None) -> int:
     # the clipboard, so it must never run on a display the user is using. Only
     # --no-xvfb opts out, and then --display (or $DISPLAY) is driven as given.
     xvfb = Xvfb()
-    use_xvfb = not args.no_xvfb
     display = args.display if args.display is not None \
         else os.environ.get("DISPLAY", ":0")
     try:
