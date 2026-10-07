@@ -50,7 +50,6 @@ else:
     _XLIB_ERROR = None
 
 XDND_VERSION = 5
-XDND_ACTION_COPY = 1
 
 
 class XdndSource:
@@ -58,7 +57,6 @@ class XdndSource:
         self.d = display.Display(display_name)
         self.root = self.d.screen().root
         self.payload = payload
-        self.log: list[str] = []
         self.accepted_action = 0
         self.finished = False
         self.requests = 0
@@ -96,7 +94,6 @@ class XdndSource:
             return str(atom)
 
     def note(self, message: str):
-        self.log.append(message)
         print(f"  {message}", flush=True)
 
     def _send(self, target: int, kind: int, data: list[int]):
@@ -106,10 +103,9 @@ class XdndSource:
         target_window.send_event(event, event_mask=0)
         self.d.flush()
 
-    def _types(self) -> tuple[list[str], list[int]]:
+    def _types(self) -> list[int]:
         names = ["text/uri-list", "text/plain;charset=utf-8", "text/plain", "UTF8_STRING", "STRING"]
-        atoms = [self.d.intern_atom(name) for name in names]
-        return names, atoms
+        return [self.d.intern_atom(name) for name in names]
 
     def _serve(self, request):
         """Answers a SelectionRequest with the payload."""
@@ -118,7 +114,7 @@ class XdndSource:
         name = self.d.get_atom_name(target_atom)
         reply_property = request.property if request.property != X.NONE else target_atom
         if name == "TARGETS":
-            _, atoms = self._types()
+            atoms = self._types()
             data = [*atoms, self.d.intern_atom("TARGETS")]
             kind = Xatom.ATOM
             data_format = 32  # a list of atoms, not bytes
@@ -158,22 +154,22 @@ class XdndSource:
                     # Both messages carry the sender's window in l[0], the flags
                     # in l[1] (bit 0: accepted) and the action later on.
                     if event.client_type == self.atom_status:
-                        data = event.data[1] if isinstance(event.data, tuple) else event.data
+                        data = event.data[1]
                         accept = bool(data[1] & 1)
                         action = self._atom_name(data[4])
                         self.note(f"target status: accept={accept} action={action}")
                         if accept:
                             self.accepted_action = data[4]
                     elif event.client_type == self.atom_finished:
-                        data = event.data[1] if isinstance(event.data, tuple) else event.data
+                        data = event.data[1]
                         self.finished = bool(data[1] & 1)
                         self.accepted_action = data[2]
                         self.note(f"target finished: accept={self.finished} "
                                   f"action={self._atom_name(data[2])}")
                         return
 
-    def drop_on(self, target: int, x: int, y: int, action: int = XDND_ACTION_COPY) -> bool:
-        _, atoms = self._types()
+    def drop_on(self, target: int, x: int, y: int) -> bool:
+        atoms = self._types()
         self.window.change_property(self.atom_typelist, Xatom.ATOM, 32, atoms)
         # Not self.d: Xlib.display.Display is a wrapper around the real display,
         # and a hand built request has to be sent through that one.
