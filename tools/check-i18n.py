@@ -140,12 +140,8 @@ def mask(text: str, labels: list[str], *visible: str) -> str:
 class SourceReport:
     """What scan_sources found: the qtTrId IDs in use, and the violations."""
 
-    ids: list[str] = field(default_factory=list)
+    ids: set[str] = field(default_factory=set)
     errors: list[str] = field(default_factory=list)
-
-    @property
-    def id_set(self) -> set[str]:
-        return set(self.ids)
 
 
 def english_comments_above(lines: list[str], lineno: int) -> list[str]:
@@ -186,7 +182,7 @@ def scan_sources(src_dir: Path) -> SourceReport:
         # line numbers from match offsets.
         raw_lines = raw.split("\n")
         for match in QT_TRID.finditer(uncommented):
-            report.ids.append(match.group(1))
+            report.ids.add(match.group(1))
             lineno = uncommented.count("\n", 0, match.start()) + 1
             if not english_comments_above(raw_lines, lineno):
                 report.errors.append(
@@ -311,10 +307,10 @@ def main(argv: list[str] | None = None) -> int:
     if not report.ids:
         errors.append(f"no qtTrId() calls found under {args.source}")
 
-    english = check_english_catalog(args.translations / "enquber_en.ts", report.id_set, errors)
+    english = check_english_catalog(args.translations / "enquber_en.ts", report.ids, errors)
     for catalog in sorted(args.translations.glob("enquber_*.ts")):
         if catalog.name != "enquber_en.ts":
-            check_sync(catalog, report.id_set, errors)
+            check_sync(catalog, report.ids, errors)
 
     if errors:
         print("i18n check failed:", file=sys.stderr)
