@@ -605,7 +605,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         x = X11(args.display)
-    except (xerror.DisplayConnectionError, xerror.DisplayNameError) as error:
+    except (xerror.DisplayConnectionError, xerror.DisplayNameError, OverflowError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
 
