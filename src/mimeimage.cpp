@@ -18,11 +18,22 @@ QByteArray encodePng(const QImage &image)
     return png;
 }
 
-QMimeData *payloadForDrag(const QImage &image, const QString &filePath)
+QMimeData *imagePayload(const QImage &image)
 {
     auto *data = new QMimeData;
     data->setImageData(image);
-    data->setData(QStringLiteral("image/png"), encodePng(image));
+    const QByteArray png = encodePng(image);
+    // An empty buffer would still advertise the format, so a target that
+    // prefers the explicit PNG flavor would decode nothing.
+    if (!png.isEmpty()) {
+        data->setData(QStringLiteral("image/png"), png);
+    }
+    return data;
+}
+
+QMimeData *payloadForDrag(const QImage &image, const QString &filePath)
+{
+    QMimeData *data = imagePayload(image);
     data->setUrls({QUrl::fromLocalFile(filePath)});
     return data;
 }

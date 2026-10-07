@@ -713,7 +713,7 @@ void MainWindow::showPlaceholder()
         closeAbout();
     }
     m_code = qr::Code();
-    m_payload.forget();
+    m_dropText.forget();
     finishTypeInput();
     m_qrView->clear();
     m_textLabel->clear();
@@ -831,11 +831,7 @@ void MainWindow::copyToClipboard()
     }
 
     const QImage image = renderForExport();
-
-    auto *data = new QMimeData;
-    data->setImageData(image);
-    data->setData(QStringLiteral("image/png"), mime::encodePng(image));
-    QGuiApplication::clipboard()->setMimeData(data);
+    QGuiApplication::clipboard()->setMimeData(mime::imagePayload(image));
 
     //@ MainWindow
     //% "Copied the QR code to the clipboard"
@@ -1033,7 +1029,7 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
         return;
     }
     qCDebug(lcDnd) << "drag enter with" << event->mimeData()->formats();
-    if (m_payload.observe(event->mimeData()).isEmpty()) {
+    if (m_dropText.observe(event->mimeData()).isEmpty()) {
         qCDebug(lcDnd) << "nothing to encode, ignoring it";
         return;
     }
@@ -1055,7 +1051,7 @@ void MainWindow::dragMoveEvent(QDragMoveEvent *event)
     qCDebug(lcDnd) << "drag move" << event->position();
     // Qt only delivers the drop if the drag was still accepted at the position
     // the button was released on, and an ignored move ends the drag.
-    if (!m_payload.observe(event->mimeData()).isEmpty()) {
+    if (!m_dropText.observe(event->mimeData()).isEmpty()) {
         event->acceptProposedAction();
     }
 }
@@ -1063,7 +1059,7 @@ void MainWindow::dragMoveEvent(QDragMoveEvent *event)
 void MainWindow::dragLeaveEvent(QDragLeaveEvent *event)
 {
     qCDebug(lcDnd) << "drag leave";
-    m_payload.forget();
+    m_dropText.forget();
     QMainWindow::dragLeaveEvent(event);
     setDropHighlight(false);
     // Only a drag that put the "drop to replace" message on screen may take a
@@ -1086,8 +1082,8 @@ void MainWindow::dropEvent(QDropEvent *event)
     }
     m_dropStatusShown = false;
 
-    const QString text = m_payload.resolve(event->mimeData());
-    m_payload.forget();
+    const QString text = m_dropText.resolve(event->mimeData());
+    m_dropText.forget();
     if (text.isEmpty()) {
         qCDebug(lcDnd) << "the payload holds no text";
         return;

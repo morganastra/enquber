@@ -515,21 +515,21 @@ void TestEnquber::payloadSurvivesASourceThatStopsAnswering()
     // for it, and a source may refuse once the button is released. What was
     // readable while hovering has to be enough to complete the drop.
     QScopedPointer<QMimeData> hovering(textMime(QStringLiteral("https://slow-source.example")));
-    mime::Payload payload;
-    QCOMPARE(payload.observe(hovering.data()), QStringLiteral("https://slow-source.example"));
+    mime::ObservedText observed;
+    QCOMPARE(observed.observe(hovering.data()), QStringLiteral("https://slow-source.example"));
 
     auto *mute = new QMimeData; // formats advertised, but no data behind them
     mute->setData(QStringLiteral("text/plain"), QByteArray());
     QVERIFY(mute->hasFormat(QStringLiteral("text/plain")));
-    QCOMPARE(payload.resolve(mute), QStringLiteral("https://slow-source.example"));
+    QCOMPARE(observed.resolve(mute), QStringLiteral("https://slow-source.example"));
 
     // A payload that does answer wins over the observation.
     QScopedPointer<QMimeData> answering(textMime(QStringLiteral("https://fast-source.example")));
-    QCOMPARE(payload.resolve(answering.data()), QStringLiteral("https://fast-source.example"));
+    QCOMPARE(observed.resolve(answering.data()), QStringLiteral("https://fast-source.example"));
 
     // And once the drag is over the observation is gone.
-    payload.forget();
-    QVERIFY(payload.resolve(mute).isEmpty());
+    observed.forget();
+    QVERIFY(observed.resolve(mute).isEmpty());
     delete mute;
 }
 

@@ -215,7 +215,7 @@ QTimer::singleShot(kDragLingerMs, drag, [drag] { drag->deleteLater(); });
 ```
 
 `kDragLingerMs` is 1000 ms. This is the same X11 on-demand-payload behavior
-that `mime::Payload` exists to work around in the other direction (see
+that `mime::ObservedText` exists to work around in the other direction (see
 `src/mimetext.h`); there the fix is on the target side, here it is on the
 source side. Some targets (Firefox, Thunar, Konqueror) are relaxed enough to win
 the race anyway, which is why the bug is easy to miss.

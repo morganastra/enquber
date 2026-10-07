@@ -27,7 +27,7 @@ QString textForQr(const QMimeData *data)
     return {};
 }
 
-QString Payload::observe(const QMimeData *data)
+QString ObservedText::observe(const QMimeData *data)
 {
     // Fetched once per drag: every fetch is a round trip to the drag source,
     // and the payload cannot change while the drag is in flight.
@@ -37,7 +37,7 @@ QString Payload::observe(const QMimeData *data)
     return m_observed;
 }
 
-QString Payload::resolve(const QMimeData *data) const
+QString ObservedText::resolve(const QMimeData *data) const
 {
     const QString text = textForQr(data);
     return text.isEmpty() ? m_observed : text;

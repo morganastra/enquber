@@ -11,6 +11,15 @@ namespace mime {
 /// The PNG bytes of @p image, as they go both on the clipboard and into a drag.
 QByteArray encodePng(const QImage &image);
 
+/// Builds the MIME payload that carries @p image alone: the QImage flavor, plus
+/// the image/png bytes when they could be encoded. A failed encode leaves the
+/// explicit flavor out instead of advertising an empty image; the QImage flavor
+/// still holds the pixels. Both the clipboard and the drag path start here, so
+/// they cannot disagree about what an image payload contains.
+///
+/// The caller keeps ownership of the returned payload.
+QMimeData *imagePayload(const QImage &image);
+
 /// Builds the payload for dragging the generated code out of the window.
 ///
 /// It carries the symbol as an image (so a document embeds the pixels) and as a

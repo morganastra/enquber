@@ -22,7 +22,7 @@ QString textForQr(const QMimeData *data);
 /// recorded, so dropping between two Qt applications reliably hands the target
 /// an empty payload. The text cannot change during a drag, so keeping what was
 /// readable while the drag hovered makes the drop work either way.
-class Payload
+class ObservedText
 {
 public:
     /// Resolves @p data and remembers it. Call while a drag is hovering.
