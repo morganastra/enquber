@@ -11,28 +11,27 @@ default:
 configure:
     cmake --preset default
 
-# Build the application and the unit tests.
+[doc('Build the application and the unit tests.')]
 build:
     cmake --preset default
     cmake --build --preset default
 
-# Build, then run the unit tests and the fast lints (i18n, ruff, typos).
+[doc('Build, then run the unit tests and the fast lints (i18n, ruff, typos).')]
 test: build
     ctest --preset default
 
-# Regenerate the translation catalogs (i18n/enquber_*.ts) from the source.
+[doc('Regenerate the translation catalogs (i18n/enquber_*.ts) from the source.')]
 i18n-update: configure
     cmake --build --preset default --target update_translations
 
-# Lint the translations: text IDs, catalog sync, and (Qt 6.11+) catalog
-# fidelity. Also run as part of `just test`.
+# Also run as part of `just test`.
+[doc('Lint the translations: text IDs, catalog sync and catalog fidelity (Qt 6.11+).')]
 lint-i18n:
     cmake --preset default
     ctest --preset default -R '^check_i18n'
 
-# Check that the translated catalogs are complete. This is the release gate;
-# `just test` deliberately tolerates unfinished translations so code can land
-# before the Spanish text does.
+# `just test` tolerates unfinished translations so code can land.
+[doc('Check that the translated catalogs are complete; the release gate.')]
 check-translations:
     cmake --preset default
     ctest --preset release
@@ -40,8 +39,8 @@ check-translations:
 # Lint everything: C++ static analysis, Python, spelling, translations.
 lint: lint-cpp lint-py lint-spell lint-i18n
 
-# Static analysis for the C++ sources. Configures a clang build tree with a
-# compile database (build/lint); needs clang-tidy, clazy and run-clang-tidy.
+# Needs the clang build tree (build/lint) and clang-tidy, clazy, run-clang-tidy.
+[doc('Static analysis for the C++ sources.')]
 lint-cpp:
     cmake --preset lint
     clazy-standalone -p build/lint --only-qt --extra-arg=-Werror src/*.cpp tools/dragsource.cpp
@@ -56,12 +55,8 @@ lint-py:
 lint-spell:
     typos
 
-# Build the smoke test helpers, then run the GUI smoke test.
-#
-# Extra arguments are passed to tools/smoke.py. For example to run
-# on the real display:
-#
-#     just smoke-test --no-xvfb
+# Arguments go to tools/smoke.py; --help has the flags and an example.
+[doc('Build the smoke test helpers, then run the GUI smoke test.')]
 smoke-test *args:
     cmake --preset smoke
     cmake --build --preset smoke
@@ -80,19 +75,12 @@ clean:
 package-arch: 
     cd packaging/arch && makepkg -f
 
-# Shortcuts for startup performance measurement:
-#
-# startup-settle rotates the launch order every round, so its medians are
-# drift-resistant; pass --json and pipe through tools/startup-stats.py for a
-# table and verdict (it needs a `kcalc` label or --reference). startup-bench
-# compares a candidate binary against a baseline with the paired per-round
-# delta:
-#
-#     DISPLAY=:9 just startup-settle --runs 5 --command ./build/enquber --command kcalc
-#     DISPLAY=:9 just startup-bench /tmp/enq-main/build/enquber ./build/enquber --runs 15
+# Pass --json through tools/startup-stats.py for a table and verdict.
+[doc('Record an X11 framebuffer and measure when the UI stops changing.')]
 startup-settle *args: build
     tools/startup-settle.py {{args}}
 
+[doc('Compare a candidate binary against a baseline by paired per-round delta.')]
 startup-bench baseline candidate *args: build
     tools/startup-settle.py --baseline "{{baseline}}" --candidate "{{candidate}}" {{args}}
 
