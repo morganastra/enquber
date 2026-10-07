@@ -740,13 +740,7 @@ void MainWindow::showAbout()
     m_stack->setCurrentIndex(HelpPage);
 
     // Leaving is the corner button's job while the page is up.
-    static_cast<HelpButton *>(m_helpButton)->setBack(true);
-    //@ MainWindow
-    //% "Back to Enquber (Esc or Ctrl+H)"
-    m_helpButton->setToolTip(qtTrId("mainwindow.help.back.tooltip"));
-    //@ MainWindow
-    //% "Back to Enquber"
-    m_helpButton->setAccessibleName(qtTrId("mainwindow.help.back.accessible"));
+    setHelpButtonBack(true);
 
     // The page is read-only, so nothing below it should act on the code.
     updateActionStates();
@@ -762,13 +756,7 @@ void MainWindow::closeAbout()
     }
     m_aboutOpen = false;
 
-    static_cast<HelpButton *>(m_helpButton)->setBack(false);
-    //@ MainWindow
-    //% "Show help and info (Ctrl+H or ?)"
-    m_helpButton->setToolTip(qtTrId("mainwindow.help.tooltip"));
-    //@ MainWindow
-    //% "Help and info"
-    m_helpButton->setAccessibleName(qtTrId("mainwindow.help.accessible"));
+    setHelpButtonBack(false);
 
     m_stack->setCurrentIndex(m_pageBeforeAbout);
     updateActionStates();
@@ -776,6 +764,27 @@ void MainWindow::closeAbout()
     const bool hasCode = m_code.isValid();
     if (m_pageBeforeAbout == CodePage && hasCode) {
         m_copyButton->setFocus(Qt::OtherFocusReason);
+    }
+}
+
+void MainWindow::setHelpButtonBack(bool back)
+{
+    auto *button = static_cast<HelpButton *>(m_helpButton);
+    button->setBack(back);
+    if (back) {
+        //@ MainWindow
+        //% "Back to Enquber (Esc or Ctrl+H)"
+        button->setToolTip(qtTrId("mainwindow.help.back.tooltip"));
+        //@ MainWindow
+        //% "Back to Enquber"
+        button->setAccessibleName(qtTrId("mainwindow.help.back.accessible"));
+    } else {
+        //@ MainWindow
+        //% "Show help and info (Ctrl+H or ?)"
+        button->setToolTip(qtTrId("mainwindow.help.tooltip"));
+        //@ MainWindow
+        //% "Help and info"
+        button->setAccessibleName(qtTrId("mainwindow.help.accessible"));
     }
 }
 

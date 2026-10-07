@@ -106,6 +106,9 @@ private:
     void clearStatus();
     void setDropHighlight(bool active);
     void positionHelpButton();
+    /// Points the corner button at the info page or back at the app, with the
+    /// matching tooltip and accessible name.
+    void setHelpButtonBack(bool back);
     [[nodiscard]] QString suggestedFileName() const;
     [[nodiscard]] QImage renderForExport() const;
     /// Starts dragging the current code out to another application. The payload
