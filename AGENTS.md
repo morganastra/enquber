@@ -71,21 +71,27 @@ Qt's `lcheck` (Qt 6.11+) when installed. Completeness is checked by
 `lrelease -fail-on-unfinished` (Qt 6.10+) only via `just check-translations`,
 so unfinished translations do not block development.
 
-The smoke test (`tools/smoke.py`) drives the real app on a real X11 display
-with real input and decodes every produced QR with `zbarimg`. It needs
-`import`, `xclip`, `zbarimg`, and `identify` on `PATH`, Python `Xlib`, and
-PyQt6 (the drag-out step's `tools/droptarget.py` target is built on it).
-It starts its own throwaway `Xvfb`; `--no-xvfb --display :N` drives an
-existing server instead.
-Screenshots go to a date-time stamped directory under `$TMPDIR/enquber-smoke`,
-so every run is easy to tell apart. Wayland is not natively supported by the
-smoke test yet.
+The smoke test (`tools/smoke.py`, run via `just smoke-test`) drives the real
+app on a real X11 display with real input; `--help` lists the dependencies,
+flags and exit codes. Prefer a throwaway `Xvfb` display, and note that the
+screenshots land in a date-time stamped directory under `$TMPDIR/enquber-smoke`.
 
 ## Tools/utility scripts
 
-Everything in `tools/` has a useful `--help` except the vendored
+`tools/<name>.py --help` documents each tool's flags, dependencies, exit codes
+and examples. Everything has a useful `--help` except the vendored
 `qt_review_lint.py`: it ignores `--help`, unknown flags and unreadable files
 (exit 0) and prints usage only when run without arguments.
+
+- `smoke.py` — the GUI smoke test (`just smoke-test`); `dragsource.cpp` and
+  `droptarget.py` are its XDND drag source and target.
+- `xui.py` — X11 window queries, screenshots and synthetic input.
+- `xdnd.py` — a raw-protocol XDND drag source for manual debugging.
+- `startup-settle.py`, `startup-stats.py` — startup measurement and summary
+  (`just startup-settle`, `just startup-bench`).
+- `generate-icon.py` — regenerates `data/icon/enquber.{svg,png}`.
+- `check-i18n.py` — the catalog lint behind `just test` and `just lint-i18n`.
+- `qt_review_lint.py` — the vendored C++ review linter (`just lint-cpp`).
 
 ## Gotchas
 
