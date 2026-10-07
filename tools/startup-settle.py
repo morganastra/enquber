@@ -314,12 +314,8 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(f"empty command in '{text}'")
         return ((default_label or " ".join(command)), command)
 
-    # Commands are measured in rounds and the launch order is rotated each round,
-    # so a period where the machine is slow hits every command equally. A single
-    # command is just sequential runs; the pair (or more) get drift-resistant
-    # medians instead of whichever happened to run last. The role is kept apart
-    # from the display label so a custom label cannot hide the baseline/candidate
-    # pair from the paired-delta calculation.
+    # The launch order rotates each round; roles stay apart from display labels
+    # so a custom label cannot hide the baseline/candidate pair.
     specs: list[tuple[str, str, list[str]]] = []
     if args.baseline is not None or args.candidate is not None:
         if args.baseline is None or args.candidate is None:
