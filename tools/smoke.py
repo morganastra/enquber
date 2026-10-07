@@ -386,10 +386,7 @@ def drag_until_dropped(smoke: Smoke, source: Window, target: Window, expected: s
     decoded: str | None = None
     path = Path()
     for attempt in range(1, attempts + 1):
-        source_now = smoke.geometry(source)
-        target_now = smoke.geometry(target)
-        center = (target_now.x + target_now.width // 2, target_now.y + target_now.height // 2)
-        drag_with_mouse(smoke, source_now, center)
+        drag_with_mouse(smoke, source, target)
         time.sleep(0.8)
         decoded, path = smoke.decode(target, f"{label}-{attempt}")
         smoke.log(f"{label}: attempt {attempt} shows {decoded!r}")
@@ -398,18 +395,22 @@ def drag_until_dropped(smoke: Smoke, source: Window, target: Window, expected: s
     return decoded, path
 
 
-def drag_with_mouse(smoke: Smoke, source: Window, target: tuple[int, int], release: bool = True):
-    """Presses on the source window and drags to a screen position.
+def drag_with_mouse(smoke: Smoke, source: Window, target: Window, release: bool = True):
+    """Presses on the source window and drags onto the target window.
 
     The pointer walks there in small steps and lets go straight after the last
     one, the way a hand does. Jumping the whole distance in a few hops makes
-    Qt's platform plugin cancel the drag instead of dropping.
+    Qt's platform plugin cancel the drag instead of dropping. Both geometries
+    are read here, because a window manager may have moved a window since the
+    caller last looked.
     """
     x = smoke.x
     source = smoke.geometry(source)
+    target = smoke.geometry(target)
     from_x = source.x + source.width // 2
     from_y = source.y + source.height // 2
-    to_x, to_y = target
+    to_x = target.x + target.width // 2
+    to_y = target.y + target.height // 2
     smoke.log(f"dragging from ({from_x}, {from_y}) to ({to_x}, {to_y})")
     x.move(from_x, from_y)
     time.sleep(0.3)
@@ -699,11 +700,9 @@ def drag_out(smoke: Smoke, source: Window, expected: str) -> None:
                            str(Path(__file__).resolve().parent / "droptarget.py"),
                            "--save", str(received)], "drop-target")
     target.window = smoke.place(target.window.id, 700, 40, 360, 240)
-    destination = (target.window.x + target.window.width // 2,
-                   target.window.y + target.window.height // 2)
 
     for attempt in range(1, 7):
-        drag_with_mouse(smoke, smoke.geometry(source), destination)
+        drag_with_mouse(smoke, source, target.window)
         time.sleep(1.0)
         # Numbered like the other retry loops, so a failure keeps the evidence
         # of every attempt instead of only the last one.
@@ -749,11 +748,7 @@ def foreign_drag(smoke: Smoke) -> None:
     source = smoke.place(foreign.window.id, 700, 700, 320, 160)
 
     # First a hover without releasing, for the record, then the drop itself.
-    source_now = smoke.geometry(source)
-    target_now = smoke.geometry(target.window)
-    drag_with_mouse(smoke, source_now,
-                    (target_now.x + target_now.width // 2, target_now.y + target_now.height // 2),
-                    release=False)
+    drag_with_mouse(smoke, source, target.window, release=False)
     time.sleep(0.6)
     smoke.screenshot(target.window, "drag-hovering")
     x.release(1)
