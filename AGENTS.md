@@ -78,10 +78,10 @@ screenshots land in a date-time stamped directory under `$TMPDIR/enquber-smoke`.
 
 ## Tools/utility scripts
 
-`tools/<name>.py --help` documents each tool's flags, dependencies, exit codes
-and examples. Everything has a useful `--help` except the vendored
-`qt_review_lint.py`: it ignores `--help`, unknown flags and unreadable files
-(exit 0) and prints usage only when run without arguments.
+`tools/<name>.py --help` documents each tool's flags, plus defaults, examples
+and exit codes where the help states them. Everything has a useful `--help`
+except the vendored `qt_review_lint.py`: it ignores `--help`, unknown flags and
+unreadable files (exit 0) and prints usage only when run without arguments.
 
 - `smoke.py` — the GUI smoke test (`just smoke-test`); `dragsource.cpp` and
   `droptarget.py` are its XDND drag source and target.
