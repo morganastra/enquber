@@ -201,6 +201,7 @@ def write_video(path: Path, frames: list[Frame], fps: float) -> None:
 
 
 def percentile(values: list[float], fraction: float) -> float:
+    """Percentile at round(fraction * (n - 1))."""
     ordered = sorted(values)
     index = min(len(ordered) - 1, round(fraction * (len(ordered) - 1)))
     return ordered[index]

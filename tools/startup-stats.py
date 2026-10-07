@@ -34,7 +34,7 @@ import sys
 
 
 def percentile(values: list[float], fraction: float) -> float:
-    """Nearest-rank percentile, matching tools/startup-settle.py."""
+    """Percentile at round(fraction * (n - 1)); matches tools/startup-settle.py."""
     ordered = sorted(values)
     index = min(len(ordered) - 1, round(fraction * (len(ordered) - 1)))
     return ordered[index]
