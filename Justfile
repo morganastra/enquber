@@ -65,7 +65,7 @@ lint-spell:
 smoke-test *args:
     cmake --preset smoke
     cmake --build --preset smoke
-    tools/smoke.py --app build/smoke/enquber --dragsource build/smoke/tools/dragsource {{args}}
+    tools/smoke.py {{args}}
 
 # Build, then launch the application.
 run: build
