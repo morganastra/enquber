@@ -124,7 +124,7 @@ def record(command: list[str], display: str, duration: float, lead: float,
             stamp = time.monotonic()
             small = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)[::2, ::2, :3]
             gray = small.astype(np.float32).mean(axis=2)
-            frames.append(Frame(stamp - launch if launch else stamp - started, gray,
+            frames.append(Frame(stamp - started, gray,
                                 small.copy() if want_video else None))
 
             next_at += interval
@@ -144,6 +144,12 @@ def record(command: list[str], display: str, duration: float, lead: float,
                 process.wait(timeout=5)
         d.close()
 
+    # Frames were stamped against `started`; rebase them on the launch now that
+    # it is known, so the lead-in is negative and never counts as the window.
+    if process is not None:
+        offset = launch - started
+        for frame in frames:
+            frame.t -= offset
     return frames
 
 
@@ -386,7 +392,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.verbose:
         for name, runs in results.items():
             for index, run in enumerate(runs, 1):
-                top = sorted(run.curve, key=lambda item: item[1], reverse=True)[:6]
+                top = sorted((item for item in run.curve if item[1] > 0),
+                             key=lambda item: item[1], reverse=True)[:6]
                 marks = ", ".join(f"{t:+.2f}s:{value:.1f}" for t, value in top)
                 print(f"  {name} #{index} largest changes: {marks}")
 
