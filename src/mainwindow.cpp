@@ -448,7 +448,6 @@ void MainWindow::buildActions()
     m_closeAboutAction = new QAction(this);
     m_closeAboutAction->setShortcut(QKeySequence(Qt::Key_Escape));
     m_closeAboutAction->setShortcutContext(Qt::WindowShortcut);
-    m_closeAboutAction->setEnabled(false);
     connect(m_closeAboutAction, &QAction::triggered, this, &MainWindow::closeAbout);
     addAction(m_closeAboutAction);
 
@@ -566,9 +565,9 @@ void MainWindow::beginLiveInput()
 
     // While the field owns the keyboard, Escape/Backspace/Delete (Clear) and
     // Ctrl+V/Ctrl+C (Paste/Copy) belong to the editor, not to the window
-    // actions. finishTypeInput()/cancelLiveInput() put them back.
-    m_pasteAction->setEnabled(false);
-    setCodeActionsEnabled(false);
+    // actions. The next transition (commit, cancel or placeholder) puts them
+    // back through updateActionStates().
+    updateActionStates();
     clearStatus();
 
     // Even with nothing typed yet, show a symbol so the page is not blank.
@@ -617,7 +616,6 @@ void MainWindow::commitLiveInput()
 
     const QString trimmed = m_captionEditor->toPlainText().trimmed();
     if (trimmed.isEmpty()) {
-        finishTypeInput();
         showPlaceholder();
         return;
     }
@@ -629,16 +627,8 @@ void MainWindow::commitLiveInput()
         return;
     }
 
-    m_code = std::move(code);
     finishTypeInput();
-    updateTextLabel();
-    setCodeActionsEnabled(true);
-    // The editor was the focused widget and is now hidden; hand the keyboard to
-    // the action most people want next, exactly as showCode() does. Without
-    // this, Qt picks the next focusable widget by itself and a keyboard user can
-    // land somewhere surprising (the floating help button, say).
-    m_copyButton->setFocus(Qt::OtherFocusReason);
-    clearStatus();
+    presentCode(code);
 }
 
 void MainWindow::cancelLiveInput()
@@ -647,23 +637,12 @@ void MainWindow::cancelLiveInput()
         return;
     }
     finishTypeInput();
-    m_code = m_codeBeforeType;
 
-    if (m_code.isValid()) {
-        m_qrView->setCode(m_code);
-        updateTextLabel();
-        setCodeActionsEnabled(true);
-        m_stack->setCurrentIndex(CodePage);
-        // Same reason as commitLiveInput(): the hidden editor cannot keep the
-        // keyboard, so restore focus to the action beside the code.
-        m_copyButton->setFocus(Qt::OtherFocusReason);
+    if (m_codeBeforeType.isValid()) {
+        presentCode(m_codeBeforeType);
     } else {
-        m_qrView->clear();
-        m_textLabel->clear();
-        setCodeActionsEnabled(false);
-        m_stack->setCurrentIndex(PlaceholderPage);
+        showPlaceholder();
     }
-    clearStatus();
 }
 
 void MainWindow::finishTypeInput()
@@ -673,7 +652,6 @@ void MainWindow::finishTypeInput()
         m_captionEditor->hide();
         m_textLabel->show();
     }
-    m_pasteAction->setEnabled(true);
 }
 
 void MainWindow::positionCaptionEditor()
@@ -684,14 +662,40 @@ void MainWindow::positionCaptionEditor()
     }
 }
 
-void MainWindow::setCodeActionsEnabled(bool enabled)
+void MainWindow::updateActionStates()
 {
-    m_copyAction->setEnabled(enabled);
-    m_saveAction->setEnabled(enabled);
-    m_clearAction->setEnabled(enabled);
-    m_copyButton->setEnabled(enabled);
-    m_saveButton->setEnabled(enabled);
-    m_clearButton->setEnabled(enabled);
+    const bool editing = m_typeInputActive;
+    const bool reading = m_aboutOpen;
+    const bool canExport = m_code.isValid() && !editing && !reading;
+
+    m_pasteAction->setEnabled(!editing && !reading);
+    // Deliberately on while typing: Ctrl+L is a no-op there, not a key to steal.
+    m_typeAction->setEnabled(!reading);
+    m_closeAboutAction->setEnabled(reading);
+
+    m_copyAction->setEnabled(canExport);
+    m_saveAction->setEnabled(canExport);
+    m_clearAction->setEnabled(canExport);
+    m_copyButton->setEnabled(canExport);
+    m_saveButton->setEnabled(canExport);
+    m_clearButton->setEnabled(canExport);
+}
+
+void MainWindow::presentCode(const qr::Code &code)
+{
+    m_code = code;
+    m_qrView->setCode(code);
+    m_stack->setCurrentIndex(CodePage);
+    updateTextLabel();
+    updateActionStates();
+
+    // The editor (or whatever had the keyboard) is hidden or about to lose it,
+    // so hand the keyboard to the action most people want next. This has to
+    // stay after updateActionStates(): a disabled button silently refuses
+    // focus, and the keyboard would land somewhere surprising (the floating
+    // help button, say).
+    m_copyButton->setFocus(Qt::OtherFocusReason);
+    clearStatus();
 }
 
 void MainWindow::showCode(const qr::Code &code)
@@ -700,13 +704,7 @@ void MainWindow::showCode(const qr::Code &code)
         closeAbout();
     }
     finishTypeInput();
-    m_qrView->setCode(code);
-    m_stack->setCurrentIndex(CodePage);
-    updateTextLabel();
-    setCodeActionsEnabled(true);
-
-    m_copyButton->setFocus(Qt::OtherFocusReason);
-    clearStatus();
+    presentCode(code);
 }
 
 void MainWindow::showPlaceholder()
@@ -720,7 +718,7 @@ void MainWindow::showPlaceholder()
     m_qrView->clear();
     m_textLabel->clear();
     m_stack->setCurrentIndex(PlaceholderPage);
-    setCodeActionsEnabled(false);
+    updateActionStates();
     clearStatus();
 }
 
@@ -754,10 +752,7 @@ void MainWindow::showAbout()
     m_helpButton->setAccessibleName(qtTrId("mainwindow.help.back.accessible"));
 
     // The page is read-only, so nothing below it should act on the code.
-    m_pasteAction->setEnabled(false);
-    m_typeAction->setEnabled(false);
-    setCodeActionsEnabled(false);
-    m_closeAboutAction->setEnabled(true);
+    updateActionStates();
 
     clearStatus();
     m_helpButton->setFocus(Qt::OtherFocusReason);
@@ -778,15 +773,10 @@ void MainWindow::closeAbout()
     //% "Help and info"
     m_helpButton->setAccessibleName(qtTrId("mainwindow.help.accessible"));
 
-    m_closeAboutAction->setEnabled(false);
-    m_pasteAction->setEnabled(true);
-    m_typeAction->setEnabled(true);
-
     m_stack->setCurrentIndex(m_pageBeforeAbout);
+    updateActionStates();
 
     const bool hasCode = m_code.isValid();
-    setCodeActionsEnabled(hasCode);
-
     if (m_pageBeforeAbout == CodePage && hasCode) {
         m_copyButton->setFocus(Qt::OtherFocusReason);
     }
