@@ -55,18 +55,20 @@ def find_command(labels: list[str], needle: str) -> str | None:
     return None
 
 
-def numbers(runs, key: str) -> list[float]:
+def numbers(runs, key: str, flat: bool = False) -> list[float]:
     """The values of @p key across @p runs; empty if the key is absent.
 
-    @p runs may be a list of run dicts (the normal per-command shape) or the
-    flat list of floats that startup-settle.py emits for its paired delta.
-    Values that are not numbers are treated as unusable rather than raising.
+    @p runs is normally a list of run dicts; with @p flat it may also be a flat
+    list of numbers, the shape used for the top-level paired delta. Values that
+    are not numbers are treated as unusable rather than raising.
     """
     if not isinstance(runs, list):
         return []
-    if all(isinstance(value, (int, float)) and not isinstance(value, bool)
-           for value in runs):
-        return [float(value) for value in runs]
+    if flat:
+        if all(isinstance(value, (int, float)) and not isinstance(value, bool)
+               for value in runs):
+            return [float(value) for value in runs]
+        return []
     if not all(isinstance(run, dict) and key in run for run in runs):
         return []
     try:
@@ -138,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
     runs_by_label = payload.get("runs")
     if not isinstance(runs_by_label, dict):
         runs_by_label = {key: value for key, value in payload.items()
-                         if isinstance(value, list)}
+                         if isinstance(value, list) and key != "paired_delta"}
 
     paired_delta = payload.get("paired_delta")
     pair = payload.get("pair")
@@ -251,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{enquber} stable median {enquber_median:.3f}s vs {reference} "
           f"{reference_median:.3f}s: delta {delta:+.3f}s")
     if paired_delta:
-        deltas = numbers(paired_delta, "")
+        deltas = numbers(paired_delta, "", flat=True)
         if deltas:
             faster = sum(1 for value in deltas if value < 0)
             print(f"paired {enquber} - baseline delta: median "
