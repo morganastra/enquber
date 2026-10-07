@@ -1000,6 +1000,8 @@ void MainWindow::showStatus(const QString &message)
     m_statusLabel->setText(message);
     m_statusLabel->setVisible(!message.isEmpty());
 
+    // start() also restarts an active one-shot timer, so a repeated message
+    // gets its full time instead of the remainder of the previous one.
     if (message.isEmpty()) {
         m_statusTimer->stop();
     } else {
@@ -1009,8 +1011,7 @@ void MainWindow::showStatus(const QString &message)
 
 void MainWindow::clearStatus()
 {
-    m_statusLabel->clear();
-    m_statusLabel->hide();
+    showStatus(QString());
 }
 
 void MainWindow::setDropHighlight(bool active)
