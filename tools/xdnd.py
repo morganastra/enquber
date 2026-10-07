@@ -33,6 +33,7 @@ Exit status is 0 when the target accepted the drop and finished it.
 from __future__ import annotations
 
 import argparse
+import os
 import select
 import sys
 import time
@@ -227,7 +228,12 @@ def main(argv: list[str] | None = None) -> int:
               "(pip install python-xlib)", file=sys.stderr)
         return 2
 
-    source = XdndSource(args.display, args.text)
+    try:
+        source = XdndSource(args.display, args.text)
+    except xerror.DisplayConnectionError:
+        name = args.display or os.environ.get("DISPLAY", "")
+        print(f"error: can't connect to display {name}", file=sys.stderr)
+        return 2
     if args.x is None or args.y is None:
         geometry = source.d.create_resource_object("window", args.target).get_geometry()
         coords = source.root.translate_coords(
