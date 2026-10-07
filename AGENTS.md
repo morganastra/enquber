@@ -30,7 +30,7 @@ Use `just` (recipes wrap CMake presets, and `just test`/`just smoke-test`
 rebuild first):
 
 - `just build`, `just run`
-- `just test` — build + unit tests + the `check_i18n` catalog lint
+- `just test` — build + unit tests + the fast lints (i18n, ruff, typos)
 - `just i18n-update` — regenerate `i18n/enquber_*.ts` from the source
 - `just lint-i18n` — lint text IDs, catalog sync and (Qt 6.11+) catalog fidelity
 - `just check-translations` — release gate: every translated catalog complete
