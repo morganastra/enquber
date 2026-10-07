@@ -102,9 +102,8 @@ def install_signal_handlers() -> None:
 def wait_for_display(display: str, timeout: float = 2.0) -> bool:
     """Waits up to @p timeout for an X server to answer on @p display.
 
-    Xvfb reports readiness on -displayfd before it stops resetting new
-    connections, so a single probe right after the start can fail on a
-    server that answers moments later.
+    A single probe can be refused right after -displayfd reports readiness,
+    so keep probing until one connection gets through.
     """
     deadline = time.monotonic() + timeout
     while True:
@@ -162,7 +161,8 @@ class Xvfb:
         try:
             self.process = subprocess.Popen(
                 ["Xvfb", f":{number}", "-displayfd", str(write_fd),
-                 "-screen", "0", self.geometry, "-nolisten", "tcp"],
+                 "-screen", "0", self.geometry, "-nolisten", "tcp",
+                 "-noreset"],
                 pass_fds=(write_fd,),
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 preexec_fn=die_with_parent,  # noqa: PLW1509 - PDEATHSIG needs it
