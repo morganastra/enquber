@@ -43,14 +43,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-try:
-    from xui import X11, Window, display_is_live
-except ImportError as error:  # xui imports python-xlib
-    X11 = None  # type: ignore[assignment]
-    Window = None  # type: ignore[assignment]
-    _XLIB_ERROR: ImportError | None = error
-else:
-    _XLIB_ERROR = None
+from xui import X11, XLIB_ERROR, Window, display_is_live
 
 DROPPED_URL = "https://example.com/dragged?from=smoke-test"
 PASTED_URL = "https://example.com/pasted?q=1"
@@ -455,8 +448,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"missing required tool: {tool}", file=sys.stderr)
             return 2
 
-    if _XLIB_ERROR is not None:
-        print(f"missing required module: {_XLIB_ERROR.name} "
+    if XLIB_ERROR is not None:
+        print(f"missing required module: {XLIB_ERROR.name} "
               "(pip install python-xlib)", file=sys.stderr)
         return 2
 

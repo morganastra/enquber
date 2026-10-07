@@ -36,9 +36,9 @@ try:
     from Xlib import error as xerror
     from Xlib.ext import xtest
 except ImportError as error:
-    _XLIB_ERROR: ImportError | None = error
+    XLIB_ERROR: ImportError | None = error
 else:
-    _XLIB_ERROR = None
+    XLIB_ERROR = None
 
 # X11 atoms we care about.
 _UTF8 = "UTF8_STRING"
@@ -599,8 +599,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("path", help="output PNG path")
 
     args = parser.parse_args(argv)
-    if _XLIB_ERROR is not None:
-        print(f"missing required module: {_XLIB_ERROR.name} "
+    if XLIB_ERROR is not None:
+        print(f"missing required module: {XLIB_ERROR.name} "
               "(pip install python-xlib)", file=sys.stderr)
         return 2
     try:
