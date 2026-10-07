@@ -71,12 +71,10 @@ class Frame:
 
 @dataclass
 class Run:
-    command: str
     appear: float
     stable: float
     settle: float
     tail: float
-    changes: int
     settled: bool
     clip: Path | None = None
     curve: list[tuple[float, float]] = field(default_factory=list)
@@ -179,9 +177,8 @@ def analyze(frames: list[Frame], appear_threshold: float, change_threshold: floa
     stable = frames[last_change].t
     clip_end = frames[-1].t
     tail = clip_end - stable
-    return Run(command="", appear=appear, stable=stable, settle=stable - appear,
-               tail=tail, changes=max(0, len(change_indices) - 1),
-               settled=tail >= stable_window, curve=curve)
+    return Run(appear=appear, stable=stable, settle=stable - appear,
+               tail=tail, settled=tail >= stable_window, curve=curve)
 
 
 def clip_stem(label: str) -> str:
@@ -364,7 +361,6 @@ def main(argv: list[str] | None = None) -> int:
                 except (Failure, FileNotFoundError) as failure:
                     print(f"  {label}: {failure}", file=sys.stderr)
                     continue
-                result.command = label
                 if video_dir:
                     result.clip = video_dir / f"{clip_stem(label)}-{round_index + 1}.mp4"
                     try:
@@ -396,8 +392,9 @@ def main(argv: list[str] | None = None) -> int:
         # Runs live under "runs" so metadata keys (paired_delta, pair) can never
         # collide with a command label, no matter what the user calls it.
         payload: dict[str, object] = {
-            "runs": {label: [vars(run) | {"clip": str(run.clip) if run.clip else None}
-                            for run in results[label]]
+            "runs": {label: [{key: value for key, value in vars(run).items()
+                              if key != "curve"}
+                             for run in results[label]]
                      for _, label, _ in specs},
         }
         if paired:
