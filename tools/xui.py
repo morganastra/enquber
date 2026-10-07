@@ -430,7 +430,7 @@ class X11:
 
     def clipboard_image(self, path: str) -> bool:
         result = self._xclip(["-selection", "clipboard", "-o", "-t", "image/png"])
-        if result.returncode != 0 or not result.stdout:
+        if result.returncode != 0 or not result.stdout.startswith(b"\x89PNG\r\n\x1a\n"):
             return False
         with open(path, "wb") as handle:
             handle.write(result.stdout)
