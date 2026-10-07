@@ -42,7 +42,6 @@ else:
     _XLIB_ERROR = None
 
 # X11 atoms we care about.
-_NET_WM_NAME = "UTF8_STRING"
 _UTF8 = "UTF8_STRING"
 
 # Window types that are never interesting to click on.
@@ -78,7 +77,6 @@ class Window:
     width: int
     height: int
     pid: int | None
-    window_type: str
 
     def __str__(self) -> str:
         return (
@@ -168,7 +166,6 @@ class X11:
             width=geom.width,
             height=geom.height,
             pid=pid,
-            window_type=window_type,
         )
 
     def _top_level_windows(self):
@@ -289,11 +286,6 @@ class X11:
         self.d.sync()
         time.sleep(0.1)
 
-    def raise_window(self, window_id: int):
-        window = self.d.create_resource_object("window", window_id)
-        window.configure(stack_mode=X.Above)
-        self.d.sync()
-
     # -- input ------------------------------------------------------------
 
     def move(self, x: int, y: int):
@@ -400,14 +392,11 @@ class X11:
 
     # -- screenshots ------------------------------------------------------
 
-    def screenshot(self, path: str, window: Window | None = None, region: tuple[int, int, int, int] | None = None):
-        """Saves a PNG of the whole screen, one window, or a screen region."""
+    def screenshot(self, path: str, window: Window | None = None):
+        """Saves a PNG of the whole screen or of one window."""
         args = ["import", "-display", self.display_name, "-window", "root"]
         if window is not None:
             args += ["-crop", f"{window.width}x{window.height}+{window.x}+{window.y}"]
-        elif region is not None:
-            x, y, width, height = region
-            args += ["-crop", f"{width}x{height}+{x}+{y}"]
         args += ["+repage", path]
         subprocess.run(args, check=True, capture_output=True)
         return path
