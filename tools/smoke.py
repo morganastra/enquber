@@ -292,12 +292,13 @@ class Smoke:
                 stubborn.append(f"{' '.join(process.args)} (pid {process.pid})")
         return stubborn
 
-    def output_so_far(self, process: subprocess.Popen, timeout: float = 2.0, until=None) -> str:
-        """Reads what a still running helper has printed.
+    def read_until(self, process: subprocess.Popen, marker: str,
+                   timeout: float = 4.0) -> str:
+        """Reads what a still running helper has printed, up to @p marker.
 
         Reads the raw pipe without blocking, because the helper keeps running
-        and any buffered line would otherwise be lost. Stops early once @p until
-        is satisfied, and otherwise keeps reading until the timeout runs out.
+        and any buffered line would otherwise be lost. Stops at the marker, at
+        end of file, and otherwise when the timeout runs out.
         """
         import fcntl
         descriptor = process.stdout.fileno()
@@ -307,17 +308,15 @@ class Smoke:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             try:
-                chunk = os.read(descriptor, 4096).decode(errors="replace")
+                chunk = os.read(descriptor, 4096)
             except BlockingIOError:
-                chunk = ""
-            if chunk:
-                collected += chunk
-                if until is not None and until(collected):
-                    break
-            elif until is None and collected:
-                break
-            else:
                 time.sleep(0.1)
+                continue
+            if not chunk:  # end of file
+                break
+            collected += chunk.decode(errors="replace")
+            if marker in collected:
+                break
         return collected
 
     def geometry(self, window: Window) -> Window:
@@ -555,8 +554,7 @@ def run(smoke: Smoke):  # one linear scenario, read it top to bottom
                                                label="dropped")
     smoke.check_decoded(dropped, DROPPED_URL, "the dropped link is on screen", dropped_shot)
     smoke.screenshot_screen("dropped")
-    output = smoke.output_so_far(app.process, timeout=4.0,
-                                 until=lambda text: "app text:" in text)
+    output = smoke.read_until(app.process, "app text:")
     smoke.log(f"drag helper printed: {output.strip().splitlines()}")
     smoke.check("drop action: 1" in output, "the window accepted the drop with the copy action")
     smoke.check(f"app text: {DROPPED_URL}" in output, "the application encoded the dropped link")
