@@ -97,8 +97,8 @@ QImage Code::toImage(int modulePixels, int quietZone) const
     QImage image(side, side, QImage::Format_RGB32);
     image.fill(Qt::white);
 
-    // Filled rather than blitted: keeping the pixels square is what makes the
-    // result crisp at any scale.
+    // Fill each module as an exact modulePixels x modulePixels block instead of
+    // scaling a smaller image, so the edges stay crisp at any scale.
     const QRgb black = qRgb(0, 0, 0);
     for (int y = 0; y < width; ++y) {
         const int firstRow = (y + quietZone) * modulePixels;

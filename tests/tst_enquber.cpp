@@ -708,8 +708,7 @@ void TestEnquber::typeEditorTabMovesOnInsteadOfTyping()
     editor->setFocus(Qt::OtherFocusReason);
     QCOMPARE(QApplication::focusWidget(), editor);
 
-    // Tab has to be free to move on; a QR payload rarely wants a tab character,
-    // and trapping the keyboard in the field is worse.
+    // Tab moves focus on instead of inserting a tab.
     QTest::keyClicks(editor, QStringLiteral("a"));
     QTest::keyClick(editor, Qt::Key_Tab);
 
