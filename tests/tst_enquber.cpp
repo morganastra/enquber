@@ -1382,18 +1382,25 @@ void TestEnquber::clickingSaveButtonWritesFile()
     window.setText(QStringLiteral("https://savebutton.example"));
 
     const QString path = directory.filePath(QStringLiteral("from-button.png"));
-    QTimer::singleShot(0, &window, [&window, path] {
+    bool dialogSeen = false;
+    bool dialogAccepted = false;
+    QTimer::singleShot(0, &window, [&window, &dialogSeen, &dialogAccepted, path] {
         auto *dialog = window.findChild<QFileDialog *>();
-        QVERIFY(dialog);
+        dialogSeen = dialog != nullptr;
+        if (!dialog) {
+            return;
+        }
         dialog->selectFile(path);
         // accept() is protected, but still a slot, so go through the meta object.
-        QVERIFY(QMetaObject::invokeMethod(dialog, "accept"));
+        dialogAccepted = QMetaObject::invokeMethod(dialog, "accept");
     });
 
     QPushButton *save = buttonContaining(&window, QStringLiteral("save"));
     QVERIFY(save);
     QTest::mouseClick(save, Qt::LeftButton);
 
+    QVERIFY2(dialogSeen, "the save dialog never appeared");
+    QVERIFY2(dialogAccepted, "the save dialog could not be accepted");
     QVERIFY(QFileInfo::exists(path));
     QVERIFY(!QImage(path).isNull());
 }
@@ -2103,5 +2110,17 @@ void TestEnquber::escapeWithNoPreviousCodeReturnsToTheDropTarget()
     QVERIFY(window.findChild<DropZone *>()->isVisible());
 }
 
-QTEST_MAIN(TestEnquber)
+int main(int argc, char *argv[])
+{
+    // findChild<QFileDialog *>() cannot see a native dialog, and a modal native
+    // save dialog would block the test instead of failing it.
+    QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
+    QApplication app(argc, argv);
+    // The rest mirrors QTEST_MAIN, which cannot set the attribute above early
+    // enough to be usable here.
+    app.setAttribute(Qt::AA_Use96Dpi, true);
+    TestEnquber test;
+    return QTest::qExec(&test, argc, argv);
+}
+
 #include "tst_enquber.moc"
