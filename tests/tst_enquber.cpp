@@ -201,6 +201,24 @@ private:
     QString m_fallback;
 };
 
+/// Puts the application palette back when it goes out of scope, for the same
+/// reason as ThemeStateRestorer. Construct it before the first setPalette()
+/// call, or its destructor would restore the synthetic palette instead of the
+/// original.
+class PaletteStateRestorer
+{
+public:
+    PaletteStateRestorer() : m_palette(QApplication::palette()) {}
+
+    ~PaletteStateRestorer() { QApplication::setPalette(m_palette); }
+
+    PaletteStateRestorer(const PaletteStateRestorer &) = delete;
+    PaletteStateRestorer &operator=(const PaletteStateRestorer &) = delete;
+
+private:
+    QPalette m_palette;
+};
+
 /// A QrView whose device pixel ratio can be changed while it lives, to prove
 /// the cache notices a DPR change even when the module size stays the same.
 /// QPaintDevice::devicePixelRatio() reads the scaled metric on Qt 6.5-6.7, and
@@ -1562,6 +1580,7 @@ void TestEnquber::windowUsesTheBundledAppIcon()
 
 void TestEnquber::fallbackIconsFollowThePalette()
 {
+    PaletteStateRestorer restore;
     const QPalette original = QApplication::palette();
 
     // On a dark palette the glyph has to come out light...
@@ -1575,8 +1594,6 @@ void TestEnquber::fallbackIconsFollowThePalette()
     light.setColor(QPalette::WindowText, QColor(Qt::black));
     QApplication::setPalette(light);
     const QColor onLight = inkOf(theme::icon({"edit-copy"}).pixmap(64).toImage());
-
-    QApplication::setPalette(original);
 
     QVERIFY(onDark.isValid());
     QVERIFY(onLight.isValid());
@@ -1649,6 +1666,7 @@ void TestEnquber::bundledGlyphsCacheByColor()
     // The bundled-glyph cache is keyed on the tint, so the same glyph under two
     // foreground colors must not collide, and the first color has to come back
     // exactly from its still-cached entry.
+    PaletteStateRestorer restore;
     const QPalette original = QApplication::palette();
 
     QPalette light = original;
@@ -1663,8 +1681,6 @@ void TestEnquber::bundledGlyphsCacheByColor()
 
     QApplication::setPalette(light);
     const QImage onLightAgain = theme::icon({"edit-copy"}).pixmap(64).toImage();
-
-    QApplication::setPalette(original);
 
     QVERIFY(!onLight.isNull());
     QVERIFY(!onDark.isNull());
@@ -1683,6 +1699,7 @@ void TestEnquber::buttonIconsFollowRuntimePaletteChanges()
     QVERIFY(copy);
     QVERIFY(!copy->icon().isNull());
 
+    PaletteStateRestorer restore;
     const QPalette original = QApplication::palette();
 
     QPalette dark = original;
@@ -1697,8 +1714,6 @@ void TestEnquber::buttonIconsFollowRuntimePaletteChanges()
     QCoreApplication::processEvents();
     const QColor onLight = inkOf(copy->icon().pixmap(64).toImage());
 
-    QApplication::setPalette(original);
-
     QVERIFY(onDark.isValid());
     QVERIFY(onLight.isValid());
     QVERIFY2(onDark.lightness() > 200, qPrintable(onDark.name()));
@@ -1711,6 +1726,7 @@ void TestEnquber::darkModeIsFollowed()
     // the default palette when the system color scheme flips. Everything the
     // widgets draw themselves has to follow that, and the dimmed labels in
     // particular must not freeze the placeholder color they were built with.
+    PaletteStateRestorer restore;
     const QPalette original = QApplication::palette();
 
     const QColor lightPlaceholder(0x76, 0x76, 0x76);
@@ -1767,8 +1783,6 @@ void TestEnquber::darkModeIsFollowed()
     QTest::keyClick(&window, Qt::Key_Escape);
     QVERIFY(dropHint->isVisible());
     QCOMPARE(drawnTextColor(dropHint), lightPlaceholder);
-
-    QApplication::setPalette(original);
 }
 
 void TestEnquber::helpOpensWithTheKeyboardAndReturns()
