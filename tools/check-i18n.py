@@ -215,10 +215,18 @@ class Message:
     source: str
 
 
-def read_catalog(path: Path) -> list[Message]:
-    """Parse a .ts catalog, skipping messages that carry no id."""
+def read_catalog(path: Path, errors: list[str]) -> list[Message] | None:
+    """Parse a .ts catalog, skipping messages that carry no id.
+
+    Returns ``None`` and records an error when the XML cannot be parsed.
+    """
+    try:
+        root = ET.parse(path).getroot()
+    except ET.ParseError as err:
+        errors.append(f"{path.name}: invalid XML: {err}")
+        return None
     messages: list[Message] = []
-    for element in ET.parse(path).getroot().iter("message"):
+    for element in root.iter("message"):
         mid = element.get("id")
         if not mid:
             continue
@@ -249,7 +257,9 @@ def check_english_catalog(path: Path, source_ids: set[str], errors: list[str]) -
     if not path.is_file():
         errors.append(f"missing English source catalog {path}")
         return []
-    messages = read_catalog(path)
+    messages = read_catalog(path, errors)
+    if messages is None:
+        return []
     diff_ids(path.name, {m.mid for m in messages}, source_ids, errors)
     for message in messages:
         if not message.source:
@@ -265,7 +275,10 @@ def check_sync(path: Path, source_ids: set[str], errors: list[str]) -> None:
     if not path.is_file():
         errors.append(f"missing catalog {path}")
         return
-    diff_ids(path.name, {m.mid for m in read_catalog(path)}, source_ids, errors)
+    messages = read_catalog(path, errors)
+    if messages is None:
+        return
+    diff_ids(path.name, {m.mid for m in messages}, source_ids, errors)
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -282,6 +295,10 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if not args.source.is_dir():
+        print(f"error: source directory not found: {args.source}", file=sys.stderr)
+        return 2
+
     errors: list[str] = []
 
     report = scan_sources(args.source)
