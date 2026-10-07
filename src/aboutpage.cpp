@@ -74,14 +74,7 @@ AboutPage::AboutPage(QWidget *parent)
 
     m_icon = new QLabel(this);
     m_icon->setAlignment(Qt::AlignCenter);
-    // theme::appIcon() is the icon bundled with enquber, so the page keeps its
-    // picture even when the session's icon theme has no application entry.
-    const QIcon appIcon = theme::appIcon();
-    if (appIcon.isNull()) {
-        m_icon->hide();
-    } else {
-        m_icon->setPixmap(appIcon.pixmap(QSize(kIconSize, kIconSize), devicePixelRatioF()));
-    }
+    refreshIcon();
     layout->addWidget(m_icon);
     layout->addSpacing(2);
 
@@ -154,4 +147,26 @@ AboutPage::AboutPage(QWidget *parent)
     hint->setFont(scaled(hint->font(), 0.92));
     mute(hint);
     layout->addWidget(hint);
+}
+
+void AboutPage::refreshIcon()
+{
+    // theme::appIcon() is the icon bundled with enquber, so the page keeps its
+    // picture even when the session's icon theme has no application entry.
+    const QIcon appIcon = theme::appIcon();
+    if (appIcon.isNull()) {
+        m_icon->hide();
+        return;
+    }
+    m_icon->setPixmap(appIcon.pixmap(QSize(kIconSize, kIconSize), devicePixelRatioF()));
+}
+
+bool AboutPage::event(QEvent *event)
+{
+    // QWidget handles DevicePixelRatioChange inline, before changeEvent() is
+    // consulted, so re-rasterizing the icon is this override's job.
+    if (event->type() == QEvent::DevicePixelRatioChange) {
+        refreshIcon();
+    }
+    return QWidget::event(event);
 }

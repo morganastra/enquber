@@ -79,6 +79,16 @@ void DropZone::refreshIcon()
     m_icon->setPixmap(icon.pixmap(QSize(kIconSize, kIconSize), devicePixelRatioF()));
 }
 
+bool DropZone::event(QEvent *event)
+{
+    // QWidget handles DevicePixelRatioChange inline, before changeEvent() is
+    // consulted, so re-rasterizing the icon is this override's job.
+    if (event->type() == QEvent::DevicePixelRatioChange) {
+        refreshIcon();
+    }
+    return QWidget::event(event);
+}
+
 void DropZone::changeEvent(QEvent *event)
 {
     QWidget::changeEvent(event);
