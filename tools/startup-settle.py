@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import math
 import os
 import re
 import shlex
@@ -275,10 +276,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("no display: set DISPLAY or pass --display")
     if args.runs < 1:
         parser.error("--runs must be at least 1")
-    if args.duration <= 0:
+    if not math.isfinite(args.duration) or args.duration <= 0:
         parser.error("--duration must be positive")
-    if args.fps <= 0:
+    if not math.isfinite(args.fps) or args.fps <= 0:
         parser.error("--fps must be positive")
+    if not math.isfinite(args.lead):
+        parser.error("--lead must be a finite number")
 
     def parse_spec(text: str, default_label: str = "") -> tuple[str, list[str]]:
         """Splits an optional 'label,command' spec; shlex then tokenises it.
