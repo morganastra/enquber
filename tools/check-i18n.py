@@ -44,7 +44,7 @@ TRANSLATION_CALL = re.compile(
     r"(?<![A-Za-z0-9_])"  # not part of a longer identifier (attr(, str(, ptr()
     r"(?:tr|translate)\s*\("
 )
-TRANSLATION_MACROS = re.compile(r"QT_TR(?:ID|LATE)?(?:_N)?_NOOP[0-9]?\b")
+TRANSLATION_MACROS = re.compile(r"\bQT_TR(?:ANSLATE|ID)?(?:_N)?_NOOP[0-9]?(?:_UTF8)?\b")
 QT_TRID = re.compile(r"\bqtTrId\s*\(\s*\"([^\"]+)\"")
 
 # A C++ string literal, optionally wrapped in QStringLiteral(...).  The "text"
