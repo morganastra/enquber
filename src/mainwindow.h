@@ -99,6 +99,9 @@ private:
     /// changes and before any setFocus(): a disabled button refuses focus.
     void updateActionStates();
     void updateTextLabel();
+    /// Encodes @p text and reports a failure in the status line. Empty input is
+    /// the caller's business, because each entry point treats it differently.
+    [[nodiscard]] qr::Code encodeOrReport(const QString &text);
     void showStatus(const QString &message);
     void clearStatus();
     void setDropHighlight(bool active);

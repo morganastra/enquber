@@ -512,9 +512,8 @@ void MainWindow::setText(const QString &text)
         return;
     }
 
-    qr::Code code = qr::Code::encode(trimmed);
+    qr::Code code = encodeOrReport(trimmed);
     if (!code.isValid()) {
-        showStatus(code.error());
         return;
     }
 
@@ -591,11 +590,10 @@ void MainWindow::liveEncode()
         return;
     }
 
-    qr::Code code = qr::Code::encode(trimmed);
+    qr::Code code = encodeOrReport(trimmed);
     if (!code.isValid()) {
         // Keep the last good symbol on screen and explain why this one cannot
         // be shown; the field keeps whatever the user typed.
-        showStatus(code.error());
         return;
     }
 
@@ -620,10 +618,9 @@ void MainWindow::commitLiveInput()
         return;
     }
 
-    qr::Code code = qr::Code::encode(trimmed);
+    qr::Code code = encodeOrReport(trimmed);
     if (!code.isValid()) {
         // Too much to encode: stay in the field with the text intact.
-        showStatus(code.error());
         return;
     }
 
@@ -987,6 +984,15 @@ QString MainWindow::suggestedFileName() const
         stem = QStringLiteral("qrcode");
     }
     return stem.left(60) + QStringLiteral(".png");
+}
+
+qr::Code MainWindow::encodeOrReport(const QString &text)
+{
+    qr::Code code = qr::Code::encode(text);
+    if (!code.isValid()) {
+        showStatus(code.error());
+    }
+    return code;
 }
 
 void MainWindow::showStatus(const QString &message)
