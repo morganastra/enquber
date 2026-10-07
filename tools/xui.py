@@ -322,25 +322,36 @@ class X11:
         xtest.fake_input(self.d, X.ButtonRelease, button)
         self.d.sync()
 
-    def _keycode(self, keysym: int) -> tuple[int, int] | None:
+    def _keysym(self, name: str) -> int:
+        """The keysym for a keysym name or a single character."""
+        keysym = XK.string_to_keysym(name)
+        if keysym == 0 and len(name) == 1:
+            keysym = ord(name)
+        if keysym == 0:
+            raise ValueError(f"unknown key {name!r}")
+        return keysym
+
+    def _keycode(self, keysym: int) -> int:
+        """The keycode the server maps a keysym to."""
         keycode = self.d.keysym_to_keycode(keysym)
         if not keycode:
-            return None
-        for level in range(4):
-            if self.d.keycode_to_keysym(keycode, level) == keysym:
-                return keycode, level
-        return keycode, 0
-
-    def _tap(self, keysym: int, settle: float = 0.02):
-        found = self._keycode(keysym)
-        if found is None:
             raise ValueError(f"no keycode for keysym {keysym!r}")
-        keycode, level = found
+        return keycode
+
+    def _level_modifiers(self, level: int) -> list[int]:
+        """The modifier keycodes needed to reach a keyboard level."""
+        if level > 3:
+            raise ValueError(f"keyboard level {level} is not supported")
         modifiers = []
         if level & 1:
-            modifiers.append(self._keycode(XK.string_to_keysym("Shift_L"))[0])
+            modifiers.append(self._keycode(self._keysym("Shift_L")))
         if level & 2:
-            modifiers.append(self._keycode(XK.string_to_keysym("ISO_Level3_Shift"))[0])
+            # ISO_Level3_Shift; python-xlib's keysym table has no name for it.
+            modifiers.append(self._keycode(0xFE03))
+        return modifiers
+
+    def _send_chord(self, keycode: int, modifiers: list[int], settle: float):
+        """Presses a key with the modifiers held, then releases everything."""
         for modifier in modifiers:
             xtest.fake_input(self.d, X.KeyPress, modifier)
         xtest.fake_input(self.d, X.KeyPress, keycode)
@@ -350,14 +361,18 @@ class X11:
         self.d.sync()
         time.sleep(settle)
 
+    def _tap(self, keysym: int, settle: float = 0.02, extra: tuple[int, ...] = ()):
+        keycode = self._keycode(keysym)
+        levels = self.d.get_keyboard_mapping(keycode, 1)[0]
+        try:
+            level = levels.index(keysym)
+        except ValueError:
+            level = 0
+        self._send_chord(keycode, self._level_modifiers(level) + list(extra), settle)
+
     def key(self, name: str, settle: float = 0.02):
         """Press a single named key, e.g. Return, Escape, F5."""
-        keysym = XK.string_to_keysym(name)
-        if keysym == 0 and len(name) == 1:
-            keysym = ord(name)
-        if keysym == 0:
-            raise ValueError(f"unknown key {name!r}")
-        self._tap(keysym, settle)
+        self._tap(self._keysym(name), settle)
 
     def shortcut(self, combo: str, settle: float = 0.05):
         """Press a combination such as 'ctrl+v' or 'ctrl+shift+s'."""
@@ -367,29 +382,8 @@ class X11:
         modifiers = []
         for part in parts[:-1]:
             name = _MODIFIERS.get(part.lower(), part)
-            found = self._keycode(XK.string_to_keysym(name))
-            if found is None:
-                raise ValueError(f"unknown modifier {part!r}")
-            modifiers.append(found[0])
-        key_part = parts[-1]
-        keysym = XK.string_to_keysym(key_part)
-        if keysym == 0 and len(key_part) == 1:
-            keysym = ord(key_part)
-        found = self._keycode(keysym)
-        if found is None:
-            raise ValueError(f"unknown key {key_part!r}")
-        keycode, level = found
-        if level & 1:
-            modifiers.append(self._keycode(XK.string_to_keysym("Shift_L"))[0])
-
-        for modifier in modifiers:
-            xtest.fake_input(self.d, X.KeyPress, modifier)
-        xtest.fake_input(self.d, X.KeyPress, keycode)
-        xtest.fake_input(self.d, X.KeyRelease, keycode)
-        for modifier in reversed(modifiers):
-            xtest.fake_input(self.d, X.KeyRelease, modifier)
-        self.d.sync()
-        time.sleep(settle)
+            modifiers.append(self._keycode(self._keysym(name)))
+        self._tap(self._keysym(parts[-1]), settle, extra=tuple(modifiers))
 
     def type_text(self, text: str, settle: float = 0.015):
         """Type a string one character at a time."""
@@ -478,7 +472,7 @@ def _dispatch(x: X11, args: argparse.Namespace) -> int:
     elif args.command == "move":
         x.move(args.x, args.y)
     elif args.command == "key":
-        if "+" in args.combo:
+        if len([part for part in args.combo.split("+") if part.strip()]) > 1:
             x.shortcut(args.combo)
         else:
             x.key(args.combo)
