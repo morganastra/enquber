@@ -9,7 +9,9 @@ When you add or change a user-facing string:
 1. Call `qtTrId("component.element")` and put the English text in a `//%`
    comment on the line directly above it. Use exactly one `//%` per call, and
    add a `//:` note when the context is not obvious to a translator.
-2. Run `just i18n-update` to add the ID to every `i18n/enquber_*.ts`.
+2. Run `just i18n-update` to add the ID to every `i18n/enquber_*.ts`; it also
+   refreshes the `<location>` entries, so a diff that only moves source lines
+   is expected.
 3. Translate the new entries in Qt Linguist (`linguist6`) when you can. 
 4. Run `just test`. The `check_i18n` lint fails on a missing `//%`, a stale
    catalog or a leftover `tr()`; on Qt 6.11+ Qt's `lcheck` checks
