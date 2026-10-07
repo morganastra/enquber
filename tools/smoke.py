@@ -566,7 +566,7 @@ def run(smoke: Smoke):  # one linear scenario, read it top to bottom
     foreign_drag(smoke)
 
     smoke.step("paste a link over the dropped one")
-    x.focus(window.id)
+    x.activate(window.id)
     x.set_clipboard_text(PASTED_URL)
     x.shortcut("ctrl+v")
     time.sleep(0.7)
@@ -612,7 +612,7 @@ def run(smoke: Smoke):  # one linear scenario, read it top to bottom
     smoke.log(f"dialog: {dialog}")
     smoke.screenshot_screen("save-dialog")
 
-    x.focus(dialog.id)
+    x.activate(dialog.id)
     time.sleep(0.3)
     # The Qt file dialog focuses its file name field; an absolute path plus
     # return saves right there.
@@ -630,7 +630,7 @@ def run(smoke: Smoke):  # one linear scenario, read it top to bottom
     drag_out(smoke, window, PASTED_URL)
 
     smoke.step("clear the code and drag a new link in")
-    x.focus(window.id)
+    x.activate(window.id)
     x.key("Escape")
     time.sleep(0.8)
     cleared, cleared_shot = smoke.decode(window, "cleared")
@@ -642,7 +642,7 @@ def run(smoke: Smoke):  # one linear scenario, read it top to bottom
     smoke.check_decoded(again, DROPPED_URL, "the drop target works again", again_shot)
 
     smoke.step("type the text by hand with Ctrl+L")
-    x.focus(window.id)
+    x.activate(window.id)
     time.sleep(0.3)
     x.shortcut("ctrl+l")
     time.sleep(0.8)
@@ -662,7 +662,7 @@ def run(smoke: Smoke):  # one linear scenario, read it top to bottom
     smoke.step("quit with Ctrl+Q")
     quitting = smoke.launch([str(smoke.app)], "Enquber")
     quitting.window = smoke.place(quitting.window.id, 40, 40, 560, 700)
-    x.focus(quitting.window.id)
+    x.activate(quitting.window.id)
     time.sleep(0.3)
     x.shortcut("ctrl+q")
     deadline = time.monotonic() + 10
@@ -729,7 +729,7 @@ def foreign_drag(smoke: Smoke) -> None:
     # A fresh instance, so that the foreign drag finds an empty window.
     target = smoke.launch([str(smoke.app)], "Enquber")
     target.window = smoke.place(target.window.id, 40, 40, 560, 700)
-    x.focus(target.window.id)
+    x.activate(target.window.id)
     smoke.screenshot(target.window, "empty")
     smoke.log(f"empty window at {target.window}")
 

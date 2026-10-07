@@ -246,6 +246,12 @@ class X11:
         self.d.flush()
 
     def activate(self, window_id: int):
+        """Raises the window, makes it active and gives it the input focus.
+
+        Qt only treats a window as active once it has the focus, and shortcuts
+        are scoped to the active window. The WM message asks for both; the
+        direct configure and focus calls are what works without a WM.
+        """
         self.window(window_id)
         window = self.d.create_resource_object("window", window_id)
         # source indication 2 means "pager", which window managers always honor.
@@ -253,6 +259,7 @@ class X11:
         window.configure(stack_mode=X.Above)
         window.set_input_focus(X.RevertToParent, X.CurrentTime)
         self.d.sync()
+        time.sleep(0.1)
 
     def move_resize(self, window_id: int, x: int, y: int, width: int, height: int):
         self.window(window_id)
@@ -269,21 +276,6 @@ class X11:
     def _has_window_manager(self) -> bool:
         check = self._property(self.root, "_NET_SUPPORTING_WM_CHECK")
         return bool(check)
-
-    def focus(self, window_id: int):
-        """Gives the window the input focus and makes it the active one.
-
-        Qt only treats a window as active once it has the focus, and shortcuts
-        are scoped to the active window. With a window manager that is its job,
-        without one we have to hand out the focus ourselves.
-        """
-        if self._has_window_manager():
-            self.activate(window_id)
-            return
-        window = self.d.create_resource_object("window", window_id)
-        window.set_input_focus(X.RevertToParent, X.CurrentTime)
-        self.d.sync()
-        time.sleep(0.1)
 
     # -- input ------------------------------------------------------------
 
