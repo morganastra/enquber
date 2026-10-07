@@ -51,6 +51,7 @@ class DropTarget(QLabel):
         super().__init__(alignment=Qt.AlignmentFlag.AlignCenter)
         self.save_dir = save_dir
         self.keep = keep
+        self.saved = False
         self.setText("drop a file here")
         self.setAcceptDrops(True)
         self.setWindowTitle("drop-target")
@@ -85,6 +86,7 @@ class DropTarget(QLabel):
                 report(f"  could not copy {source}: {error}")
                 continue
             report(f"  copied {source} -> {destination}")
+            self.saved = True
             event.acceptProposedAction()
             if not self.keep:
                 QTimer.singleShot(0, QApplication.instance().quit)
@@ -120,7 +122,8 @@ def main(argv: list[str] | None = None) -> int:
     target = DropTarget(args.save, args.keep)
     target.show()
     # A target that is never offered anything must not hang the test forever.
-    QTimer.singleShot(int(args.timeout * 1000), lambda: app.exit(1))
+    QTimer.singleShot(int(args.timeout * 1000),
+                      lambda: app.exit(0 if target.saved else 1))
     return app.exec()
 
 
