@@ -122,7 +122,10 @@ class X11:
         if title:
             title = title.decode("utf-8", "replace") if isinstance(title, bytes) else str(title)
         else:
-            title = window.get_wm_name() or ""
+            try:
+                title = window.get_wm_name() or ""
+            except xerror.XError:
+                return None
 
         wm_class = ""
         try:
@@ -152,7 +155,7 @@ class X11:
             # the *source* window as an argument, so asking the root for the
             # window's origin is the way round that yields absolute coords.
             coords = self.root.translate_coords(window, 0, 0)
-            x, y = coords.x + geom.border_width, coords.y + geom.border_width
+            x, y = coords.x, coords.y
         except xerror.XError:
             return None
 
