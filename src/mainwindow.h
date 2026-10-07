@@ -74,13 +74,17 @@ private:
     void refreshActionIcons();
     void showAbout();
     void showCode(const qr::Code &code);
+    /// Makes @p code the current one and shows the code page: the single
+    /// "present a finished code" transition. Callers end any inline edit first.
+    void presentCode(const qr::Code &code);
     void showPlaceholder();
     /// Puts the multi-line field in the caption slot under the QR view.
     void beginLiveInput();
     /// Rebuilds the symbol from the field's text (run on every keystroke), or
     /// shows the placeholder while the field is empty.
     void liveEncode();
-    /// Return closes the field, keeping the symbol it was already showing.
+    /// Return accepts the typed text and closes the field; empty text returns
+    /// to the placeholder, and text that does not encode keeps the field open.
     void commitLiveInput();
     /// Escape closes the field and restores the code from before editing.
     void cancelLiveInput();
@@ -88,9 +92,12 @@ private:
     void finishTypeInput();
     /// Matches the field's width to the symbol above it.
     void positionCaptionEditor();
-    /// Enables/disables Copy, Save and Clear (actions and their buttons) as one,
-    /// so the buttons never look live while their action is disabled.
-    void setCodeActionsEnabled(bool enabled);
+    /// Brings every action in line with the current state: Paste and the code
+    /// actions follow the code, the inline field and the help page; Type stays
+    /// on unless the help page is up; Escape belongs to the help page only
+    /// while it is. The buttons mirror Copy/Save/Clear. Call it after the state
+    /// changes and before any setFocus(): a disabled button refuses focus.
+    void updateActionStates();
     void updateTextLabel();
     void showStatus(const QString &message);
     void clearStatus();

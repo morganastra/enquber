@@ -343,6 +343,11 @@ private slots:
     void spanishTranslationIsApplied();
     void englishCatalogResolvesEveryId();
 
+    void dropWhileTypingReplacesTheEdit();
+    void helpWhileTypingCancelsTheEditAndComesBack();
+    void committingAnEmptyEditGoesBackToTheDropTarget();
+    void escapeWithNoPreviousCodeReturnsToTheDropTarget();
+
 private:
     QString m_savedThemeName;
     QString m_savedFallbackThemeName;
@@ -1900,6 +1905,94 @@ void TestEnquber::englishCatalogResolvesEveryId()
         QVERIFY2(!text.isEmpty(), qPrintable(id));
         QVERIFY2(text != id, qPrintable(id));
     }
+}
+
+/// Sending a drop straight to the window bypasses the drag target selection, so
+/// these cases pin the state transitions the drag-and-drop path takes while
+/// another mode is up.
+void TestEnquber::dropWhileTypingReplacesTheEdit()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://before.example"));
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    QTest::keyClicks(editor, QStringLiteral("https://typed.example"));
+    QCOMPARE(window.encodedText(), QStringLiteral("https://typed.example"));
+
+    QScopedPointer<QMimeData> mime(textMime(QStringLiteral("https://dropped.example")));
+    performDrop(&window, mime.data());
+
+    QVERIFY(!editor->isVisible());
+    QCOMPARE(window.encodedText(), QStringLiteral("https://dropped.example"));
+    QPushButton *copy = buttonContaining(&window, QStringLiteral("copy"));
+    QVERIFY(copy);
+    QVERIFY(copy->isEnabled());
+}
+
+void TestEnquber::helpWhileTypingCancelsTheEditAndComesBack()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://keep.example"));
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    QTest::keyClicks(editor, QStringLiteral("https://discard.example"));
+
+    auto *stack = window.findChild<QStackedWidget *>();
+    QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
+    QCOMPARE(stack->currentIndex(), 2);
+    QVERIFY(!editor->isVisible());
+    QCOMPARE(window.encodedText(), QStringLiteral("https://keep.example"));
+
+    QTest::keyClick(&window, Qt::Key_Escape);
+    QCOMPARE(stack->currentIndex(), 1);
+    QCOMPARE(window.encodedText(), QStringLiteral("https://keep.example"));
+    QPushButton *copy = buttonContaining(&window, QStringLiteral("copy"));
+    QVERIFY(copy);
+    QVERIFY(copy->isEnabled());
+}
+
+void TestEnquber::committingAnEmptyEditGoesBackToTheDropTarget()
+{
+    MainWindow window;
+    showAndActivate(&window);
+    window.setText(QStringLiteral("https://before.example"));
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    editor->clear();
+    QTest::keyClick(editor, Qt::Key_Return);
+
+    QVERIFY(!editor->isVisible());
+    QVERIFY(!window.hasCode());
+    QCOMPARE(window.findChild<QStackedWidget *>()->currentIndex(), 0);
+    QPushButton *copy = buttonContaining(&window, QStringLiteral("copy"));
+    QVERIFY(copy);
+    QVERIFY(!copy->isEnabled());
+}
+
+void TestEnquber::escapeWithNoPreviousCodeReturnsToTheDropTarget()
+{
+    MainWindow window;
+    showAndActivate(&window);
+
+    QTest::keyClick(&window, Qt::Key_L, Qt::ControlModifier);
+    auto *editor = window.findChild<TypeEditor *>(QStringLiteral("captionEditor"));
+    QVERIFY(editor);
+    QTest::keyClicks(editor, QStringLiteral("typed"));
+    QVERIFY(window.hasCode());
+
+    QTest::keyClick(editor, Qt::Key_Escape);
+    QVERIFY(!editor->isVisible());
+    QVERIFY(!window.hasCode());
+    QCOMPARE(window.findChild<QStackedWidget *>()->currentIndex(), 0);
+    QVERIFY(window.findChild<DropZone *>()->isVisible());
 }
 
 QTEST_MAIN(TestEnquber)
