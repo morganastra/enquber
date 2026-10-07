@@ -148,15 +148,16 @@ class SourceReport:
         return set(self.ids)
 
 
-def has_english_comment_above(lines: list[str], lineno: int) -> bool:
-    """Whether the comment block directly above 1-based ``lineno`` holds a //% line."""
+def english_comments_above(lines: list[str], lineno: int) -> list[str]:
+    """The ``//%`` lines in the comment block directly above 1-based ``lineno``."""
+    comments: list[str] = []
     for above in reversed(lines[: lineno - 1]):
         stripped = above.strip()
         if not stripped.startswith("//"):
-            return False
+            break
         if stripped.startswith("//%"):
-            return True
-    return False
+            comments.append(stripped)
+    return comments
 
 
 def scan_sources(src_dir: Path) -> SourceReport:
@@ -172,34 +173,36 @@ def scan_sources(src_dir: Path) -> SourceReport:
         rel = path.relative_to(src_dir)
 
         # Text-based translation calls anywhere in the code.
-        for lineno, line in enumerate(code_only.splitlines(), start=1):
+        for lineno, line in enumerate(code_only.split("\n"), start=1):
             if TRANSLATION_CALL.search(line) or TRANSLATION_MACROS.search(line):
                 report.errors.append(
                     f'{rel}:{lineno}: text-based translation call; use qtTrId("id") instead'
                 )
 
-        report.ids.extend(QT_TRID.findall(uncommented))
-
         # Every qtTrId needs its English //% comment directly above it.  This
         # catches a removed //% without re-running lupdate; the catalog-side
-        # empty-<source> check is the authoritative backstop.
-        raw_lines = raw.splitlines()
-        for lineno, line in enumerate(raw_lines, start=1):
-            if QT_TRID.search(line) and not has_english_comment_above(raw_lines, lineno):
+        # empty-<source> check is the authoritative backstop.  The ID itself is
+        # a string literal, so match over the comment-masked text and derive
+        # line numbers from match offsets.
+        raw_lines = raw.split("\n")
+        for match in QT_TRID.finditer(uncommented):
+            report.ids.append(match.group(1))
+            lineno = uncommented.count("\n", 0, match.start()) + 1
+            if not english_comments_above(raw_lines, lineno):
                 report.errors.append(
                     f"{rel}:{lineno}: qtTrId() has no //% English comment above it"
                 )
 
         # User-facing string literals handed straight to widgets.
-        for lineno, line in enumerate(uncommented.splitlines(), start=1):
-            for pattern in (SETTER, WIDGET_WITH_TEXT):
-                for match in pattern.finditer(line):
-                    text = match.group("text")
-                    if text not in ALLOWED_LITERALS:
-                        report.errors.append(
-                            f"{rel}:{lineno}: user-facing string literal {text!r} "
-                            f"passed to a widget; use a text ID"
-                        )
+        for pattern in (SETTER, WIDGET_WITH_TEXT):
+            for match in pattern.finditer(uncommented):
+                lineno = uncommented.count("\n", 0, match.start()) + 1
+                text = match.group("text")
+                if text not in ALLOWED_LITERALS:
+                    report.errors.append(
+                        f"{rel}:{lineno}: user-facing string literal {text!r} "
+                        f"passed to a widget; use a text ID"
+                    )
     return report
 
 
