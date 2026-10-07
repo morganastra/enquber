@@ -23,7 +23,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 DEFAULT_OUT_DIR = Path(__file__).parent.parent / "data" / "icon"
@@ -143,17 +142,12 @@ def main(argv: list[str] | None = None) -> int:
 
     # PNG: render the same grid as a 16x16 PGM, then scale up with point
     # sampling (nearest neighbor) so the modules stay perfectly crisp.
-    with tempfile.NamedTemporaryFile(suffix=".pgm", delete=False) as f:
-        f.write(pgm_source(modules, grid))
-        pgm_path = f.name
-    try:
-        subprocess.run(
-            ["magick", pgm_path, "-sample", f"{args.size}x{args.size}", "-strip",
-             str(png_path)],
-            check=True,
-        )
-    finally:
-        Path(pgm_path).unlink(missing_ok=True)
+    subprocess.run(
+        ["magick", "pgm:-", "-sample", f"{args.size}x{args.size}", "-strip",
+         str(png_path)],
+        input=pgm_source(modules, grid),
+        check=True,
+    )
 
     if not args.quiet:
         print(f"wrote {svg_path} and {png_path}", file=sys.stderr)
