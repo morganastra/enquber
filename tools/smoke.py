@@ -99,6 +99,22 @@ def install_signal_handlers() -> None:
         signal.signal(number, interrupt)
 
 
+def wait_for_display(display: str, timeout: float = 2.0) -> bool:
+    """Waits up to @p timeout for an X server to answer on @p display.
+
+    Xvfb reports readiness on -displayfd before it stops resetting new
+    connections, so a single probe right after the start can fail on a
+    server that answers moments later.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        if display_is_live(display):
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+
+
 class Xvfb:
     """A private Xvfb display, started on demand and stopped when done.
 
@@ -149,6 +165,7 @@ class Xvfb:
                  "-screen", "0", self.geometry, "-nolisten", "tcp"],
                 pass_fds=(write_fd,),
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                preexec_fn=die_with_parent,  # noqa: PLW1509 - PDEATHSIG needs it
             )
         finally:
             os.close(write_fd)
@@ -164,7 +181,9 @@ class Xvfb:
         if not reported or self.process.poll() is not None:
             raise Failure(f"Xvfb did not come up on :{number}")
         self.display = f":{reported}"
-        if not display_is_live(self.display):
+        # A dead process must not be given the time to attach to a sibling's
+        # server that happened to take over the display number.
+        if self.process.poll() is not None or not wait_for_display(self.display):
             raise Failure(f"Xvfb reported {self.display} but nothing answers there")
 
     def stop(self) -> None:
@@ -470,7 +489,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     install_signal_handlers()
-    if not display_is_live(display):
+    if not wait_for_display(display):
         print(f"FAILED: no X server on {display}", file=sys.stderr)
         xvfb.stop()
         return 1
