@@ -8,7 +8,8 @@ project conventions that no off-the-shelf tool does.  It fails when:
 
 * source code still uses a text-based translation call (``tr()``,
   ``QCoreApplication::translate()``, the ``QT_TR*_NOOP`` family, ...);
-* a ``qtTrId()`` call has no ``//%`` English comment directly above it;
+* a ``qtTrId()`` call does not have exactly one ``//%`` English comment
+  directly above it;
 * an ID is missing from a catalog, or a catalog carries an ID the source no
   longer uses;
 * a catalog message has an empty ``<source>`` (so the app would show the raw
@@ -21,7 +22,8 @@ translated catalogs by ``lrelease -fail-on-unfinished``; both run as separate
 tests when the installed Qt provides the tools (Qt 6.11 and 6.10
 respectively).  The ``//%``-comment and literal-string checks are heuristics.
 The repository root is derived from this script's location, so it runs from
-anywhere (for example as a ctest from the build directory).
+anywhere (for example as a ctest from the build directory).  The exit status
+is 1 when any check fails.
 """
 
 from __future__ import annotations
@@ -266,28 +268,10 @@ def check_sync(path: Path, source_ids: set[str], errors: list[str]) -> None:
     diff_ids(path.name, {m.mid for m in read_catalog(path)}, source_ids, errors)
 
 
-HELP_EPILOG = """\
-checks:
-  * no text-based translation call (tr(), translate(), QT_TR*_NOOP) left in
-    the sources
-  * every qtTrId() has a //% English comment directly above it
-  * source IDs and catalog IDs are in sync, in both directions
-  * no catalog message has an empty <source> (the //% comment is missing)
-  * no user-facing string literal is handed straight to a widget
-
-catalog fidelity and completeness are checked by Qt's lcheck and lrelease
-(see the check_i18n_lcheck_* and check_i18n_translated_* ctests).
-
-exit status is 1 when any check fails.
-"""
-
-
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(
-        description="Lint enquber's Qt ID-based translation setup (qtTrId IDs, "
-        "//% comments, .ts catalog sync).",
-        epilog=HELP_EPILOG,
+        description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--source", type=Path, default=repo_root / "src", help="directory holding the C++ sources")
