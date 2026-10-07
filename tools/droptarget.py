@@ -33,8 +33,13 @@ import os
 import shutil
 import sys
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QApplication, QLabel
+try:
+    from PyQt6.QtCore import Qt, QTimer
+    from PyQt6.QtWidgets import QApplication, QLabel
+except ImportError as error:
+    print(f"missing required module: {error.name} (pip install PyQt6)",
+          file=sys.stderr)
+    sys.exit(2)
 
 
 def report(message: str) -> None:
@@ -104,6 +109,10 @@ def main(argv: list[str] | None = None) -> int:
                              "to exit 1 if no file has been saved; not an idle "
                              "timeout and not reset per drop (default: 30)")
     args = parser.parse_args(argv)
+
+    if not os.environ.get("DISPLAY"):
+        print("no display: set DISPLAY", file=sys.stderr)
+        return 2
 
     os.makedirs(args.save, exist_ok=True)
 
