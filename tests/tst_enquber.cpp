@@ -333,11 +333,10 @@ private slots:
     void clearingReturnsToTheDropTarget();
     void clearingWithTheButtonWorks();
     void droppingStillWorksAfterClearing();
-    void clickingCopyButtonCopiesImage();
     void keyboardReachesTheButtons();
     void clickingSaveButtonWritesFile();
+    void saveWritesPngFile_data();
     void saveWritesPngFile();
-    void saveAppendsPngSuffix();
     void saveReportsAWriteFailure();
     void exportGeometry_data();
     void exportGeometry();
@@ -355,9 +354,9 @@ private slots:
     void buttonIconsFollowRuntimePaletteChanges();
     void darkModeIsFollowed();
 
+    void helpOpensWithTheKeyboardAndReturns_data();
     void helpOpensWithTheKeyboardAndReturns();
     void questionMarkOpensAndClosesHelp();
-    void helpReturnsToTheDropTarget();
     void helpButtonMorphsAndToggles();
     void aboutPageShowsLicenseAndLinks();
     void aboutTextSurvivesAShortWindow();
@@ -1010,6 +1009,17 @@ void TestEnquber::copyPutsImageOnClipboard()
     QVERIFY(image.width() > 500);
     QCOMPARE(image.width(), image.height());
     QVERIFY(image.pixelColor(0, 0) == QColor(Qt::white));
+
+    // The button takes the same path as the shortcut, so re-clear first and
+    // prove the click put the image back.
+    QGuiApplication::clipboard()->clear();
+    QPushButton *copy = buttonContaining(&window, QStringLiteral("copy"));
+    QVERIFY(copy);
+    QVERIFY(copy->isVisible());
+    QTest::mouseClick(copy, Qt::LeftButton);
+    QVERIFY(clipboardHasImage());
+    const QImage clicked = QGuiApplication::clipboard()->image();
+    QCOMPARE(clicked.width(), clicked.height());
 }
 
 void TestEnquber::draggingOffersImageAndFile()
@@ -1329,23 +1339,6 @@ void TestEnquber::droppingStillWorksAfterClearing()
     QCOMPARE(window.encodedText(), QStringLiteral("https://second.example"));
 }
 
-void TestEnquber::clickingCopyButtonCopiesImage()
-{
-    MainWindow window;
-    showAndActivate(&window);
-    window.setText(QStringLiteral("https://button.example"));
-    QGuiApplication::clipboard()->clear();
-
-    QPushButton *copy = buttonContaining(&window, QStringLiteral("copy"));
-    QVERIFY(copy);
-    QVERIFY(copy->isVisible());
-    QTest::mouseClick(copy, Qt::LeftButton);
-
-    QVERIFY(clipboardHasImage());
-    const QImage image = QGuiApplication::clipboard()->image();
-    QCOMPARE(image.width(), image.height());
-}
-
 void TestEnquber::keyboardReachesTheButtons()
 {
     MainWindow window;
@@ -1405,8 +1398,27 @@ void TestEnquber::clickingSaveButtonWritesFile()
     QVERIFY(!QImage(path).isNull());
 }
 
+void TestEnquber::saveWritesPngFile_data()
+{
+    QTest::addColumn<QString>("requested");
+    QTest::addColumn<QString>("written");
+    QTest::addColumn<bool>("success");
+
+    QTest::newRow("with a png suffix")
+        << QStringLiteral("code.png") << QStringLiteral("code.png") << true;
+    QTest::newRow("without a suffix")
+        << QStringLiteral("without-suffix") << QStringLiteral("without-suffix.png") << true;
+    // A path under a directory that does not exist makes the write fail.
+    QTest::newRow("write failure")
+        << QDir::tempPath() + QStringLiteral("/enquber-no-such-dir/code.png") << QString() << false;
+}
+
 void TestEnquber::saveWritesPngFile()
 {
+    QFETCH(QString, requested);
+    QFETCH(QString, written);
+    QFETCH(bool, success);
+
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
 
@@ -1414,29 +1426,23 @@ void TestEnquber::saveWritesPngFile()
     showAndActivate(&window);
     window.setText(QStringLiteral("https://save.example"));
 
-    const QString path = directory.filePath(QStringLiteral("code.png"));
-    QVERIFY(window.saveTo(path));
+    const QString path = QDir::isAbsolutePath(requested) ? requested : directory.filePath(requested);
+    QCOMPARE(window.saveTo(path), success);
 
-    QVERIFY(QFileInfo::exists(path));
-    const QImage image(path);
+    if (!success) {
+        auto *status = window.findChild<QLabel *>(QStringLiteral("statusLabel"));
+        QVERIFY(status);
+        QVERIFY(status->isVisible());
+        QVERIFY(!status->text().isEmpty());
+        return;
+    }
+
+    const QString file = QDir::isAbsolutePath(written) ? written : directory.filePath(written);
+    QVERIFY(QFileInfo::exists(file));
+    const QImage image(file);
     QVERIFY(!image.isNull());
     QCOMPARE(image.width(), image.height());
     QVERIFY(image.width() > 500);
-}
-
-void TestEnquber::saveAppendsPngSuffix()
-{
-    QTemporaryDir directory;
-    QVERIFY(directory.isValid());
-
-    MainWindow window;
-    showAndActivate(&window);
-    window.setText(QStringLiteral("https://save.example"));
-
-    const QString path = directory.filePath(QStringLiteral("without-suffix"));
-    QVERIFY(window.saveTo(path));
-
-    QVERIFY(QFileInfo::exists(path + QStringLiteral(".png")));
 }
 
 void TestEnquber::saveReportsAWriteFailure()
@@ -1792,23 +1798,39 @@ void TestEnquber::darkModeIsFollowed()
     QCOMPARE(drawnTextColor(dropHint), lightPlaceholder);
 }
 
+void TestEnquber::helpOpensWithTheKeyboardAndReturns_data()
+{
+    QTest::addColumn<bool>("hasCode");
+    QTest::newRow("with a code") << true;
+    QTest::newRow("from the drop target") << false;
+}
+
 void TestEnquber::helpOpensWithTheKeyboardAndReturns()
 {
+    QFETCH(bool, hasCode);
+
     MainWindow window;
     showAndActivate(&window);
-    window.setText(QStringLiteral("https://help.example"));
+    if (hasCode) {
+        window.setText(QStringLiteral("https://help.example"));
+    }
 
     auto *stack = window.findChild<QStackedWidget *>();
-    QCOMPARE(stack->currentIndex(), 1);
+    QCOMPARE(stack->currentIndex(), hasCode ? 1 : 0);
+    QCOMPARE(window.hasCode(), hasCode);
 
     QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
     QCOMPARE(stack->currentIndex(), 2);
     // The code stays put; Escape must leave the page, not clear the code.
-    QVERIFY(window.hasCode());
+    QCOMPARE(window.hasCode(), hasCode);
 
     QTest::keyClick(&window, Qt::Key_Escape);
-    QCOMPARE(stack->currentIndex(), 1);
-    QCOMPARE(window.encodedText(), QStringLiteral("https://help.example"));
+    QCOMPARE(stack->currentIndex(), hasCode ? 1 : 0);
+    if (hasCode) {
+        QCOMPARE(window.encodedText(), QStringLiteral("https://help.example"));
+    } else {
+        QVERIFY(window.findChild<DropZone *>()->isVisible());
+    }
 }
 
 void TestEnquber::questionMarkOpensAndClosesHelp()
@@ -1824,21 +1846,6 @@ void TestEnquber::questionMarkOpensAndClosesHelp()
     // The shortcut toggles, so the same key takes you back.
     QTest::keyClick(&window, Qt::Key_Question);
     QCOMPARE(stack->currentIndex(), 0);
-}
-
-void TestEnquber::helpReturnsToTheDropTarget()
-{
-    MainWindow window;
-    showAndActivate(&window);
-    auto *stack = window.findChild<QStackedWidget *>();
-    QVERIFY(!window.hasCode());
-
-    QTest::keyClick(&window, Qt::Key_H, Qt::ControlModifier);
-    QCOMPARE(stack->currentIndex(), 2);
-
-    QTest::keyClick(&window, Qt::Key_Escape);
-    QCOMPARE(stack->currentIndex(), 0);
-    QVERIFY(window.findChild<DropZone *>()->isVisible());
 }
 
 void TestEnquber::helpButtonMorphsAndToggles()
