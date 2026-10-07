@@ -37,6 +37,7 @@ import argparse
 import contextlib
 import json
 import os
+import re
 import shlex
 import signal
 import statistics
@@ -183,6 +184,11 @@ def analyze(frames: list[Frame], appear_threshold: float, change_threshold: floa
                settled=tail >= stable_window, curve=curve)
 
 
+def clip_stem(label: str) -> str:
+    """A filesystem-safe name for a --video clip made from @p label."""
+    return re.sub(r"[^\w.-]+", "_", label).strip("_") or "run"
+
+
 def write_video(path: Path, frames: list[Frame], fps: float) -> None:
     if not frames or frames[0].bgr is None:
         return
@@ -253,8 +259,9 @@ def main(argv: list[str] | None = None) -> int:
                              "not a count of equal frames (default: 0.3)")
     parser.add_argument("--video", default=None,
                         help="directory for one .mp4 per measured run, named "
-                             "<label>-<round>.mp4 (half resolution); needs ffmpeg, "
-                             "and a failed write is only a warning")
+                             "<label>-<round>.mp4 (half resolution); the label is "
+                             "reduced to letters, digits, dot, dash and underscore; "
+                             "needs ffmpeg, and a failed write is only a warning")
     parser.add_argument("--json", action="store_true",
                         help="print the raw runs as JSON instead of a table; pipe "
                              "it into tools/startup-stats.py for a summary and "
@@ -350,7 +357,7 @@ def main(argv: list[str] | None = None) -> int:
                     continue
                 result.command = label
                 if video_dir:
-                    result.clip = video_dir / f"{label}-{round_index + 1}.mp4"
+                    result.clip = video_dir / f"{clip_stem(label)}-{round_index + 1}.mp4"
                     try:
                         write_video(result.clip, frames, args.fps)
                     except (subprocess.CalledProcessError, FileNotFoundError) as error:
