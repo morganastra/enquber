@@ -246,17 +246,16 @@ class X11:
         self.d.flush()
 
     def activate(self, window_id: int):
+        self.window(window_id)
         window = self.d.create_resource_object("window", window_id)
         # source indication 2 means "pager", which window managers always honor.
         self._client_message(window, "_NET_ACTIVE_WINDOW", [2, X.CurrentTime, 0])
-        try:
-            window.configure(stack_mode=X.Above)
-            window.set_input_focus(X.RevertToParent, X.CurrentTime)
-        except xerror.XError:
-            pass
+        window.configure(stack_mode=X.Above)
+        window.set_input_focus(X.RevertToParent, X.CurrentTime)
         self.d.sync()
 
     def move_resize(self, window_id: int, x: int, y: int, width: int, height: int):
+        self.window(window_id)
         window = self.d.create_resource_object("window", window_id)
         if self._has_window_manager():
             # StaticGravity with all four geometry hints set.
@@ -445,6 +444,46 @@ def _window_id(value: str) -> int:
     return int(value, 0)
 
 
+def _dispatch(x: X11, args: argparse.Namespace) -> int:
+    if args.command == "list":
+        for window in x.windows():
+            print(window)
+    elif args.command == "find":
+        window = x.find(args.pattern, args.pid)
+        if not window:
+            print("no match", file=sys.stderr)
+            return 1
+        print(hex(window.id))
+    elif args.command == "geom":
+        print(x.window(args.window))
+    elif args.command == "activate":
+        x.activate(args.window)
+    elif args.command == "shot":
+        window = x.window(args.window) if args.window is not None else None
+        x.screenshot(args.path, window=window)
+    elif args.command == "click":
+        x.click(args.x, args.y, args.button)
+    elif args.command == "click-at":
+        x.click_in(x.window(args.window), args.x, args.y)
+    elif args.command == "move":
+        x.move(args.x, args.y)
+    elif args.command == "key":
+        if "+" in args.combo:
+            x.shortcut(args.combo)
+        else:
+            x.key(args.combo)
+    elif args.command == "type":
+        x.type_text(args.text)
+    elif args.command == "clip-get":
+        print(x.clipboard_text(), end="")
+    elif args.command == "clip-set":
+        x.set_clipboard_text(args.text)
+    elif args.command == "clip-image" and not x.clipboard_image(args.path):
+        print("no image on the clipboard", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -549,45 +588,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"missing required module: {_XLIB_ERROR.name} "
               "(pip install python-xlib)", file=sys.stderr)
         return 2
-    x = X11(args.display)
+    try:
+        x = X11(args.display)
+    except xerror.DisplayConnectionError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
 
-    if args.command == "list":
-        for window in x.windows():
-            print(window)
-    elif args.command == "find":
-        window = x.find(args.pattern, args.pid)
-        if not window:
-            print("no match", file=sys.stderr)
-            return 1
-        print(hex(window.id))
-    elif args.command == "geom":
-        print(x.window(args.window))
-    elif args.command == "activate":
-        x.activate(args.window)
-    elif args.command == "shot":
-        window = x.window(args.window) if args.window is not None else None
-        x.screenshot(args.path, window=window)
-    elif args.command == "click":
-        x.click(args.x, args.y, args.button)
-    elif args.command == "click-at":
-        x.click_in(x.window(args.window), args.x, args.y)
-    elif args.command == "move":
-        x.move(args.x, args.y)
-    elif args.command == "key":
-        if "+" in args.combo:
-            x.shortcut(args.combo)
-        else:
-            x.key(args.combo)
-    elif args.command == "type":
-        x.type_text(args.text)
-    elif args.command == "clip-get":
-        print(x.clipboard_text(), end="")
-    elif args.command == "clip-set":
-        x.set_clipboard_text(args.text)
-    elif args.command == "clip-image" and not x.clipboard_image(args.path):
-        print("no image on the clipboard", file=sys.stderr)
+    try:
+        return _dispatch(x, args)
+    except (RuntimeError, ValueError, re.error) as error:
+        print(f"error: {error}", file=sys.stderr)
         return 1
-    return 0
+    except FileNotFoundError as error:
+        print(f"missing required tool: {error.filename}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
