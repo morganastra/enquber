@@ -175,18 +175,24 @@ def scan_sources(src_dir: Path) -> SourceReport:
                     f'{rel}:{lineno}: text-based translation call; use qtTrId("id") instead'
                 )
 
-        # Every qtTrId needs its English //% comment directly above it.  This
-        # catches a removed //% without re-running lupdate; the catalog-side
-        # empty-<source> check is the authoritative backstop.  The ID itself is
-        # a string literal, so match over the comment-masked text and derive
-        # line numbers from match offsets.
+        # Every qtTrId needs exactly one English //% comment directly above it.
+        # This catches a removed or duplicated //% without re-running lupdate;
+        # the catalog-side empty-<source> check is the authoritative backstop.
+        # The ID itself is a string literal, so match over the comment-masked
+        # text and derive line numbers from match offsets.
         raw_lines = raw.split("\n")
         for match in QT_TRID.finditer(uncommented):
             report.ids.add(match.group(1))
             lineno = uncommented.count("\n", 0, match.start()) + 1
-            if not english_comments_above(raw_lines, lineno):
+            comments = english_comments_above(raw_lines, lineno)
+            if not comments:
                 report.errors.append(
                     f"{rel}:{lineno}: qtTrId() has no //% English comment above it"
+                )
+            elif len(comments) > 1:
+                report.errors.append(
+                    f"{rel}:{lineno}: qtTrId() has {len(comments)} //% English "
+                    f"comments above it; keep exactly one"
                 )
 
         # User-facing string literals handed straight to widgets.
@@ -255,7 +261,7 @@ def check_english_catalog(path: Path, source_ids: set[str], errors: list[str]) -
         if not message.source:
             errors.append(
                 f"{path.name}: message {message.mid!r} has no <source>; "
-                f"add a //% English comment above qtTrId()"
+                f"add or fix the //% English comment above qtTrId()"
             )
     return messages
 
