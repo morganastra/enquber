@@ -100,7 +100,9 @@ def display_is_live(display_name: str) -> bool:
 
 class X11:
     def __init__(self, display_name: str | None = None):
-        self.display_name = display_name or os.environ.get("DISPLAY", ":0")
+        if display_name is None:
+            display_name = os.environ.get("DISPLAY") or ":0"
+        self.display_name = display_name
         self.d = display.Display(self.display_name)
         self.root = self.d.screen().root
 
@@ -432,8 +434,11 @@ class X11:
         result = self._xclip(["-selection", "clipboard", "-o", "-t", "image/png"])
         if result.returncode != 0 or not result.stdout.startswith(b"\x89PNG\r\n\x1a\n"):
             return False
-        with open(path, "wb") as handle:
-            handle.write(result.stdout)
+        try:
+            with open(path, "wb") as handle:
+                handle.write(result.stdout)
+        except OSError as error:
+            raise ValueError(f"cannot write {path}: {error.strerror or error}") from error
         return True
 
     def set_clipboard_text(self, text: str):
@@ -563,11 +568,13 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("key", help="press a key or shortcut, e.g. ctrl+v",
                        description="Tap one key. A plain COMBO is a keysym name "
-                                   "(Return, Escape, F5) or a one-character key. "
-                                   "A COMBO with '+' is a chord: the last part is "
-                                   "the key, the earlier parts are held as "
-                                   "modifiers (ctrl/control, shift, alt, meta, "
-                                   "super). Shift is added automatically.")
+                                   "(Return, Escape, F5) or a one-character key, "
+                                   "including '+' itself. A COMBO with two or "
+                                   "more non-empty '+'-separated parts is a chord: "
+                                   "the last part is the key, the earlier parts "
+                                   "are held as modifiers (ctrl/control, shift, "
+                                   "alt, meta, super). Shift is added "
+                                   "automatically.")
     p.add_argument("combo", help="e.g. Return, space, F5, ctrl+v, ctrl+shift+s")
 
     p = sub.add_parser("type", help="type text",
@@ -598,7 +605,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         x = X11(args.display)
-    except xerror.DisplayConnectionError as error:
+    except (xerror.DisplayConnectionError, xerror.DisplayNameError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
 
