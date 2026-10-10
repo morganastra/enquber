@@ -22,7 +22,7 @@ Use `just`. Recipes wrap CMake presets, and `just test`/`just smoke-test`
 rebuild first. Some common commands:
 
 - `just build`, `just run`
-- `just test` — build + unit tests + the fast lints (i18n, ruff, typos)
+- `just test` — build + unit tests + the fast lints (i18n, ruff, typos) + the packaging tests
 - `just lint` — every linter: clazy + clang-tidy + Qt's review linter (C++),
   ruff (Python), typos, plus `lint-i18n`
 - `just smoke-test [args]` — build smoke helpers + drive the real GUI
@@ -76,6 +76,10 @@ except the vendored `qt_review_lint.py`. Most commonly used scripts:
 - `xdnd.py` — a raw-protocol XDND drag source for manual debugging.
 - `startup-settle.py`, `startup-stats.py` — startup measurement and summary (`just startup-settle`, `just startup-bench`).
 - `generate-icon.py` — regenerates `data/icon/enquber.{svg,png,ico}` and the `enquber-{welcome,header}.bmp` installer bitmaps.
+
+The Windows packaging helpers live in `packaging/windows/` (`mingw-sdk.py`,
+`wine-run.py`, `package-windows.py`), each with its `test_*.py` beside it,
+which are run with `just test`.
 
 ## Additional documentation
 

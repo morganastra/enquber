@@ -16,3 +16,5 @@ locale = "en-us"
 [default.extend-words]
 # "PNGs" is tokenised as PN + Gs; PN is not a typo for ON.
 PN = "PN"
+# secur32.dll is the Windows SSPI library; typos splits it and checks "secur".
+secur = "secur"

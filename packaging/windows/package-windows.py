@@ -40,6 +40,7 @@ import subprocess
 import sys
 import zipfile
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_BUILD_DIR = REPO_ROOT / "build/windows"
@@ -75,6 +76,29 @@ def version_quad(version: str) -> str:
     """The four-part numeric version NSIS wants for VIProductVersion."""
     parts = [part for part in re.split(r"[^0-9]+", version) if part]
     return ".".join([*parts, "0", "0", "0", "0"][:4])
+
+
+def xml_attr(value: str) -> str:
+    """Escape a string for use inside a double-quoted XML attribute."""
+    return escape(value, {'"': "&quot;"})
+
+
+def render_manifest(template: str, identity: str, publisher: str, version: str) -> str:
+    """Fill the @PLACEHOLDERS@ of an MSIX manifest template.
+
+    The identity and publisher come from the command line and land in XML
+    attributes, so they are escaped; the version is numeric and the publisher
+    display name is a constant.
+    """
+    values = {
+        "@MSIX_IDENTITY@": xml_attr(identity),
+        "@MSIX_PUBLISHER@": xml_attr(publisher),
+        "@MSIX_PUBLISHER_NAME@": "Enquber",
+        "@APP_VERSION_QUAD@": version_quad(version),
+    }
+    for token, value in values.items():
+        template = template.replace(token, value)
+    return template
 
 
 def write_zip(deploy: Path, output: Path, root: str) -> None:
@@ -121,14 +145,8 @@ def write_msix(deploy: Path, output: Path, version: str, identity: str,
     for name in MSIX_ASSET_NAMES:
         shutil.copy2(MSIX_ASSET_DIR / name, assets / name)
 
-    manifest = MSIX_MANIFEST.read_text(encoding="utf-8")
-    for token, value in (
-        ("@MSIX_IDENTITY@", identity),
-        ("@MSIX_PUBLISHER@", publisher),
-        ("@MSIX_PUBLISHER_NAME@", "Enquber"),
-        ("@APP_VERSION_QUAD@", version_quad(version)),
-    ):
-        manifest = manifest.replace(token, value)
+    manifest = render_manifest(MSIX_MANIFEST.read_text(encoding="utf-8"),
+                               identity, publisher, version)
     (stage / "AppxManifest.xml").write_text(manifest, encoding="utf-8")
 
     output.parent.mkdir(parents=True, exist_ok=True)

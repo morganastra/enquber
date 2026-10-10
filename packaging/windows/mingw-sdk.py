@@ -70,7 +70,7 @@ def load_db(cache_dir, refresh):
     """Return (packages, provides) from the cached or freshly fetched database."""
     db_dir = cache_dir / "db"
     if refresh or not (db_dir.exists() and any(db_dir.iterdir())):
-        archive = download(f"{MIRROR}/mingw64.db", cache_dir / "mingw64.db")
+        archive = download(f"{MIRROR}/mingw64.db", cache_dir / "mingw64.db", force=refresh)
         if db_dir.exists():
             shutil.rmtree(db_dir)
         db_dir.mkdir(parents=True)
@@ -106,9 +106,10 @@ def resolve(packages, provides, roots, pruned):
         if name in seen:
             continue
         if name not in packages:
-            name = provides.get(name)
-            if name is None:
+            resolved = provides.get(name)
+            if resolved is None:
                 sys.exit(f"error: cannot resolve dependency {name!r}")
+            name = resolved
         seen.add(name)
         for dep in packages[name]["depends"]:
             match = re.match(r"^([^\s<>=]+)", dep)
@@ -117,10 +118,26 @@ def resolve(packages, provides, roots, pruned):
     return sorted(seen)
 
 
-def download(url, dest, retries=3):
-    """Download url to dest unless it is already cached; return dest."""
-    if dest.exists() and dest.stat().st_size > 0:
-        return dest
+def sha256_of(path):
+    """Return the hex SHA-256 of a file, read in chunks."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def download(url, dest, *, expected_sha256=None, force=False, retries=3):
+    """Download url to dest and return dest.
+
+    A cached file is reused when it is non-empty, unless force is set or its
+    checksum does not match expected_sha256; a cached file that fails the
+    checksum is removed and fetched again.
+    """
+    if not force and dest.exists() and dest.stat().st_size > 0:
+        if expected_sha256 is None or sha256_of(dest) == expected_sha256:
+            return dest
+        dest.unlink()
     dest.parent.mkdir(parents=True, exist_ok=True)
     partial = dest.with_suffix(dest.suffix + ".part")
     for attempt in range(1, retries + 1):
@@ -136,6 +153,20 @@ def download(url, dest, retries=3):
         else:
             return dest
     raise OSError(f"could not download {url}")
+
+
+def fetch_package(package, cache_dir):
+    """Download one package into the cache and verify its checksum.
+
+    A cached copy is reused only when it matches; a mismatch is removed so the
+    next run can fetch a good copy instead of failing on the same file.
+    """
+    dest = cache_dir / "packages" / package["filename"]
+    path = download(f"{MIRROR}/{package['filename']}", dest, expected_sha256=package["sha256"])
+    if sha256_of(path) != package["sha256"]:
+        path.unlink(missing_ok=True)
+        raise ValueError(f"checksum mismatch for {package['filename']}")
+    return path
 
 
 def main():
@@ -166,15 +197,13 @@ def main():
           f"({sum(packages[name]['size'] for name in closure) / 1e6:.0f} MB) ...", flush=True)
 
     def fetch(name):
-        package = packages[name]
-        path = download(f"{MIRROR}/{package['filename']}", args.cache / "packages" / package["filename"])
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        if digest != package["sha256"]:
-            sys.exit(f"error: checksum mismatch for {package['filename']}")
-        return name, path
+        return name, fetch_package(packages[name], args.cache)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-        files = dict(pool.map(fetch, closure))
+        try:
+            files = dict(pool.map(fetch, closure))
+        except ValueError as exc:
+            sys.exit(f"error: {exc} (the cached file was removed; re-run to retry)")
 
     print(f"Extracting to {args.prefix} ...", flush=True)
     args.prefix.mkdir(parents=True, exist_ok=True)

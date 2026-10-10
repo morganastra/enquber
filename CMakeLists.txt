@@ -155,6 +155,16 @@ if(ENQUBER_BUILD_TESTS)
     else()
         message(STATUS "typos not found: the lint_spelling test will not run")
     endif()
+
+    # The packaging helpers under packaging/windows are plain stdlib unittest;
+    # they need only Python and cover the MSYS2 download, the deploy walk and
+    # the MSIX manifest rendering.
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME test_packaging
+            COMMAND ${Python3_EXECUTABLE} -m unittest discover
+                    -s packaging/windows -p test_*.py
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
 endif()
 
 option(ENQUBER_BUILD_TEST_TOOLS "Build the helpers used by the GUI smoke test" OFF)

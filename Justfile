@@ -1,7 +1,7 @@
 # Developer tasks for enquber.
 #
-# The recipes are thin wrappers around cmake and ctest; see CMakePresets.json
-# for the configure/build/test presets they use.
+# The recipes are mostly thin wrappers around cmake and ctest; see
+# CMakePresets.json for the configure/build/test presets they use.
 
 # List the available recipes.
 default:
@@ -16,18 +16,17 @@ build:
     cmake --preset default
     cmake --build --preset default
 
-[doc('Build, then run the unit tests and the fast lints (i18n, ruff, typos).')]
+[doc('Build, then run the unit tests, the fast lints (i18n, ruff, typos) and the packaging tests.')]
 test: build
-    ctest --preset default
+    ctest --preset default -j4
 
 [doc('Regenerate the translation catalogs (i18n/enquber_*.ts) from the source.')]
 i18n-update: configure
     cmake --build --preset default --target update_translations
 
-# Also run as part of `just test`.
+# For selector convenience - also run as part of `just test`.
 [doc('Lint the translations: text IDs, catalog sync and catalog fidelity (Qt 6.11+).')]
-lint-i18n:
-    cmake --preset default
+lint-i18n: build
     ctest --preset default -R '^check_i18n'
 
 # `just test` tolerates unfinished translations so code can land.
