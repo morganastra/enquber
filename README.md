@@ -1,8 +1,8 @@
 # enquber
 
-Enquber is a simple cross-platform QR code maker application with a nice UX and near-instant startup
+Enquber is a simple cross-platform QR code maker application with a nice UX and near-instant startup.
 
-Drop, paste, or type text into the window to generate a QR code; then save, copy, or drag the resulting PNG into another application
+Drop, paste, or type text into the window to generate a QR code; then save, copy, or drag the resulting PNG into another application.
 
 ![Enquber UI: the drop target and QR code view](doc/image/enquber-ui.png)
 
@@ -12,7 +12,7 @@ To build you need a functional qt6 development environment and `libqrencode`.
 
 The `just` job runner is also highly recommended.
 
-On archlinux-like systems, that would be the following packages:
+On Arch Linux, that would be the following packages:
 
     base-devel cmake ninja qt6-base qt6-tools qrencode just python
 
@@ -35,21 +35,29 @@ To build/run:
 
 On macos, you need to set in your env `CMAKE_PREFIX_PATH="$(brew --prefix qtbase)"`
 
+### Cross-compiling for Windows
+
+It is possible to cross-compile Enquber for 64-bit Windows from a
+Linux host with MinGW-w64. For details and instructions see
+[doc/packaging-windows.md](doc/packaging-windows.md)
+
 ## Development
 
-Everything except `main()` lives in a static library (`enquber_core`) 
+To start with, a basic theory of the program:
 
-Basic flow when a link is dropped or pasted:
+Everything except `main()` lives in a static library (`enquber_core`).
 
-1. `MainWindow::setText()` asks `qr::Code::encode()` for a symbol, which calls
-   `QRcode_encodeString()` and hands back a shared, reference counted handle.
-2. `QrView` picks the largest whole number of pixels per module that fits and
-   rasterises the matrix once per size; `QrView::paintEvent()` just blits it.
-3. The exports re-render at ~1024 px with `MainWindow::renderForExport()`.
+The UI layout and behavior is defined in `MainWindow::MainWindow`.
 
-For manual text entry, ctrl+L swaps the caption under the code for a
-`TypeEditor`, and every change to its text runs `MainWindow::liveEncode()`,
-which feeds the same `qr::Code::encode()` and `QrView` as above.
+QR code generation starts with `MainWindow::setText()` for dropped or
+pasted links, and at `MainWindow::liveEncode()` for manually typed
+text.
+
+See `qr::Code::encode()` for the code generation logic itself and
+`QrView` for how the codes are displayed.
+
+Codes are re-rendered for copying, saving, or dragging out with
+`MainWindow::renderForExport()`
 
 ### Debug Logging
 
@@ -67,12 +75,12 @@ to see Qt's xdnd messages directly.
     just lint-py
     just lint-spell
 
-On archlinux-like systems the extra tools are:
+On Arch the extra tools are:
 
     clang clazy ruff typos
 
-On macOS, `brew install llvm clazy ruff typos-cli` provides the same tools
-(clang-tidy and run-clang-tidy come with `llvm`).
+On macOS, `brew install llvm clazy ruff typos-cli` provides the same
+tools (clang-tidy and run-clang-tidy come with `llvm`).
 
 ### Testing
 
@@ -80,26 +88,32 @@ To run unit tests:
 
     just test
 
-We also have a very luxurious smoke test setup which drives automated UI interactions against the real app.
+We also have a very luxurious smoke test setup which drives automated
+UI interactions against the real app.
 
     just smoke-test
 
-Extra arguments are passed through to the smoke test driver; see `just smoke-test --help` for details
+Extra arguments are passed through to the smoke test driver; see
+`just smoke-test --help` for details.
 
-Smoke test screenshots are written to a date-time stamped directory under `$TMPDIR/enquber-smoke`
+Smoke test screenshots are written to a date-time stamped directory
+under `$TMPDIR/enquber-smoke`.
 
 ### Translations
 
-Enquber uses Qt's ID-based translations. See [translations.md](doc/translations.md) for more information.
+Enquber uses Qt's ID-based translations. See
+[translations.md](doc/translations.md).
 
 ## Acknowledgements
 
-This would not be possible without Kentaro Fukuchi's wonderful [libqrencode](https://github.com/fukuchi/libqrencode)
+This would not be possible without Kentaro Fukuchi's wonderful
+[libqrencode](https://github.com/fukuchi/libqrencode)
 
 Thanks to loferris and Khalid for multiplatform testing!
 
 Fallback icons are from [Feather Icons](https://feathericons.com) 
-Copyright (c) 2013-2023 Cole Bemis and used under the [MIT license](data/icon/actions/LICENSE)
+Copyright (c) 2013-2023 Cole Bemis and used under the
+[MIT license](data/icon/actions/LICENSE)
 
 ## License
 

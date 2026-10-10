@@ -49,7 +49,7 @@ lint-cpp:
 
 # Lint the Python helpers with ruff.
 lint-py:
-    ruff check tools tests
+    ruff check tools tests packaging
 
 # Flag British spellings; the project uses American English.
 lint-spell:
@@ -65,6 +65,46 @@ smoke-test *args:
 # Build, then launch the application.
 run: build
     ./build/enquber
+
+# Fetch the MinGW Qt 6/libqrencode SDK used by the Windows cross build.
+[doc('Fetch the MinGW-w64 Qt 6/libqrencode SDK from the MSYS2 repository.')]
+[group('windows')]
+mingw-sdk:
+    packaging/windows/mingw-sdk.py
+
+# Cross-compile the Windows build; needs the MinGW SDK (see doc/packaging-windows.md).
+[doc('Cross-compile the application for 64-bit Windows with MinGW-w64.')]
+[group('windows')]
+build-windows:
+    cmake --preset windows
+    cmake --build --preset windows
+
+# Deploy the Windows build and run it under Wine.
+[doc('Deploy the Windows build and run it under Wine.')]
+[group('windows')]
+run-wine: build-windows
+    packaging/windows/wine-run.py
+
+# Zip the deployed Windows build for distribution.
+[doc('Zip the deployed Windows build for distribution.')]
+[group('windows')]
+package-windows: build-windows
+    packaging/windows/wine-run.py --deploy-only
+    packaging/windows/package-windows.py
+
+# Build the NSIS installer for the Windows build.
+[doc('Build the NSIS installer (needs makensis; see doc/packaging-windows.md).')]
+[group('windows')]
+installer-windows: build-windows
+    packaging/windows/wine-run.py --deploy-only
+    packaging/windows/package-windows.py --installer
+
+# Build the MSIX package for the Microsoft Store.
+[doc('Build the MSIX package (needs makemsix; see doc/packaging-windows.md).')]
+[group('windows')]
+msix-windows: build-windows
+    packaging/windows/wine-run.py --deploy-only
+    packaging/windows/package-windows.py --msix
 
 # Remove the build directories.
 clean:

@@ -44,6 +44,17 @@
         "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
+    },
+    {
+      "name": "windows",
+      "displayName": "Windows (MinGW-w64 cross)",
+      "description": "Cross-compile the application for 64-bit Windows",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/windows",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-mingw-w64.cmake",
+      "cacheVariables": {
+        "ENQUBER_BUILD_TESTS": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -54,6 +65,10 @@
     {
       "name": "smoke",
       "configurePreset": "smoke"
+    },
+    {
+      "name": "windows",
+      "configurePreset": "windows"
     }
   ],
   "testPresets": [

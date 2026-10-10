@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX manifest for the packaged desktop application.
+
+  packaging/windows/package-windows.py fills in the @PLACEHOLDERS@ and packs
+  this with the deployed build plus the generated Assets\*.png logos; see
+  doc/packaging-windows.md.  The Identity name and publisher have to match the
+  values Microsoft gave the app after reserving its name in Partner Center;
+  the msix-identity and msix-publisher options override the defaults.
+-->
+<Package
+    xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+    xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+    xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+    IgnorableNamespaces="uap rescap">
+
+  <Identity
+      Name="@MSIX_IDENTITY@"
+      Publisher="@MSIX_PUBLISHER@"
+      Version="@APP_VERSION_QUAD@"
+      ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Enquber</DisplayName>
+    <PublisherDisplayName>@MSIX_PUBLISHER_NAME@</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop"
+                        MinVersion="10.0.17763.0"
+                        MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="Enquber"
+                 Executable="enquber.exe"
+                 EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+          DisplayName="Enquber"
+          Description="Create QR codes from text"
+          BackgroundColor="transparent"
+          Square150x150Logo="Assets\Square150x150Logo.png"
+          Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile
+            ShortName="Enquber"
+            Square310x310Logo="Assets\Square310x310Logo.png"
+            Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <!-- A packaged desktop application needs the restricted full-trust
+       capability; the Store asks for a justification for it. -->
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

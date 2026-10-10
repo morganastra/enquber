@@ -1,24 +1,16 @@
 # AGENTS.md
 
-Enquber: a small cross-platform Qt 6 desktop QR code maker (C++20), built with
-CMake + Ninja and wrapping `libqrencode`.
+Enquber is a simple cross-platform QR code maker application, built
+with Qt 6, C++20, libqrencode, and CMake + Ninja.
 
 ## Layout
 
 - `src/` is almost entirely the `enquber_core` static library. Only
-  `src/main.cpp` is a separate executable target, so `tests/` links the exact
+  `src/main.cpp` is a separate executable target. `tests/` links the exact
   code the app runs. If you add a `.cpp`/`.h` to `src/`, add it to
   `CMakeLists.txt` by hand (no globbing).
-- Flow: `MainWindow::setText()` -> `qr::Code::encode()` (libqrencode) ->
-  `QrView` rasterises the matrix; exports re-render at ~1024 px via
-  `renderForExport()`.
-- Typing is the other way in: a `TypeEditor` replaces the caption label and
-  `MainWindow::liveEncode()` re-runs `encode()` on every keystroke, so `m_code`
-  is provisional until Return (`commitLiveInput()`) keeps it or Escape
-  (`cancelLiveInput()`) restores `m_codeBeforeType`. Paste, Copy, Save and Clear
-  are disabled meanwhile so the editor gets their keys; a new window-level
-  shortcut needs the same treatment in `beginLiveInput()`. Ctrl+L and a click on
-  the drop zone both run `typeText()`.
+- `MainWindow::setText()` and `MainWindow::beginLiveInput()` are the two
+  paths into QR code generation. 
 - `src/i18n.{h,cpp}` installs the embedded Qt translation catalogs. All UI text
   goes through `qtTrId("some.id")`; the English wording is a `//%` comment above
   the call (never a string literal passed to a widget). Catalogs live in
@@ -26,24 +18,18 @@ CMake + Ninja and wrapping `libqrencode`.
 
 ## Commands
 
-Use `just` (recipes wrap CMake presets, and `just test`/`just smoke-test`
-rebuild first):
+Use `just`. Recipes wrap CMake presets, and `just test`/`just smoke-test`
+rebuild first. Some common commands:
 
 - `just build`, `just run`
 - `just test` — build + unit tests + the fast lints (i18n, ruff, typos)
-- `just i18n-update` — regenerate `i18n/enquber_*.ts` from the source
-- `just lint-i18n` — lint text IDs, catalog sync and (Qt 6.11+) catalog fidelity
-- `just check-translations` — release gate: every translated catalog complete
 - `just lint` — every linter: clazy + clang-tidy + Qt's review linter (C++),
-  ruff (Python), typos (American English), plus `lint-i18n`
-- `just lint-cpp`, `just lint-i18n`, `just lint-py`, `just lint-spell` — one
-  part at a time
+  ruff (Python), typos, plus `lint-i18n`
 - `just smoke-test [args]` — build smoke helpers + drive the real GUI
-- `just startup-settle [args]` — record the Xvfb framebuffer and measure when
-  the UI stops changing (compare apps with repeated `--command`)
-- `just package-arch`
 
-There are three build trees from `CMakePresets.json`; use the presets rather
+Run `just` with no args to see full list.
+
+There are four build trees from `CMakePresets.json`; use the presets rather
 than hand-written cmake flags:
 
 - `build/` (preset `default`): app at `build/enquber`, tests at
@@ -53,13 +39,16 @@ than hand-written cmake flags:
   `just lint-cpp`.
 - `build/smoke/` (preset `smoke`): `ENQUBER_BUILD_TESTS=OFF`,
   `ENQUBER_BUILD_TEST_TOOLS=ON`; produces `build/smoke/tools/dragsource`, which
-  the smoke test needs. `just clean` deletes all three (`rm -rf build`).
+  the smoke test needs.
+- `build/windows/` (preset `windows`): MinGW-w64 cross build for Windows; the
+  deployed app that `just run-wine` starts lives in `build/windows/deploy`.
+  `just clean` deletes all four (`rm -rf build`).
 
 ## Testing
 
 Unit tests cover widgets and the clipboard; ctest sets
-`QT_QPA_PLATFORM=offscreen` automatically, but running the binary directly
-requires it yourself:
+`QT_QPA_PLATFORM=offscreen` automatically, but running the binary
+directly requires setting it yourself:
 
     QT_QPA_PLATFORM=offscreen ./build/tests/tst_enquber encodesText
 
@@ -80,46 +69,25 @@ screenshots land in a date-time stamped directory under `$TMPDIR/enquber-smoke`.
 
 `tools/<name>.py --help` documents each tool's flags, plus defaults, examples
 and exit codes where the help states them. Everything has a useful `--help`
-except the vendored `qt_review_lint.py`: it ignores `--help`, unknown flags and
-unreadable files (exit 0) and prints usage only when run without arguments.
+except the vendored `qt_review_lint.py`. Most commonly used scripts:
 
-- `smoke.py` — the GUI smoke test (`just smoke-test`); `dragsource.cpp` and
-  `droptarget.py` are its XDND drag source and target.
 - `xui.py` — X11 window queries, screenshots and synthetic input.
+- `smoke.py` — the GUI smoke test (`just smoke-test`); `dragsource.cpp` and `droptarget.py` are its XDND drag source and target.
 - `xdnd.py` — a raw-protocol XDND drag source for manual debugging.
-- `startup-settle.py`, `startup-stats.py` — startup measurement and summary
-  (`just startup-settle`, `just startup-bench`).
-- `generate-icon.py` — regenerates `data/icon/enquber.{svg,png}`.
-- `check-i18n.py` — the catalog lint behind `just test` and `just lint-i18n`.
-- `qt_review_lint.py` — the vendored C++ review linter (`just lint-cpp`).
+- `startup-settle.py`, `startup-stats.py` — startup measurement and summary (`just startup-settle`, `just startup-bench`).
+- `generate-icon.py` — regenerates `data/icon/enquber.{svg,png,ico}` and the `enquber-{welcome,header}.bmp` installer bitmaps.
+
+## Additional documentation
+
+Read `doc/packaging-windows.md` first if you need to do anything related to building or packaging for windows.
 
 ## Gotchas
 
-- Deps: Qt6 >= 6.5 (Core/Gui/Widgets) and `libqrencode` via pkg-config. On
-  macOS set `CMAKE_PREFIX_PATH="$(brew --prefix qtbase)"`.
-- `data/icon/enquber.{svg,png}` are generated by `tools/generate-icon.py` (needs
-  `qrencode` + ImageMagick `magick`); don't hand-edit them.
-- Arch packaging in `packaging/arch/PKGBUILD` builds from `git main`; its
-  `pkgver()` derives the version from `git describe` / commit count.
-- Drag-and-drop debugging: `QT_LOGGING_RULES="enquber.dnd.debug=true"`
-  (Qt internals: `qt.qpa.xdnd.debug=true`).
-- Linting: `just lint` must stay green. C++ uses `.clang-tidy` (warnings are
-  errors), clazy level1, and `tools/qt_review_lint.py` (vendored verbatim from
-  Qt's agent-skills under BSD-3-Clause, pinned at `1cbbef560d2b`, sha256
-  `838ec72e…`; send fixes upstream, never patch locally). Python uses
-  `ruff.toml`; spelling uses `typos.toml` with `locale = "en-us"`, so write
-  American English and run `typos --write-changes` to fix strays. There is no
-  formatter yet; match the existing 4-space style and keep builds clean under
-  `-Wall -Wextra`.
-- `just lint-cpp` needs the clang build tree (`cmake --preset lint`): a GCC
-  compile database carries `-mno-direct-extern-access`, which clazy and
-  clang-tidy reject.
-- i18n: never pass a user-facing literal to a widget. Use
-  `qtTrId("component.element")` with exactly one `//%` English comment on the
-  line above, then `just i18n-update` (it passes `-no-obsolete`, so renamed
-  IDs disappear cleanly). `tools/check-i18n.py` and Qt's `lcheck` (Qt 6.11+)
-  are the guards; they must stay green.
-  `just check-translations` is the release gate for complete translations
-  (Qt 6.10+). Catalog fidelity checks live in Qt's `lcheck` from Qt 6.11;
-  don't re-add that logic to the script.
-- `doc/improvements.txt` is a feature wishlist, not a spec.
+- `data/icon/enquber.{svg,png,ico}`, `data/icon/enquber-{welcome,header}.bmp` and `data/icon/msix/*.png` are generated by `tools/generate-icon.py` (needs `qrencode` + ImageMagick `magick`); don't hand-edit them. 
+- Drag-and-drop debugging: `QT_LOGGING_RULES="enquber.dnd.debug=true"` (Qt internals: `qt.qpa.xdnd.debug=true`).
+- Linting: `just lint` must stay green. spelling uses `typos.toml` with `locale = "en-us"`, so write American English and run `typos --write-changes` to fix strays.
+- match the existing 4-space style and keep builds clean under `-Wall -Wextra`.
+- i18n: never pass a user-facing literal to a widget. Use `qtTrId("component.element")` with exactly one `//%` English comment on the line above, then `just i18n-update`. `tools/check-i18n.py` and Qt's `lcheck` (Qt 6.11+) are the guards; they must stay green.
+  `just check-translations` is the release gate for complete translations. Catalog fidelity checks live in Qt's `lcheck` from Qt 6.11.
+- `doc/improvements.txt` is a feature wishlist
+- Do not edit the README.md unless explicitly directed to do so. If a change elsewhere renders the README out of date, notify the user.

@@ -1,7 +1,7 @@
-# Python lint for the helper scripts under tools/ and tests/.
+# Python lint for the helper scripts under tools/, tests/ and packaging/.
 #
-#     just lint-py          # ruff check tools tests
-#     ruff check --fix tools tests
+#     just lint-py          # ruff check tools tests packaging
+#     ruff check --fix tools tests packaging
 #
 # The vendored Qt review linter is third-party code and is kept verbatim.
 target-version = "py310"
