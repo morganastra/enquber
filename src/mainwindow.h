@@ -37,9 +37,9 @@ public:
     [[nodiscard]] bool hasCode() const { return m_code.isValid(); }
     [[nodiscard]] QString encodedText() const { return m_code.text(); }
 
-// `slots` is part of the meta-object, but it expands to nothing for clang,
-// so the access specifier looks repeated.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // `slots` is part of the meta-object, but it expands to nothing for clang,
+    // so the access specifier looks repeated.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public slots:
     /// Encodes @p text (typically a URL) and shows the result. Empty input is
     /// ignored, input that does not fit is reported in the status line.
@@ -187,6 +187,6 @@ private:
 
     /// Holds the PNGs the code is dragged as; wiped when the window goes away.
     /// Built explicitly so that the directory names itself after the app.
-    QTemporaryDir m_dragDir {QDir(QDir::tempPath()).filePath(QStringLiteral("enquber-XXXXXX")) };
+    QTemporaryDir m_dragDir {QDir(QDir::tempPath()).filePath(QStringLiteral("enquber-XXXXXX"))};
     int m_dragCount = 0;
 };

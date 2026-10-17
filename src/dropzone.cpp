@@ -102,7 +102,8 @@ void DropZone::paintEvent(QPaintEvent * /*event*/)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    const QRectF frame = QRectF(rect()).adjusted(kBorderWidth / 2, kBorderWidth / 2, -kBorderWidth / 2, -kBorderWidth / 2);
+    const QRectF frame =
+        QRectF(rect()).adjusted(kBorderWidth / 2, kBorderWidth / 2, -kBorderWidth / 2, -kBorderWidth / 2);
 
     QColor background = palette().color(QPalette::Base);
     background.setAlphaF(m_active ? 0.55 : 0.25);

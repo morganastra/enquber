@@ -34,8 +34,10 @@ rebuild first):
 - `just i18n-update` — regenerate `i18n/enquber_*.ts` from the source
 - `just lint-i18n` — lint text IDs, catalog sync and (Qt 6.11+) catalog fidelity
 - `just check-translations` — release gate: every translated catalog complete
-- `just lint` — every linter: clazy + clang-tidy + Qt's review linter (C++),
-  ruff (Python), typos (American English), plus `lint-i18n`
+- `just format` — apply clang-format to the C++ sources; `just lint-format`
+  (part of `just lint`) checks it
+- `just lint` — every linter: clang-format + clazy + clang-tidy + Qt's review
+  linter (C++), ruff (Python), typos (American English), plus `lint-i18n`
 - `just smoke-test [args]` — build smoke helpers + drive the real GUI
 - `just startup-settle [args]` — record the Xvfb framebuffer and measure when
   the UI stops changing (compare apps with repeated `--command`)
@@ -100,12 +102,9 @@ and exit codes where the help states them. Everything has a useful `--help`
 - Linting: `just lint` must stay green. C++ uses `.clang-tidy` (warnings are
   errors), clazy level1, and `tools/qt_review_lint.py` Python uses
   `ruff.toml`; spelling uses `typos.toml` with `locale = "en-us"`, so write
-  American English and run `typos --write-changes` to fix strays. There is no
-  formatter yet; match the existing 4-space style and keep builds clean under
-  `-Wall -Wextra`.
-- `just lint-cpp` needs the clang build tree (`cmake --preset lint`): a GCC
-  compile database carries `-mno-direct-extern-access`, which clazy and
-  clang-tidy reject.
+  American English and run `typos --write-changes` to fix strays. C++ is
+  formatted with clang-format (`.clang-format`, WebKit base, 120 columns): run
+  `just format`, and `just lint-format` checks it; keep builds clean under `-Wall -Wextra`.
 - i18n: never pass a user-facing literal to a widget. Use
   `qtTrId("component.element")` with exactly one `//%` English comment on the
   line above, then `just i18n-update` (it passes `-no-obsolete`, so renamed

@@ -36,8 +36,19 @@ check-translations:
     cmake --preset default
     ctest --preset release
 
-# Lint everything: C++ static analysis, Python, spelling, translations.
-lint: lint-cpp lint-py lint-spell lint-i18n
+# Format the C++ sources in place.
+[doc('Format the C++ sources with clang-format.')]
+format:
+    clang-format -i src/*.cpp src/*.h tests/*.cpp tools/*.cpp
+
+# Also run as part of `just lint`.
+[doc('Check that the C++ sources are clang-format clean.')]
+lint-format:
+    clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp tools/*.cpp
+
+# Lint everything: C++ static analysis and formatting, Python, spelling,
+# translations.
+lint: lint-cpp lint-format lint-py lint-spell lint-i18n
 
 # Needs the clang build tree (build/lint) and clang-tidy, clazy, run-clang-tidy.
 [doc('Static analysis for the C++ sources.')]

@@ -1,0 +1,55 @@
+# clang-format configuration for enquber.
+#
+# Our modifications to WebKit style approximately follow Qt's
+
+BasedOnStyle: WebKit
+Language: Cpp
+Standard: c++20
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+ContinuationIndentWidth: 4
+
+AccessModifierOffset: -4
+PointerAlignment: Right
+NamespaceIndentation: None
+
+# WebKit turns this off, which collapses trailing comments to a single space;
+# keep them aligned (e.g. the ///< level notes on ErrorCorrection).
+AlignTrailingComments: true
+
+# Braces: attached for control statements, on their own line for class, struct
+# and function definitions (see Qt's custom wrap).
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: false
+  AfterEnum: false
+  AfterFunction: true
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: true
+  AfterUnion: false
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
+
+# Break before operators, but not before `=`; when a call does not fit, keep as
+# many arguments on the call's first line as possible.
+BreakBeforeBinaryOperators: NonAssignment
+AllowAllArgumentsOnNextLine: false
+
+# Do not greedily pack binary operands: when an expression has to wrap, break
+# one operation per line within a precedence level (so `a == b` stays together
+# but `&&`/`||` chains go one per line). Requires clang-format >= 20.
+BreakBinaryOperations: RespectPrecedence
+
+Cpp11BracedListStyle: true
+AllowShortFunctionsOnASingleLine: Inline
+
+# The `//%` comments that carry the English source strings for lupdate (see
+# src/aboutpage.cpp) must stay on one line: reflowing them would split the text
+# and drop the `//%` marker from the continuation lines.
+ReflowComments: false

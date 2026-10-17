@@ -95,8 +95,7 @@ void QrView::paintEvent(QPaintEvent * /*event*/)
 
     // The DPR is baked into the cached image's logical size, so it is part of
     // the key: a DPR change can leave the module size unchanged.
-    if (modulePixels != m_cacheModulePixels || !qFuzzyCompare(dpr, m_cacheDpr)
-        || m_cache.isNull()) {
+    if (modulePixels != m_cacheModulePixels || !qFuzzyCompare(dpr, m_cacheDpr) || m_cache.isNull()) {
         m_cache = m_code.toImage(modulePixels);
         m_cache.setDevicePixelRatio(dpr);
         m_cacheModulePixels = modulePixels;
@@ -140,9 +139,9 @@ void QrView::mouseMoveEvent(QMouseEvent *event)
     // m_pressed is tracked rather than read from event->buttons() alone, so the
     // gesture can be driven by a test; requiring the held button as well keeps
     // the check honest for real input.
-    if (m_pressed && ((event->buttons() & Qt::LeftButton) != 0U)
-        && (event->position().toPoint() - m_pressPos).manhattanLength()
-               >= QApplication::startDragDistance()) {
+    if (m_pressed
+        && ((event->buttons() & Qt::LeftButton) != 0U)
+        && (event->position().toPoint() - m_pressPos).manhattanLength() >= QApplication::startDragDistance()) {
         m_pressed = false; // one drag per press
         Q_EMIT dragRequested();
     }

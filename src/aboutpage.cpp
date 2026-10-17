@@ -132,9 +132,9 @@ AboutPage::AboutPage(QWidget *parent)
     //@ AboutPage
     //% "Project source: <a href=\"%1\">github.com/morganastra/enquber</a><br><br>Built with <a href=\"%2\">Qt</a> and <a href=\"%3\">libqrencode</a>.<br><br><a href=\"%4\">Feather Icons</a> © 2013–2023 Cole Bemis, <a href=\"%5\">MIT license</a><br><br><a href=\"%6\">GNU GPL v3 full text</a>"
     links->setText(qtTrId("about.links")
-                       .arg(QString::fromLatin1(kRepoUrl), QString::fromLatin1(kQtUrl),
-                            QString::fromLatin1(kQrencodeUrl), QString::fromLatin1(kFeatherUrl),
-                            QString::fromLatin1(kFeatherLicenseUrl), QString::fromLatin1(kGplUrl)));
+            .arg(QString::fromLatin1(kRepoUrl), QString::fromLatin1(kQtUrl), QString::fromLatin1(kQrencodeUrl),
+                QString::fromLatin1(kFeatherUrl), QString::fromLatin1(kFeatherLicenseUrl),
+                QString::fromLatin1(kGplUrl)));
     pinHeight(links, kContentWidth);
     layout->addWidget(links, 0, Qt::AlignHCenter);
 
