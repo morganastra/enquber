@@ -1,9 +1,12 @@
 #include "qrview.h"
 
+#include "qrcode.h"
+
 #include <QApplication>
 #include <QMouseEvent>
 #include <QPainter>
 
+#include <algorithm>
 #include <cmath>
 
 namespace {
@@ -70,7 +73,7 @@ int QrView::codeSide() const
 
 int QrView::fittedModulePixels() const
 {
-    const qreal available = (std::max<qreal>)(1.0, (std::min)(width(), height()) - 2 * kPadding);
+    const qreal available = (std::max<qreal>)(1.0, (std::min)(width(), height()) - (2 * kPadding));
     return m_code.modulePixelsFor(available * devicePixelRatioF());
 }
 
@@ -81,7 +84,7 @@ void QrView::dropCache()
     m_cacheDpr = 1.0;
 }
 
-void QrView::paintEvent(QPaintEvent *)
+void QrView::paintEvent(QPaintEvent * /*event*/)
 {
     if (!m_code.isValid()) {
         return;
@@ -137,7 +140,7 @@ void QrView::mouseMoveEvent(QMouseEvent *event)
     // m_pressed is tracked rather than read from event->buttons() alone, so the
     // gesture can be driven by a test; requiring the held button as well keeps
     // the check honest for real input.
-    if (m_pressed && (event->buttons() & Qt::LeftButton)
+    if (m_pressed && ((event->buttons() & Qt::LeftButton) != 0U)
         && (event->position().toPoint() - m_pressPos).manhattanLength()
                >= QApplication::startDragDistance()) {
         m_pressed = false; // one drag per press

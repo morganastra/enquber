@@ -463,7 +463,7 @@ void TestEnquber::init()
     // Every case builds its window after this runs, so the English source
     // catalog has to be installed here (widgets read translations once, at
     // construction).
-    QVERIFY(i18n::install(*qApp, QLocale(QLocale::English)));
+    QVERIFY(i18n::install(QLocale(QLocale::English)));
 }
 
 void TestEnquber::initTestCase()
@@ -2216,7 +2216,7 @@ void TestEnquber::spanishTranslationIsApplied()
 {
     // Proves the ID-based catalogs really localize: a Spanish window must be
     // built from Spanish strings, not from English falling through.
-    QVERIFY(i18n::install(*qApp, QLocale(QStringLiteral("es"))));
+    QVERIFY(i18n::install(QLocale(QStringLiteral("es"))));
 
     QCOMPARE(qtTrId("dropzone.title"), QStringLiteral("Suelta un enlace aquí"));
     QCOMPARE(qtTrId("mainwindow.action.copy"), QStringLiteral("&Copiar imagen"));
@@ -2245,7 +2245,7 @@ void TestEnquber::spanishTranslationIsApplied()
 
     // Switching back must restore English; init() relies on the same call for
     // every other test.
-    QVERIFY(i18n::install(*qApp, QLocale(QLocale::English)));
+    QVERIFY(i18n::install(QLocale(QLocale::English)));
     QCOMPARE(qtTrId("dropzone.title"), QStringLiteral("Drop a link here"));
 }
 

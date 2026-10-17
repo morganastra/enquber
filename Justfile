@@ -42,6 +42,7 @@ lint: lint-cpp lint-py lint-spell lint-i18n
 # Needs the clang build tree (build/lint) and clang-tidy, clazy, run-clang-tidy.
 [doc('Static analysis for the C++ sources.')]
 lint-cpp:
+    clang-tidy --verify-config
     cmake --preset lint
     clazy-standalone -p build/lint --only-qt --extra-arg=-Werror src/*.cpp tools/dragsource.cpp
     run-clang-tidy -p build/lint -quiet '/(src|tools)/[^/]+\.cpp$'

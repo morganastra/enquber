@@ -34,6 +34,9 @@ void preferDesktopStyle()
 
 int main(int argc, char *argv[])
 {
+    // Qt's application object is the process singleton; it stays non-const
+    // even though only its static members are called here.
+    // NOLINTNEXTLINE(misc-const-correctness)
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("enquber"));
     QApplication::setApplicationVersion(QStringLiteral(ENQUBER_VERSION));
@@ -42,7 +45,7 @@ int main(int argc, char *argv[])
     QApplication::setWindowIcon(theme::appIcon());
     preferDesktopStyle();
 
-    if (!i18n::install(app)) {
+    if (!i18n::install()) {
         qWarning("enquber: the English translation catalog could not be loaded");
     }
 

@@ -67,7 +67,7 @@ void TypeEditor::ensureCenteredAlignment()
 void TypeEditor::keyPressEvent(QKeyEvent *event)
 {
     if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
-        if (event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) {
+        if ((event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) != 0U) {
             insertPlainText(QStringLiteral("\n"));
         } else {
             Q_EMIT submitted();

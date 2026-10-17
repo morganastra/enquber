@@ -2,19 +2,34 @@
 #
 #     cmake --preset lint && run-clang-tidy -p build/lint
 #
-# clazy covers the Qt-specific rules in the same pass (`just lint-cpp`).
-# Keep this list explicit so a clang-tidy upgrade cannot silently change it.
-# modernize-use-trailing-return-type is intentionally absent: it is a style
-# preference, not Qt's.
+# Exclusions:
+# magic-numbers: in our case this mostly flags one-off UI geometry
+# literals; naming them would not really improve readability
+#
+# pragma-once, identifier-length, and trailing-return-type:
+# checkers are contrary to Qt C++ idioms
 Checks: >
   clang-analyzer-*,
   bugprone-*,
+  cert-*,
+  modernize-*,
   performance-*,
-  modernize-use-nodiscard,
-  modernize-use-nullptr,
-  modernize-use-override,
-  modernize-use-emplace,
-  modernize-return-braced-init-list
+  readability-*,
+  portability-*,
+  llvm-namespace-comment,
+  misc-*,
+  concurrency-*,
+  -portability-avoid-pragma-once,
+  -readability-identifier-length,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers
+CheckOptions:
+  # Qt's forwarding headers are not IWYU-clean
+  misc-include-cleaner.IgnoreHeaders: 'QtCore/.*;QtGui/.*;QtWidgets/.*'
+  # Qt event-handler overrides are private on purpose: narrowing is intentional,
+  # only report accidental widening.
+  misc-override-with-different-visibility.DisallowedVisibilityChange: widening
+  readability-implicit-bool-conversion.AllowPointerConditions: true
 WarningsAsErrors: '*'
 HeaderFilterRegex: '(^|/)(src|tools)/'
 FormatStyle: none

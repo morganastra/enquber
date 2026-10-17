@@ -97,7 +97,7 @@ void DropZone::changeEvent(QEvent *event)
     }
 }
 
-void DropZone::paintEvent(QPaintEvent *)
+void DropZone::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
@@ -110,7 +110,7 @@ void DropZone::paintEvent(QPaintEvent *)
     painter.setBrush(background);
     painter.drawRoundedRect(frame, kCornerRadius, kCornerRadius);
 
-    QColor border = m_active ? palette().color(QPalette::Highlight) : palette().color(QPalette::Mid);
+    const QColor border = m_active ? palette().color(QPalette::Highlight) : palette().color(QPalette::Mid);
     QPen pen(border, kBorderWidth, Qt::DashLine, Qt::RoundCap);
     pen.setDashPattern({5.0, 4.0});
     painter.setPen(pen);

@@ -23,26 +23,25 @@ QTranslator &localeCatalog()
 
 } // namespace
 
-bool install(QCoreApplication &app, const QLocale &locale)
+bool install(const QLocale &locale)
 {
-    app.removeTranslator(&englishCatalog());
-    app.removeTranslator(&localeCatalog());
+    QCoreApplication::removeTranslator(&englishCatalog());
+    QCoreApplication::removeTranslator(&localeCatalog());
 
     const bool english = englishCatalog().load(QLocale(QLocale::English),
                                                QStringLiteral("enquber"),
                                                QStringLiteral("_"),
                                                QStringLiteral(":/i18n"));
     if (english) {
-        app.installTranslator(&englishCatalog());
+        QCoreApplication::installTranslator(&englishCatalog());
     }
 
     // English and the C locale already resolve through the source catalog; a
     // second lookup would only add a redundant translator.
-    if (locale.language() != QLocale::English && locale.language() != QLocale::C) {
-        if (localeCatalog().load(locale, QStringLiteral("enquber"), QStringLiteral("_"),
-                                 QStringLiteral(":/i18n"))) {
-            app.installTranslator(&localeCatalog());
-        }
+    if (locale.language() != QLocale::English && locale.language() != QLocale::C
+        && localeCatalog().load(locale, QStringLiteral("enquber"), QStringLiteral("_"),
+                                QStringLiteral(":/i18n"))) {
+        QCoreApplication::installTranslator(&localeCatalog());
     }
 
     return english;
