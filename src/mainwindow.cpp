@@ -4,6 +4,7 @@
 #include "dropzone.h"
 #include "mimeimage.h"
 #include "mimetext.h"
+#include "qrcode.h"
 #include "qrview.h"
 #include "theme.h"
 #include "typeeditor.h"
@@ -44,12 +45,13 @@
 #include <QVBoxLayout>
 
 #include <chrono>
+#include <utility>
+
+namespace {
 
 /// Set QT_LOGGING_RULES="enquber.dnd.debug=true" to watch what the window is
 /// offered while something is dragged onto it.
 Q_LOGGING_CATEGORY(lcDnd, "enquber.dnd")
-
-namespace {
 
 /// Side of the exported PNG in pixels; module size is rounded down so the
 /// result stays a whole number of pixels per module.
@@ -68,6 +70,10 @@ constexpr std::chrono::milliseconds kDragLingerMs{1000};
 constexpr std::chrono::milliseconds kStatusTimeoutMs{4000};
 
 constexpr int kMaxTextLines = 3;
+
+/// Appended to a line that had to be elided, so the cut stays visible even
+/// when the shortened text ends on a short line.
+constexpr char16_t kEllipsis = 0x2026;
 
 constexpr int kWindowMargin = 24;
 
@@ -105,7 +111,7 @@ public:
     }
 
 protected:
-    void paintEvent(QPaintEvent *) override
+    void paintEvent(QPaintEvent * /*event*/) override
     {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing, true);
@@ -225,9 +231,9 @@ ShapedText shapeForLabel(const QString &text, const QFont &font, const QFontMetr
         }
     }
 
-    if (truncated && !lines.isEmpty() && !lines.last().endsWith(QChar(0x2026))) {
+    if (truncated && !lines.isEmpty() && !lines.last().endsWith(kEllipsis)) {
         // Make the cut visible even when the last line happens to be short.
-        lines.last() = metrics.elidedText(lines.last() + QChar(0x2026), Qt::ElideRight, width);
+        lines.last() = metrics.elidedText(lines.last() + kEllipsis, Qt::ElideRight, width);
     }
 
     shaped.text = lines.join(QLatin1Char('\n'));
@@ -304,9 +310,9 @@ void MainWindow::buildUi()
     // the field dominating the window. Anything longer scrolls.
     const QFontMetrics editorMetrics(m_captionEditor->fontMetrics());
     constexpr int kEditorLines = 3;
-    m_captionEditor->setFixedHeight(kEditorLines * editorMetrics.lineSpacing()
-                                    + 2 * m_captionEditor->frameWidth()
-                                    + 2 * qRound(m_captionEditor->document()->documentMargin())
+    m_captionEditor->setFixedHeight((kEditorLines * editorMetrics.lineSpacing())
+                                    + (2 * m_captionEditor->frameWidth())
+                                    + (2 * qRound(m_captionEditor->document()->documentMargin()))
                                     + 2);
     m_captionEditor->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     //@ TypeEditor
@@ -432,7 +438,7 @@ void MainWindow::buildActions()
     //% "C&lear"
     m_clearAction = new QAction(qtTrId("mainwindow.action.clear"), this);
     m_clearAction->setShortcuts({QKeySequence(Qt::Key_Escape), QKeySequence(Qt::Key_Backspace),
-                                 QKeySequence(Qt::Key_Delete)});
+                                 QKeySequence(Qt::Key_Delete),});
     //@ MainWindow
     //% "Go back to the drop target (Esc, Backspace or Delete)"
     m_clearAction->setToolTip(qtTrId("mainwindow.action.clear.tooltip"));
@@ -610,7 +616,7 @@ void MainWindow::liveEncode()
         return;
     }
 
-    qr::Code code = encodeOrReport(trimmed);
+    const qr::Code code = encodeOrReport(trimmed);
     if (!code.isValid()) {
         // Keep the last good symbol on screen and explain why this one cannot
         // be shown; the field keeps whatever the user typed.
@@ -638,7 +644,7 @@ void MainWindow::commitLiveInput()
         return;
     }
 
-    qr::Code code = encodeOrReport(trimmed);
+    const qr::Code code = encodeOrReport(trimmed);
     if (!code.isValid()) {
         // Too much to encode: stay in the field with the text intact.
         return;
@@ -1114,8 +1120,8 @@ bool MainWindow::dragFromThisWindow(const QDropEvent *event) const
     // External drags have no source widget. A drag started elsewhere in this
     // process (the smoke test's helper) has one that is not our child, so only
     // our own code is ignored.
-    QWidget *source = qobject_cast<QWidget *>(event->source());
-    return source && isAncestorOf(source);
+    const QWidget *source = qobject_cast<QWidget *>(event->source());
+    return source != nullptr && isAncestorOf(source);
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)

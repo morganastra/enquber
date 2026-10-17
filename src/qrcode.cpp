@@ -7,6 +7,9 @@
 #include <cerrno>
 #include <cmath>
 #include <cstring>
+#include <memory>
+
+#include <qrencode.h>
 
 namespace qr {
 namespace {
@@ -38,7 +41,9 @@ QString errorForErrno(int code)
         //% "Out of memory while encoding"
         return qtTrId("qrcode.error.out-of-memory");
     default:
-        // OS-provided text, deliberately not translated.
+        // OS-provided text, deliberately not translated. strerror is not
+        // thread-safe, but encoding only runs on the GUI thread.
+        // NOLINTNEXTLINE(concurrency-mt-unsafe)
         return QString::fromLocal8Bit(std::strerror(code));
     }
 }
@@ -81,7 +86,7 @@ int Code::modules() const
 
 int Code::totalModules() const
 {
-    return m_code ? m_code->width + 2 * QuietZone : 0;
+    return m_code ? m_code->width + (2 * QuietZone) : 0;
 }
 
 int Code::modulePixelsFor(qreal budgetPixels, int minimumPixels) const
@@ -98,7 +103,7 @@ bool Code::isDark(int x, int y) const
     if (!m_code || x < 0 || y < 0 || x >= m_code->width || y >= m_code->width) {
         return false;
     }
-    return (m_code->data[y * m_code->width + x] & 1u) != 0u;
+    return (m_code->data[(y * m_code->width) + x] & 1U) != 0U;
 }
 
 QImage Code::toImage(int modulePixels) const
