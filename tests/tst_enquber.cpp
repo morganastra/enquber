@@ -8,34 +8,34 @@
 #include "theme.h"
 #include "typeeditor.h"
 
-#include <QApplication>
 #include <QAbstractButton>
 #include <QAction>
+#include <QApplication>
 #include <QByteArray>
 #include <QClipboard>
 #include <QColor>
 #include <QContextMenuEvent>
+#include <QDir>
+#include <QFile>
+#include <QFileDialog>
 #include <QFileInfo>
+#include <QIcon>
 #include <QKeySequence>
+#include <QLabel>
+#include <QLocale>
 #include <QMenu>
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPalette>
+#include <QPushButton>
 #include <QSignalSpy>
 #include <QStackedWidget>
-#include <QDir>
-#include <QFile>
-#include <QFileDialog>
-#include <QIcon>
-#include <QLabel>
-#include <QLocale>
-#include <QPushButton>
 #include <QTemporaryDir>
+#include <QTest>
 #include <QTextBlock>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
-#include <QTest>
 
 namespace {
 
@@ -67,13 +67,13 @@ void sendDragLeave(QWidget *target)
 /// move with no button and would not reach an ordinary widget.
 void sendDragGesture(QWidget *target, const QPoint &from, const QPoint &to, bool hold = true)
 {
-    QMouseEvent press(QEvent::MouseButtonPress, QPointF(from), target->mapToGlobal(QPointF(from)),
-                      Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QMouseEvent press(QEvent::MouseButtonPress, QPointF(from), target->mapToGlobal(QPointF(from)), Qt::LeftButton,
+        Qt::LeftButton, Qt::NoModifier);
     QCoreApplication::sendEvent(target, &press);
 
     const Qt::MouseButtons buttons = hold ? Qt::LeftButton : Qt::NoButton;
-    QMouseEvent move(QEvent::MouseMove, QPointF(to), target->mapToGlobal(QPointF(to)),
-                     Qt::NoButton, buttons, Qt::NoModifier);
+    QMouseEvent move(QEvent::MouseMove, QPointF(to), target->mapToGlobal(QPointF(to)), Qt::NoButton, buttons,
+        Qt::NoModifier);
     QCoreApplication::sendEvent(target, &move);
 }
 
@@ -214,8 +214,7 @@ QColor drawnTextColor(const QWidget *widget)
 /// The probe test uses this to drive the theme branch without depending on the
 /// host's installed icon themes. Returns false when anything could not be
 /// written.
-bool writeIconTheme(const QString &root, const QString &themeName,
-                    const QString &iconName, const QColor &color)
+bool writeIconTheme(const QString &root, const QString &themeName, const QString &iconName, const QColor &color)
 {
     const QString directory = QDir(root).filePath(themeName);
     if (!QDir().mkpath(directory + QStringLiteral("/16x16/actions"))) {
@@ -226,24 +225,21 @@ bool writeIconTheme(const QString &root, const QString &themeName,
     if (!index.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
-    const QString contents =
-        QStringLiteral("[Icon Theme]\n"
-                       "Name=%1\n"
-                       "Directories=16x16/actions\n"
-                       "\n"
-                       "[16x16/actions]\n"
-                       "Size=16\n"
-                       "Type=Fixed\n"
-                       "Context=Actions\n")
-            .arg(themeName);
+    const QString contents = QStringLiteral("[Icon Theme]\n"
+                                            "Name=%1\n"
+                                            "Directories=16x16/actions\n"
+                                            "\n"
+                                            "[16x16/actions]\n"
+                                            "Size=16\n"
+                                            "Type=Fixed\n"
+                                            "Context=Actions\n")
+                                 .arg(themeName);
     index.write(contents.toUtf8());
     index.close();
 
     QImage marker(16, 16, QImage::Format_ARGB32_Premultiplied);
     marker.fill(color);
-    return marker.save(directory + QStringLiteral("/16x16/actions/") + iconName
-                           + QStringLiteral(".png"),
-                       "PNG");
+    return marker.save(directory + QStringLiteral("/16x16/actions/") + iconName + QStringLiteral(".png"), "PNG");
 }
 
 /// Puts the global icon-theme settings back when it goes out of scope, so a
@@ -283,7 +279,10 @@ private:
 class PaletteStateRestorer
 {
 public:
-    PaletteStateRestorer() : m_palette(QApplication::palette()) {}
+    PaletteStateRestorer()
+        : m_palette(QApplication::palette())
+    {
+    }
 
     ~PaletteStateRestorer() { QApplication::setPalette(m_palette); }
 
@@ -1051,8 +1050,7 @@ void TestEnquber::captionEditorTextIsCentered()
 
     auto *editor = openCaptionEditor(window);
     QVERIFY(editor);
-    QCOMPARE(int(editor->document()->firstBlock().blockFormat().alignment()),
-             int(Qt::AlignHCenter));
+    QCOMPARE(int(editor->document()->firstBlock().blockFormat().alignment()), int(Qt::AlignHCenter));
 
     // Setting the text again (the prefill path) must not drop the alignment,
     // and a Ctrl+Enter line must inherit it.
@@ -1164,7 +1162,7 @@ void TestEnquber::draggingBelowTheThresholdDoesNothing()
 
     // A move that carries no held button is not a drag either.
     sendDragGesture(view, start, start + QPoint(QApplication::startDragDistance() + 5, 0),
-                    /*hold=*/false);
+        /*hold=*/false);
     QCOMPARE(spy.count(), 0);
 }
 
@@ -1347,8 +1345,7 @@ void TestEnquber::repeatingAStatusMessageRestartsItsTimeout()
     window.copyToClipboard();
     const int after = timer->remainingTime();
     QVERIFY2(after > before + 300,
-             qPrintable(QStringLiteral("remaining %1 ms before, %2 ms after the second message")
-                            .arg(before).arg(after)));
+        qPrintable(QStringLiteral("remaining %1 ms before, %2 ms after the second message").arg(before).arg(after)));
 }
 
 void TestEnquber::clearingReturnsToTheDropTarget_data()
@@ -1477,13 +1474,16 @@ void TestEnquber::saveWritesPngFile_data()
     QTest::addColumn<QString>("written");
     QTest::addColumn<bool>("success");
 
-    QTest::newRow("with a png suffix")
-        << QStringLiteral("code.png") << QStringLiteral("code.png") << true;
+    QTest::newRow("with a png suffix") << QStringLiteral("code.png") << QStringLiteral("code.png") << true;
     QTest::newRow("without a suffix")
-        << QStringLiteral("without-suffix") << QStringLiteral("without-suffix.png") << true;
+        << QStringLiteral("without-suffix")
+        << QStringLiteral("without-suffix.png")
+        << true;
     // A path under a directory that does not exist makes the write fail.
     QTest::newRow("write failure")
-        << QDir::tempPath() + QStringLiteral("/enquber-no-such-dir/code.png") << QString() << false;
+        << QDir::tempPath() + QStringLiteral("/enquber-no-such-dir/code.png")
+        << QString()
+        << false;
 }
 
 void TestEnquber::saveWritesPngFile()
@@ -1598,7 +1598,7 @@ void TestEnquber::quitShortcutClosesWindow()
     QVERIFY(quit);
     const QList<QKeySequence> shortcuts = quit->shortcuts();
     QVERIFY(shortcuts.contains(QKeySequence(QStringLiteral("Ctrl+Q")))
-            || shortcuts.contains(QKeySequence(QKeySequence::Quit)));
+        || shortcuts.contains(QKeySequence(QKeySequence::Quit)));
 
     QTest::keyClick(&window, Qt::Key_Q, Qt::ControlModifier);
 
@@ -1618,8 +1618,8 @@ void TestEnquber::contextMenuOnTheDropPageOffersTheWindowActions()
 
     QVERIFY(menu.appeared);
     QCOMPARE(menu.texts,
-             (QStringList{QStringLiteral("&Paste link"), QStringLiteral("&Type text…"),
-                          QStringLiteral("&Help and info"), QStringLiteral("&Quit")}));
+        (QStringList {QStringLiteral("&Paste link"), QStringLiteral("&Type text…"), QStringLiteral("&Help and info"),
+            QStringLiteral("&Quit")}));
     // Nothing is on screen to export yet.
     QCOMPARE(menu.indexOf(QStringLiteral("Copy")), -1);
     QCOMPARE(menu.indexOf(QStringLiteral("Save")), -1);
@@ -1639,12 +1639,11 @@ void TestEnquber::contextMenuOnTheCodePageOffersTheExportActions()
 
     QVERIFY(menu.appeared);
     QCOMPARE(menu.texts,
-             (QStringList{QStringLiteral("&Paste link"), QStringLiteral("&Type text…"),
-                          QStringLiteral("&Copy image"), QStringLiteral("&Save…"),
-                          QStringLiteral("C&lear"), QStringLiteral("&Help and info"),
-                          QStringLiteral("&Quit")}));
-    for (const QString &needle : {QStringLiteral("Paste"), QStringLiteral("Copy"),
-                                  QStringLiteral("Save"), QStringLiteral("Clear")}) {
+        (QStringList {QStringLiteral("&Paste link"), QStringLiteral("&Type text…"), QStringLiteral("&Copy image"),
+            QStringLiteral("&Save…"), QStringLiteral("C&lear"), QStringLiteral("&Help and info"),
+            QStringLiteral("&Quit")}));
+    for (const QString &needle :
+        {QStringLiteral("Paste"), QStringLiteral("Copy"), QStringLiteral("Save"), QStringLiteral("Clear")}) {
         QVERIFY2(menu.enabled.at(menu.indexOf(needle)), qPrintable(needle));
     }
 }
@@ -1663,8 +1662,7 @@ void TestEnquber::contextMenuOnTheHelpPageOffersTheWayBack()
     const MenuSnapshot menu = captureContextMenu(title);
 
     QVERIFY(menu.appeared);
-    QCOMPARE(menu.texts,
-             (QStringList{QStringLiteral("&Back to Enquber"), QStringLiteral("&Quit")}));
+    QCOMPARE(menu.texts, (QStringList {QStringLiteral("&Back to Enquber"), QStringLiteral("&Quit")}));
 
     // The item is the window's own back action, so triggering it returns to
     // the page help was opened from.
@@ -1695,8 +1693,8 @@ void TestEnquber::contextMenuOnTheTextFieldCommitsItFirst()
     // finished code and its actions are live.
     QVERIFY(!editor->isVisible());
     QCOMPARE(window.encodedText(), QStringLiteral("https://confirmed.example"));
-    for (const QString &needle : {QStringLiteral("Paste"), QStringLiteral("Copy"),
-                                  QStringLiteral("Save"), QStringLiteral("Clear")}) {
+    for (const QString &needle :
+        {QStringLiteral("Paste"), QStringLiteral("Copy"), QStringLiteral("Save"), QStringLiteral("Clear")}) {
         QVERIFY2(menu.enabled.at(menu.indexOf(needle)), qPrintable(needle));
     }
 }
@@ -1775,9 +1773,7 @@ void TestEnquber::contextMenuItemsCarryShortcutsAndBundledGlyphs()
     const MenuSnapshot menu = captureContextMenu(view);
     QVERIFY(menu.appeared);
 
-    const auto shortcutOf = [&menu](const QString &needle) {
-        return menu.shortcuts.at(menu.indexOf(needle));
-    };
+    const auto shortcutOf = [&menu](const QString &needle) { return menu.shortcuts.at(menu.indexOf(needle)); };
     // The hints the menu paints are the shortcuts that actually fire.
     QCOMPARE(shortcutOf(QStringLiteral("Paste")), QKeySequence(QKeySequence::Paste));
     QCOMPARE(shortcutOf(QStringLiteral("Type")), QKeySequence(Qt::CTRL | Qt::Key_L));
@@ -1789,9 +1785,8 @@ void TestEnquber::contextMenuItemsCarryShortcutsAndBundledGlyphs()
     // comes first, with Ctrl+Q itself added where the standard one does not use
     // it, so either may be the one the menu shows.
     const QKeySequence quit = shortcutOf(QStringLiteral("Quit"));
-    QVERIFY2(quit == QKeySequence(QKeySequence::Quit)
-                 || quit == QKeySequence(QStringLiteral("Ctrl+Q")),
-             qPrintable(quit.toString()));
+    QVERIFY2(quit == QKeySequence(QKeySequence::Quit) || quit == QKeySequence(QStringLiteral("Ctrl+Q")),
+        qPrintable(quit.toString()));
 
     // The offscreen platform's dead icon theme forces every item onto the
     // bundled fallback glyphs, which is exactly the plain-XDG session the
@@ -1889,9 +1884,9 @@ void TestEnquber::bundledFallbacksCoverNavigationAndHelp()
     // icon here can only be a bundled glyph. Both the freedesktop names a
     // toolbar or context menu would use and the Feather names themselves have
     // to resolve.
-    for (const char *name : {"go-previous", "help-contents", "help-about", "dialog-information",
-                             "arrow-left", "help-circle", "info", "edit-paste", "insert-link",
-                             "document-edit", "edit-3", "application-exit", "log-out"}) {
+    for (const char *name :
+        {"go-previous", "help-contents", "help-about", "dialog-information", "arrow-left", "help-circle", "info",
+            "edit-paste", "insert-link", "document-edit", "edit-3", "application-exit", "log-out"}) {
         QVERIFY2(!theme::icon({name}).isNull(), name);
     }
 
@@ -1909,16 +1904,13 @@ void TestEnquber::themeProbeTracksTheActiveIconTheme()
     QVERIFY(root.isValid());
     const QString magentaName = QStringLiteral("enquber-probe-magenta");
     const QString cyanName = QStringLiteral("enquber-probe-cyan");
-    QVERIFY(writeIconTheme(root.path(), magentaName, QStringLiteral("edit-copy"),
-                           QColor(255, 0, 255)));
-    QVERIFY(writeIconTheme(root.path(), cyanName, QStringLiteral("document-save"),
-                           QColor(0, 255, 255)));
+    QVERIFY(writeIconTheme(root.path(), magentaName, QStringLiteral("edit-copy"), QColor(255, 0, 255)));
+    QVERIFY(writeIconTheme(root.path(), cyanName, QStringLiteral("document-save"), QColor(0, 255, 255)));
 
     // What the bundled save glyph looks like while the active theme answers
     // nothing at all. The cyan theme must not be able to replace it: it only
     // carries document-save, not the probe, so the lookup has to go negative.
-    const QImage bundledSave =
-        theme::icon({"document-save", "document-save-as"}).pixmap(16).toImage();
+    const QImage bundledSave = theme::icon({"document-save", "document-save-as"}).pixmap(16).toImage();
     QVERIFY(!bundledSave.isNull());
 
     ThemeStateRestorer restore;
@@ -1936,8 +1928,7 @@ void TestEnquber::themeProbeTracksTheActiveIconTheme()
     // A cache that ignored the theme name would keep the magenta answer and hand
     // back the cyan icon here.
     QIcon::setThemeName(cyanName);
-    QCOMPARE(theme::icon({"document-save", "document-save-as"}).pixmap(16).toImage(),
-             bundledSave);
+    QCOMPARE(theme::icon({"document-save", "document-save-as"}).pixmap(16).toImage(), bundledSave);
 
     // Switching back has to re-probe positive again and return the theme icon; a
     // cache stuck on the cyan answer would keep the bundled glyph.
@@ -2181,8 +2172,7 @@ void TestEnquber::aboutTextSurvivesAShortWindow()
     const int needed = license->heightForWidth(license->width());
     QVERIFY(needed > 0);
     QVERIFY2(license->height() >= needed,
-             qPrintable(QStringLiteral("license is %1 px, needs %2")
-                            .arg(license->height()).arg(needed)));
+        qPrintable(QStringLiteral("license is %1 px, needs %2").arg(license->height()).arg(needed)));
 }
 
 void TestEnquber::resizeWhileHelpIsUpReshapesTheCaption()

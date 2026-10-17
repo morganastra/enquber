@@ -30,11 +30,14 @@ QString bundledGlyphName(const QString &themeName)
     if (themeName == QLatin1String("edit-paste") || themeName == QLatin1String("document-open")) {
         return QStringLiteral("insert-link");
     }
-    if (themeName == QLatin1String("document-edit") || themeName == QLatin1String("insert-text")
-        || themeName == QLatin1String("accessories-text-editor") || themeName == QLatin1String("edit")) {
+    if (themeName == QLatin1String("document-edit")
+        || themeName == QLatin1String("insert-text")
+        || themeName == QLatin1String("accessories-text-editor")
+        || themeName == QLatin1String("edit")) {
         return QStringLiteral("edit-3");
     }
-    if (themeName == QLatin1String("application-exit") || themeName == QLatin1String("system-shutdown")
+    if (themeName == QLatin1String("application-exit")
+        || themeName == QLatin1String("system-shutdown")
         || themeName == QLatin1String("system-log-out")) {
         return QStringLiteral("log-out");
     }
@@ -43,11 +46,14 @@ QString bundledGlyphName(const QString &themeName)
     }
     // The "?" and the "i" are easy to confuse in the freedesktop naming: the
     // contents/help names are the question mark, while help-about is the info.
-    if (themeName == QLatin1String("help") || themeName == QLatin1String("help-contents")
-        || themeName == QLatin1String("help-browser") || themeName == QLatin1String("system-help")) {
+    if (themeName == QLatin1String("help")
+        || themeName == QLatin1String("help-contents")
+        || themeName == QLatin1String("help-browser")
+        || themeName == QLatin1String("system-help")) {
         return QStringLiteral("help-circle");
     }
-    if (themeName == QLatin1String("help-about") || themeName == QLatin1String("dialog-information")
+    if (themeName == QLatin1String("help-about")
+        || themeName == QLatin1String("dialog-information")
         || themeName == QLatin1String("dialog-info")) {
         return QStringLiteral("info");
     }

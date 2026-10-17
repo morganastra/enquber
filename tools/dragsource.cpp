@@ -59,17 +59,13 @@ public:
         setAlignment(Qt::AlignCenter);
         setWordWrap(true);
         setFixedSize(320, 160);
-        setStyleSheet(QStringLiteral(
-            "QLabel { background: palette(base); border: 2px solid palette(highlight);"
-            " padding: 8px; font-size: 11pt; }"));
+        setStyleSheet(QStringLiteral("QLabel { background: palette(base); border: 2px solid palette(highlight);"
+                                     " padding: 8px; font-size: 11pt; }"));
         setText(QStringLiteral("drag me\n\n%1").arg(payload));
     }
 
 protected:
-    void mousePressEvent(QMouseEvent *event) override
-    {
-        m_origin = event->position().toPoint();
-    }
+    void mousePressEvent(QMouseEvent *event) override { m_origin = event->position().toPoint(); }
 
     void mouseMoveEvent(QMouseEvent *event) override
     {
@@ -96,9 +92,8 @@ protected:
             // report. The drop event travels through the event loop, so let it
             // arrive before asking what was encoded.
             const MainWindow *application = m_app;
-            QTimer::singleShot(std::chrono::milliseconds(250), application, [application] {
-                report("app text: %s\n", qPrintable(application->encodedText()));
-            });
+            QTimer::singleShot(std::chrono::milliseconds(250), application,
+                [application] { report("app text: %s\n", qPrintable(application->encodedText())); });
         } else if (!m_keepRunning) {
             QApplication::quit();
         }
@@ -137,10 +132,8 @@ int main(int argc, char *argv[])
             // Stay around for more drags: a test can then drag repeatedly from
             // the same window without the window manager reshuffling the screen.
             keepRunning = true;
-        } else if (argument == QLatin1String("--help")
-                   || argument == QLatin1String("-h")) {
-            (void)std::fprintf(
-                stdout,
+        } else if (argument == QLatin1String("--help") || argument == QLatin1String("-h")) {
+            (void)std::fprintf(stdout,
                 "usage: dragsource --text <payload> [--with-app] [--keep]\n"
                 "\n"
                 "A drag source used by the GUI smoke test.\n"
@@ -163,8 +156,7 @@ int main(int argc, char *argv[])
         }
     }
     if (payload.isEmpty()) {
-        (void)std::fprintf(
-            stderr,
+        (void)std::fprintf(stderr,
             "dragsource: --text is required\n"
             "usage: dragsource --text <payload> [--with-app] [--keep]\n"
             "try 'dragsource --help' for the details\n");

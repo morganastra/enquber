@@ -40,9 +40,9 @@
 #include <QTextDocument>
 #include <QTextLayout>
 #include <QTimer>
-#include <QtGlobal>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QtGlobal>
 
 #include <chrono>
 #include <utility>
@@ -65,9 +65,9 @@ constexpr int kDragPixmapPixels = 120;
 
 /// How long the finished drag is kept alive so a target can still fetch the
 /// payload over the X11 selection after the drop. See startCodeDrag().
-constexpr std::chrono::milliseconds kDragLingerMs{1000};
+constexpr std::chrono::milliseconds kDragLingerMs {1000};
 
-constexpr std::chrono::milliseconds kStatusTimeoutMs{4000};
+constexpr std::chrono::milliseconds kStatusTimeoutMs {4000};
 
 constexpr int kMaxTextLines = 3;
 
@@ -139,9 +139,9 @@ protected:
             painter.setBrush(Qt::NoBrush);
             painter.drawLine(QPointF(center.x() + half, center.y()), QPointF(center.x() - half, center.y()));
             painter.drawLine(QPointF(center.x() - half, center.y()),
-                             QPointF(center.x() - half + 4.0, center.y() - 4.0));
+                QPointF(center.x() - half + 4.0, center.y() - 4.0));
             painter.drawLine(QPointF(center.x() - half, center.y()),
-                             QPointF(center.x() - half + 4.0, center.y() + 4.0));
+                QPointF(center.x() - half + 4.0, center.y() + 4.0));
         } else {
             QFont question = font();
             question.setBold(true);
@@ -184,8 +184,7 @@ struct ShapedText
 /// allowed for the same reason, otherwise a link without spaces comes back as a
 /// single line far wider than the label. When the last line is cut, an ellipsis
 /// is added to it.
-ShapedText shapeForLabel(const QString &text, const QFont &font, const QFontMetrics &metrics,
-                         int width, int maxLines)
+ShapedText shapeForLabel(const QString &text, const QFont &font, const QFontMetrics &metrics, int width, int maxLines)
 {
     ShapedText shaped;
     if (width <= 0 || maxLines < 1) {
@@ -311,9 +310,9 @@ void MainWindow::buildUi()
     const QFontMetrics editorMetrics(m_captionEditor->fontMetrics());
     constexpr int kEditorLines = 3;
     m_captionEditor->setFixedHeight((kEditorLines * editorMetrics.lineSpacing())
-                                    + (2 * m_captionEditor->frameWidth())
-                                    + (2 * qRound(m_captionEditor->document()->documentMargin()))
-                                    + 2);
+        + (2 * m_captionEditor->frameWidth())
+        + (2 * qRound(m_captionEditor->document()->documentMargin()))
+        + 2);
     m_captionEditor->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     //@ TypeEditor
     //% "Type or paste text"
@@ -437,8 +436,11 @@ void MainWindow::buildActions()
     //@ MainWindow
     //% "C&lear"
     m_clearAction = new QAction(qtTrId("mainwindow.action.clear"), this);
-    m_clearAction->setShortcuts({QKeySequence(Qt::Key_Escape), QKeySequence(Qt::Key_Backspace),
-                                 QKeySequence(Qt::Key_Delete),});
+    m_clearAction->setShortcuts({
+        QKeySequence(Qt::Key_Escape),
+        QKeySequence(Qt::Key_Backspace),
+        QKeySequence(Qt::Key_Delete),
+    });
     //@ MainWindow
     //% "Go back to the drop target (Esc, Backspace or Delete)"
     m_clearAction->setToolTip(qtTrId("mainwindow.action.clear.tooltip"));
@@ -819,8 +821,7 @@ void MainWindow::positionHelpButton()
     if (!m_helpButton || !m_central) {
         return;
     }
-    m_helpButton->move(m_central->width() - m_helpButton->width() - kHelpButtonMargin,
-                       kHelpButtonMargin);
+    m_helpButton->move(m_central->width() - m_helpButton->width() - kHelpButtonMargin, kHelpButtonMargin);
     m_helpButton->raise();
 }
 
@@ -910,8 +911,7 @@ void MainWindow::updateTextLabel()
     }
     const QString text = m_code.text();
     const QFontMetrics metrics(m_textLabel->fontMetrics());
-    const ShapedText shaped = shapeForLabel(text, m_textLabel->font(), metrics,
-                                            m_textLabel->width(), kMaxTextLines);
+    const ShapedText shaped = shapeForLabel(text, m_textLabel->font(), metrics, m_textLabel->width(), kMaxTextLines);
     m_textLabel->setText(shaped.text);
     m_textLabel->setToolTip(shaped.truncated ? Qt::convertFromPlainText(text) : QString());
 }
@@ -950,9 +950,8 @@ void MainWindow::startCodeDrag()
     // A small copy of the symbol follows the cursor. Nearest-neighbor scaling
     // keeps the modules square instead of blurring them, and the ratio keeps
     // its size honest on a scaled display.
-    QPixmap preview = QPixmap::fromImage(image.scaled(kDragPixmapPixels, kDragPixmapPixels,
-                                                      Qt::KeepAspectRatio,
-                                                      Qt::FastTransformation));
+    QPixmap preview = QPixmap::fromImage(
+        image.scaled(kDragPixmapPixels, kDragPixmapPixels, Qt::KeepAspectRatio, Qt::FastTransformation));
     preview.setDevicePixelRatio(m_qrView->devicePixelRatioF());
     drag->setPixmap(preview);
     // The hot spot is in logical pixels, but pixmap() reports device pixels once
@@ -994,10 +993,8 @@ void MainWindow::askWhereToSave()
     //@ MainWindow
     //% "PNG image (*.png)"
     const QString filter = qtTrId("mainwindow.dialog.save.filter");
-    const QString path = QFileDialog::getSaveFileName(this,
-                                                      title,
-                                                      QDir(directory).filePath(suggestedFileName()),
-                                                      filter);
+    const QString path =
+        QFileDialog::getSaveFileName(this, title, QDir(directory).filePath(suggestedFileName()), filter);
     if (path.isEmpty()) {
         return;
     }

@@ -12,10 +12,10 @@ namespace qr {
 
 /// How much of the symbol may be damaged and still decode.
 enum class ErrorCorrection : std::uint8_t {
-    Low,       ///< 7%
-    Medium,    ///< 15%
-    Quartile,  ///< 25% -- a good default for URLs
-    High,      ///< 30%
+    Low,      ///< 7%
+    Medium,   ///< 15%
+    Quartile, ///< 25% -- a good default for URLs
+    High,     ///< 30%
 };
 
 /// An encoded QR symbol: the module matrix from libqrencode plus the text it
@@ -65,7 +65,8 @@ public:
     [[nodiscard]] QImage toImage(int modulePixels) const;
 
 private:
-    struct Deleter {
+    struct Deleter
+    {
         void operator()(QRcode *code) const;
     };
 
