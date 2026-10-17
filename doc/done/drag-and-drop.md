@@ -1,6 +1,6 @@
 # Dragging the generated QR code out of Enquber
 
-Status: implemented, with unit and GUI smoke-test coverage.
+Status: implemented.
 
 This document describes how Enquber lets a user drag the generated QR code out
 of the window and drop it into another application, for example onto the desktop
@@ -159,8 +159,7 @@ process (the smoke test's `dragsource --with-app`) has a source widget that is
   link in front of them before dragging; Qt's default keeps the code simple.
 - **File name comes from `suggestedFileName()`.** It already sanitizes to
   `[A-Za-z0-9._-]`, drops the query and caps the stem at 60 characters, so names
-  are usable. *Known follow-up:* opaque path segments and long IDs still survive
-  into the name (e.g. `.../d/AbC123…/view`); see `doc/improvements.txt`.
+  are usable.
 - **No `text/html`.** A rich-text target would insert
   `<img src="file:///tmp/…">` — a link that breaks when the session ends —
   instead of embedding the bytes.
@@ -187,10 +186,6 @@ delivered, naming is the target's business:
   managers implement it inconsistently.
 - macOS file promises and Windows OLE likewise leave the final name to the
   destination, with no "start editing" request.
-
-So the suggested name stays `suggestedFileName()`, and the improvement to make
-(see `doc/improvements.txt`) is a shorter, prettier default rather than an
-automatic rename.
 
 ## Keeping the drag alive after the drop
 

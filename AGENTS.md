@@ -36,12 +36,9 @@ rebuild first):
 - `just check-translations` — release gate: every translated catalog complete
 - `just lint` — every linter: clazy + clang-tidy + Qt's review linter (C++),
   ruff (Python), typos (American English), plus `lint-i18n`
-- `just lint-cpp`, `just lint-i18n`, `just lint-py`, `just lint-spell` — one
-  part at a time
 - `just smoke-test [args]` — build smoke helpers + drive the real GUI
 - `just startup-settle [args]` — record the Xvfb framebuffer and measure when
   the UI stops changing (compare apps with repeated `--command`)
-- `just package-arch`
 
 There are three build trees from `CMakePresets.json`; use the presets rather
 than hand-written cmake flags:
@@ -80,8 +77,6 @@ screenshots land in a date-time stamped directory under `$TMPDIR/enquber-smoke`.
 
 `tools/<name>.py --help` documents each tool's flags, plus defaults, examples
 and exit codes where the help states them. Everything has a useful `--help`
-except the vendored `qt_review_lint.py`: it ignores `--help`, unknown flags and
-unreadable files (exit 0) and prints usage only when run without arguments.
 
 - `smoke.py` — the GUI smoke test (`just smoke-test`); `dragsource.cpp` and
   `droptarget.py` are its XDND drag source and target.
@@ -91,7 +86,6 @@ unreadable files (exit 0) and prints usage only when run without arguments.
   (`just startup-settle`, `just startup-bench`).
 - `generate-icon.py` — regenerates `data/icon/enquber.{svg,png}`.
 - `check-i18n.py` — the catalog lint behind `just test` and `just lint-i18n`.
-- `qt_review_lint.py` — the vendored C++ review linter (`just lint-cpp`).
 
 ## Gotchas
 
@@ -104,9 +98,7 @@ unreadable files (exit 0) and prints usage only when run without arguments.
 - Drag-and-drop debugging: `QT_LOGGING_RULES="enquber.dnd.debug=true"`
   (Qt internals: `qt.qpa.xdnd.debug=true`).
 - Linting: `just lint` must stay green. C++ uses `.clang-tidy` (warnings are
-  errors), clazy level1, and `tools/qt_review_lint.py` (vendored verbatim from
-  Qt's agent-skills under BSD-3-Clause, pinned at `1cbbef560d2b`, sha256
-  `838ec72e…`; send fixes upstream, never patch locally). Python uses
+  errors), clazy level1, and `tools/qt_review_lint.py` Python uses
   `ruff.toml`; spelling uses `typos.toml` with `locale = "en-us"`, so write
   American English and run `typos --write-changes` to fix strays. There is no
   formatter yet; match the existing 4-space style and keep builds clean under
@@ -122,4 +114,3 @@ unreadable files (exit 0) and prints usage only when run without arguments.
   `just check-translations` is the release gate for complete translations
   (Qt 6.10+). Catalog fidelity checks live in Qt's `lcheck` from Qt 6.11;
   don't re-add that logic to the script.
-- `doc/improvements.txt` is a feature wishlist, not a spec.

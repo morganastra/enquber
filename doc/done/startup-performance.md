@@ -11,7 +11,7 @@ icons and colors from the active platform theme).
 
 Measuring "settled" rather than "window appeared" matters: a window can show up
 quickly and then keep redrawing as late-loaded icons or widgets arrive. The
-earlier investigation (`doc/improvements.txt`) found that failed theme icon
+earlier investigation found that failed theme icon
 lookups alone accounted for roughly 95 ms of a ~300 ms start, so the point at
 which the interface stops moving is the honest number.
 
