@@ -46,8 +46,7 @@ format:
 lint-format:
     clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp tools/*.cpp
 
-# Lint everything: C++ static analysis and formatting, Python, spelling,
-# translations.
+[doc('Lint everything: C++ static analysis and formatting, Python, spelling, translations')]
 lint: lint-cpp lint-format lint-py lint-spell lint-i18n
 
 # Needs the clang build tree (build/lint) and clang-tidy, clazy, run-clang-tidy.
@@ -63,7 +62,7 @@ lint-cpp:
 lint-py:
     ruff check tools tests
 
-# Flag British spellings; the project uses American English.
+# Check all files for misspellings.
 lint-spell:
     typos
 

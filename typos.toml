@@ -1,5 +1,4 @@
-# Spell checking. The project uses American English, so this flags British
-# variants in comments, string literals, and identifiers. Run with:
+# Spell checking. Run with:
 #
 #     just lint-spell       # typos
 #     typos --write-changes # apply the mechanical fixes
