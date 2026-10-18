@@ -1,6 +1,9 @@
 # Maintainer: Morgan Astra
 pkgname=enquber-git
-pkgver=0.1.1.r46.g141af06
+# The real version is computed by pkgver() from the release tags; makepkg
+# requires the variable to be declared, but pkgver() overwrites it at build
+# time. Release tags (vX.Y.Z) mirror the version in CMakeLists.txt.
+pkgver=0.1.1.r133.g6889336
 pkgrel=1
 pkgdesc="Simple QR code maker with a nice UX and near-instant startup"
 arch=('x86_64')
@@ -15,13 +18,14 @@ sha256sums=('SKIP')
 
 pkgver() {
     cd "$srcdir/enquber"
-    # Once tags exist: v1.2.3-4-gdeadbeef -> 1.2.3.r4.gdeadbeef
-    # Until then: 0.1.0.r<commit count>.g<short sha>
+    # v1.2.3 with 4 commits on top, short sha deadbeef -> 1.2.3.r4.gdeadbeef.
+    # --match keeps unrelated tags (e.g. backup/...) out of the version.
     local _ver
-    if _ver=$(git describe --long --tags 2>/dev/null); then
+    if _ver=$(git describe --long --tags --match 'v*' 2>/dev/null); then
         sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' <<< "$_ver"
     else
-        printf "0.1.0.r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+        # No release tag reachable yet: fall back to a bare revision.
+        printf "r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
     fi
 }
 

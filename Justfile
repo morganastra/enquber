@@ -81,10 +81,15 @@ run: build
 clean:
     rm -rf build
 
-# Create packages
+# makepkg works under build/arch/ and writes the package there, so `just clean`
+# removes the intermediate files and the package.
+[doc('Build the Arch package.')]
 [group('package')]
-package-arch: 
-    cd packaging/arch && makepkg -f
+package-arch:
+    mkdir -p build/arch
+    cd packaging/arch && \
+        build="$(realpath ../../build/arch)" && \
+        SRCDEST="$build" BUILDDIR="$build" PKGDEST="$build" LOGDEST="$build" makepkg -f
 
 # Pass --json through tools/startup-stats.py for a table and verdict.
 [doc('Record an X11 framebuffer and measure when the UI stops changing.')]
