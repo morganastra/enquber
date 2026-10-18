@@ -66,6 +66,11 @@ to see Qt's xdnd messages directly.
     just lint-i18n
     just lint-py
     just lint-spell
+    just lint-format
+
+Run the clang-tidy formatter in in-place edit mode with `just format`.
+
+Note that the formatter requires clang-tidy version >= 20.
 
 On archlinux-like systems the extra tools are:
 
