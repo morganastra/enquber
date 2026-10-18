@@ -1,0 +1,67 @@
+# Continuous integration for Enquber.
+#
+# Runs `just lint` and `just test` on an Ubuntu 26.04 runner.
+# Pins Qt at 6.12 and clang toolchain at 22; see notes below
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Ubuntu 26.04 provides Qt 6.10.2 but i18n lint needs `lcheck` which was
+      # introduced in Qt 6.11. We install the full Qt base package; at minimum
+      # we need the `icu` archive for `lcheck`.
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.12.0'
+          cache: true
+
+      - name: Install the toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ninja-build pkgconf libqrencode-dev just \
+            clang-22 clang-format-22 clang-tidy-22 clang-tools-22 clazy
+
+      # This is just for determinism. Build and lint are known to work on clang 20-23
+      - name: Pin clang 22
+        run: |
+          shim="$RUNNER_TEMP/clang-22"
+          mkdir -p "$shim"
+          for tool in clang clang++ clang-format clang-tidy run-clang-tidy clang-apply-replacements; do
+            ln -sf "$(command -v "${tool}-22")" "$shim/$tool"
+          done
+          echo "$shim" >> "$GITHUB_PATH"
+
+      - name: Install ruff and typos
+        run: |
+          pipx install ruff
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: typos
+
+      - name: Lint
+        run: just lint
+
+      - name: Build and test
+        run: just test
