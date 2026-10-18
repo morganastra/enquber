@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(enquber
     VERSION 0.1.1
-    DESCRIPTION "A minimal Qt 6 front end for libqrencode"
+    DESCRIPTION "A simple cross-platform QR code maker"
     LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
