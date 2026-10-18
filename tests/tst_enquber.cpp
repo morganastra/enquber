@@ -57,7 +57,12 @@ namespace {
 
 void sendDragEnter(QWidget *target, const QMimeData *mime)
 {
-    QDragEnterEvent event(target->rect().center(), Qt::CopyAction, mime, Qt::LeftButton, Qt::NoModifier);
+    const QPoint pos = target->rect().center();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
+    QDragEnterEvent event(QPointF(pos), Qt::CopyAction, mime, Qt::LeftButton, Qt::NoModifier);
+#else
+    QDragEnterEvent event(pos, Qt::CopyAction, mime, Qt::LeftButton, Qt::NoModifier);
+#endif
     QCoreApplication::sendEvent(target, &event);
 }
 
