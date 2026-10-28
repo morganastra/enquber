@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - name: Check out
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
@@ -30,7 +30,7 @@ jobs:
       # introduced in Qt 6.11. We install the full Qt base package; at minimum
       # we need the `icu` archive for `lcheck`.
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06  # v4.5.0
         with:
           version: '6.12.0'
           cache: true
@@ -56,7 +56,7 @@ jobs:
         run: |
           pipx install ruff
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037  # v2.87.32
         with:
           tool: typos
 
